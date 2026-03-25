@@ -1,0 +1,56 @@
+# Modelfile template for custom Qwen context-window variants
+#
+# Usage:
+#   1. Copy this file to: Modelfile-<model-shortname>
+#   2. Fill in the FROM and PARAMETER values below
+#   3. Run: ollama create <tag> -f Modelfile-<model-shortname>
+#
+# Naming convention for <tag>:
+#   <base-name>:<size>-<context-shorthand>
+#   Examples: qwen3.5:27b-32k   qwen3.5:9b-96k
+#
+# ─────────────────────────────────────────────────────────────────────────
+# Step 1 — Base model
+#
+# Use the exact pulled model name from `ollama list`.
+# Recommended:
+#   27B → qwen3.5:27b-q4_K_M
+#   9B  → qwen3.5:9b-q8_0
+# ─────────────────────────────────────────────────────────────────────────
+
+FROM qwen3.5:27b-q4_K_M
+
+# ─────────────────────────────────────────────────────────────────────────
+# Step 2 — Context window
+#
+# Recommended values:
+#   27B Q4_K_M  →  32768  (conservative)  or  56320  (extended)
+#   9B  Q8_0    →  56320  (conservative)  or  98304  (extended)
+#
+# Larger values increase VRAM usage. Start conservative; increase if the
+# model truncates real IDE context on your tasks.
+# ─────────────────────────────────────────────────────────────────────────
+
+PARAMETER num_ctx 32768
+
+# ─────────────────────────────────────────────────────────────────────────
+# Step 3 — Optional: system prompt for code-focused behaviour
+#
+# Uncomment and edit if you want to constrain the model to code tasks.
+# Keep it short — every token in the system prompt counts against num_ctx.
+# ─────────────────────────────────────────────────────────────────────────
+
+# SYSTEM """
+# You are a fast, precise coding assistant. Return only the requested code
+# or explanation. Do not add unsolicited commentary.
+# """
+
+# ─────────────────────────────────────────────────────────────────────────
+# Create command (run from repo root):
+#
+#   ollama create qwen3.5:27b-32k -f Modelfile-qwen35-27b-32k
+#
+# Verify:
+#
+#   ollama list
+# ─────────────────────────────────────────────────────────────────────────
