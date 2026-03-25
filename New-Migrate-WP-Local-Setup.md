@@ -298,6 +298,172 @@ Deploy to live: upload each ZIP via WP Admin → Plugins/Themes → Upload, or a
 | WP-CLI / Docker operations | `foundation/wp/docs/WP-LOCAL-OPS.md` |
 | Docker image patterns | `foundation/wp/docs/WP-OVERLAY-README.md` |
 | Two-plugin billing architecture | `foundation/wp/docs/licensing/BILLING-LICENSING-ARCHITECTURE.md` |
+
+---
+
+---
+
+# EcomCine — Re-Setup on a New Computer
+
+> Use this section when you already have the repo working on one machine and need to resume
+> on a different computer. All custom code is in Git; the steps below cover the parts that
+> are **not** — premium plugins, uploads, and the database.
+
+---
+
+## Prerequisites
+
+Install these on the new machine before anything else:
+
+- **Git** (with Git Bash on Windows)
+- **Docker Desktop** (running, WSL2 backend on Windows)
+- **GitHub CLI** (`gh`) — authenticated to your GitHub account
+
+---
+
+## What to Transfer Manually (not in Git)
+
+These items are gitignored and must be copied from your old machine (USB drive, network
+share, or cloud storage) **before** running the setup steps:
+
+| Item | Where to place it | Why it's not in Git |
+|---|---|---|
+| `deps/` folder | `C:\dev\EcomCine\deps\` | Premium plugins — cannot be redistributed |
+| `castingagency-uploads.tar.gz` | `C:\dev\EcomCine\castingagency-uploads.tar.gz` | 198 MB binary, WP media library |
+| `.env` file | `C:\dev\EcomCine\.env` | Contains credentials |
+
+**`deps/` must contain exactly:**
+```
+deps/
+├── dokan-lite/
+├── dokan-pro/
+├── woocommerce/
+└── woocommerce-bookings/
+```
+Each is an extracted plugin folder (not a ZIP), matching the volume mounts in
+`docker-compose.yml`.
+
+> **Alternative for `.env`:** If you don't have the `.env` from the old machine, copy
+> `.env.example` to `.env` — the default values (`wp_user` / `wp_pass_dev` / `wordpress`)
+> are correct for local dev.
+
+---
+
+## Setup Steps
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/esfih/EcomCine
+cd EcomCine
+```
+
+### 2. Place the manually transferred items
+
+Confirm these exist before continuing:
+```
+C:\dev\EcomCine\deps\dokan-pro\        ← must be present
+C:\dev\EcomCine\deps\woocommerce-bookings\  ← must be present
+C:\dev\EcomCine\castingagency-uploads.tar.gz
+C:\dev\EcomCine\.env
+```
+
+### 3. Start the containers
+
+```bash
+docker compose up -d
+```
+
+All custom theme, plugins, and SVG icons are volume-mounted automatically from the repo.
+The `deps/` plugins are also mounted — no install step needed.
+
+### 4. Import the database
+
+**Option A — re-export fresh from the live server (recommended):**
+
+```bash
+# Export from live via SSH (Git Bash)
+ssh -i ~/.ssh/castingagency_debug -p 5022 efttsqrtff@209.16.158.249 \
+  "wp db export /home/efttsqrtff/castingagency-db-fresh.sql --allow-root --path=/home/efttsqrtff/public_html"
+
+scp -i ~/.ssh/castingagency_debug -P 5022 \
+  efttsqrtff@209.16.158.249:/home/efttsqrtff/castingagency-db-fresh.sql \
+  db/castingagency-live.sql
+```
+
+**Option B — copy the SQL file from your old machine:**
+
+Place it at `C:\dev\EcomCine\db\castingagency-live.sql`.
+
+**Then import and fix URLs:**
+
+```bash
+./scripts/wp.sh wp db import db/castingagency-live.sql
+./scripts/wp.sh wp search-replace 'https://castingagency.co' 'http://localhost:8180' --all-tables
+./scripts/wp.sh wp user update 1 --user_pass=admin
+./scripts/wp.sh wp rewrite structure '/%postname%/' --hard
+```
+
+### 5. Extract the uploads archive
+
+```bash
+# Copy the archive into the container and extract it
+docker cp castingagency-uploads.tar.gz ecomcine_dev-wordpress-1:/tmp/castingagency-uploads.tar.gz
+MSYS_NO_PATHCONV=1 docker exec ecomcine_dev-wordpress-1 sh -c \
+  "cd /var/www/html/wp-content && tar xzf /tmp/castingagency-uploads.tar.gz && chown -R www-data:www-data uploads"
+```
+
+### 6. Activate all plugins and theme
+
+```bash
+./scripts/setup-deps.sh
+```
+
+This activates plugins in the correct dependency order:
+WooCommerce → Dokan Lite → Dokan Pro → WooCommerce Bookings → EcomCine plugins → Astra Child theme.
+
+### 7. Verify
+
+```bash
+./scripts/check-local-wp.sh
+```
+
+Then open in browser:
+- **http://localhost:8180** — homepage / showcase renders, account tab visible
+- **http://localhost:8180/wp-admin** — admin loads, no fatal errors (user: `admin` / pass: `admin`)
+- **http://localhost:8181** — phpMyAdmin
+
+The "Book session" button on a vendor card should open the booking modal (look for
+`tmVendorBookingModal` in page source to confirm the JS object is present).
+
+---
+
+## SSH Key for Live Server Access
+
+The SSH key used to connect to `castingagency.co` (`~/.ssh/castingagency_debug`) is stored
+only on your local machine — it is never committed.
+
+On the new machine, either:
+- Copy `~/.ssh/castingagency_debug` and `~/.ssh/castingagency_debug.pub` from the old machine, **or**
+- Generate a new key pair and add the public key via cPanel → SSH Access Manager at
+  `https://castingagency.co:2083`
+
+Connection command (once key is in place):
+```bash
+ssh -i ~/.ssh/castingagency_debug -p 5022 efttsqrtff@209.16.158.249 "echo connected"
+```
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| HTTP 500 on homepage | PHP parse error (often BOM in a PHP file) | Check `docker exec ecomcine_dev-wordpress-1 tail -20 /var/www/html/wp-content/debug.log` |
+| Booking modal JS not present | `enqueue_assets()` gate failing | Confirm `WC_Booking_Form` class exists and container has `woocommerce-bookings` in `deps/` |
+| Vendor cards show no images | Uploads not extracted | Repeat step 5 |
+| `deps/` plugin not activating | Folder present but wrong structure | Plugin folder must contain the main `.php` file directly (not nested in a ZIP subfolder) |
+| Port 8180 already in use | Port conflict with another project | Change `WP_PORT` in `.env` and restart containers |
 | Control-plane reuse guide | `foundation/wp/docs/CONTROL-PLANE-REUSE-GUIDE.md` |
 | Implementation rules | `foundation/core/docs/IMPLEMENTATION-RULES.md` |
 | Security protocol | `foundation/core/docs/SECURITY-VALIDATION-PROTOCOL.md` |
