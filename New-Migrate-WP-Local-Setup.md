@@ -331,6 +331,11 @@ share, or cloud storage) **before** running the setup steps:
 | `deps/` folder | `C:\dev\EcomCine\deps\` | Premium plugins — cannot be redistributed |
 | `castingagency-uploads.tar.gz` | `C:\dev\EcomCine\castingagency-uploads.tar.gz` | 198 MB binary, WP media library |
 | `.env` file | `C:\dev\EcomCine\.env` | Contains credentials |
+| `repeated-prompt.instructions.md` | `C:\Users\<you>\.copilot\instructions\` | User-level VS Code Copilot file — outside any repo |
+| `~/.ssh/castingagency_debug` | `C:\Users\<you>\.ssh\` | SSH private key for live server |
+
+> **Note — `foundation/` and `.github/copilot-instructions.md` are already in Git** and
+> come down automatically with `git clone`. No manual action needed for those.
 
 **`deps/` must contain exactly:**
 ```
@@ -435,6 +440,37 @@ Then open in browser:
 
 The "Book session" button on a vendor card should open the booking modal (look for
 `tmVendorBookingModal` in page source to confirm the JS object is present).
+
+---
+
+## VS Code / GitHub Copilot Setup
+
+The repo-level Copilot instructions (`/.github/copilot-instructions.md`) are committed and
+require no action — VS Code picks them up automatically after `git clone`.
+
+The **user-level** repeated-prompt instruction file lives outside the repo in your Windows
+user profile. Copy it from the old machine:
+
+```
+Source:  C:\Users\rtxa4\.copilot\instructions\repeated-prompt.instructions.md
+Dest:    C:\Users\<your-username>\.copilot\instructions\repeated-prompt.instructions.md
+```
+
+Create the folder if it doesn't exist:
+```powershell
+New-Item -ItemType Directory -Path "$env:USERPROFILE\.copilot\instructions" -Force
+```
+
+Content of the file (paste if you don't have the copy):
+```
+---
+description: Global reinforcement prompt for repository-aware coding chats in VS Code.
+---
+
+Read README-FIRST.md first for every meaningful response. Follow ./.github/copilot-instructions.md. Treat the runtime baseline as always-on: Git Bash by default, PowerShell only for Windows-specific tasks, one host Python 3 interpreter only, no repo-local .venv unless the repo later explicitly requires it, and prefer host tools over WSL or container entry unless the task explicitly requires a different runtime. Treat /specs and /specs/app-features as canonical and load only the minimum files needed for the current task.
+```
+
+This file is automatically picked up by VS Code Copilot for all workspaces on the machine.
 
 ---
 
