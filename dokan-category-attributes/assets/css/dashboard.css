@@ -1,0 +1,77 @@
+/**
+ * Dashboard Styles
+ * Styles for vendor dashboard attribute fields
+ * 
+ * @package Dokan_Category_Attributes
+ */
+
+/* Attribute Section Headers */
+.dca-attribute-section h3 {
+	margin-top: 20px;
+	margin-bottom: 15px;
+	color: #f0ad4e;
+	font-size: 16px;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.dca-attribute-section h3 .dashicons {
+	font-size: 20px;
+	width: 20px;
+	height: 20px;
+}
+
+/* Field Labels */
+.dca-field-wrapper .dokan-control-label {
+	color: #fff !important;
+	font-weight: 500;
+}
+
+.dca-field-wrapper .dokan-control-label .dashicons {
+	color: #f0ad4e;
+	margin-right: 5px;
+}
+
+.dca-field-wrapper .required {
+	color: #f56262;
+	margin-left: 3px;
+}
+
+/* Form Controls */
+.dca-field-wrapper .dokan-form-control {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 3px;
+}
+
+.dca-field-wrapper .dokan-form-control:focus {
+	border-color: #f0ad4e;
+	outline: none;
+	box-shadow: 0 0 0 1px rgba(240, 173, 78, 0.3);
+}
+
+/* Radio and Checkbox Inputs */
+.dca-field-wrapper label[style*="display: block"] {
+	color: #fff;
+	margin: 5px 0;
+	cursor: pointer;
+}
+
+.dca-field-wrapper label[style*="display: block"]:hover {
+	color: #f0ad4e;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+	.dca-attribute-section h3 {
+		font-size: 14px;
+	}
+	
+	.dca-field-wrapper .dokan-w3,
+	.dca-field-wrapper .dokan-w5 {
+		width: 100% !important;
+		float: none !important;
+	}
+}

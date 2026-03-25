@@ -1,0 +1,688 @@
+.tm-booking-modal {
+	position: fixed;
+	inset: 0;
+	display: none;
+	z-index: 9999;
+}
+
+.tm-booking-modal.is-open {
+	display: block;
+}
+
+.tm-booking-modal__backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.7);
+}
+
+.tm-booking-modal__dialog {
+	position: relative;
+	max-width: 980px;
+	width: 92vw;
+	max-height: 90vh;
+	margin: 5vh auto;
+	background: #111;
+	color: #f5f5f5;
+	border: 1px solid #2f2f2f;
+	border-radius: 12px;
+	box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.tm-booking-modal__header {
+	padding: 10px 24px 0;
+}
+
+.tm-booking-modal__header h3 {
+	margin: 0 0 6px;
+	font-size: 22px;
+	font-weight: 600;
+}
+
+.tm-booking-modal__subtitle {
+	margin: 0;
+	font-size: 14px;
+	color: #b8b8b8;
+}
+
+.tm-booking-modal__close {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	width: 38px;
+	height: 38px;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 8px;
+	background: linear-gradient(135deg, #1b1b1b 0%, #0f0f0f 100%);
+	color: #f0f0f0;
+	font-size: 20px;
+	font-weight: 700;
+	line-height: 1;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 6px 16px rgba(0, 0, 0, 0.35);
+	transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.tm-booking-modal__close:hover {
+	transform: translateY(-1px);
+	border-color: rgba(255, 255, 255, 0.28);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 10px 20px rgba(0, 0, 0, 0.4);
+}
+
+.tm-booking-modal__close span {
+	display: block;
+	line-height: 1;
+}
+
+.tm-booking-modal__body {
+	padding: 0;
+	overflow-y: auto;
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 20px;
+}
+
+.tm-booking-modal__panel {
+	background: #151515;
+	border: 1px solid #2a2a2a;
+	border-radius: 10px;
+	padding: 18px;
+}
+
+.tm-booking-modal__panel--checkout {
+	display: none;
+}
+
+.tm-booking-modal__panel--checkout.is-loaded {
+	display: block;
+}
+
+.tm-booking-modal.tm-booking-modal--checkout .tm-booking-modal__panel--booking {
+	display: none;
+}
+
+.tm-booking-modal .woocommerce-form-coupon-toggle,
+.tm-booking-modal .checkout_coupon,
+.tm-booking-modal #order_review_heading,
+.tm-booking-modal .woocommerce-additional-fields,
+.tm-booking-modal .woocommerce-shipping-fields,
+.tm-booking-modal .col-2,
+.tm-booking-modal .woocommerce-billing-fields h3 {
+	display: none !important;
+}
+
+/* Ensure checkout form uses full width */
+.tm-booking-modal .woocommerce-checkout,
+.tm-booking-modal .woocommerce,
+.tm-booking-modal form.checkout {
+	width: 100% !important;
+	max-width: 100% !important;
+}
+
+/* Billing fields container should use full width */
+.tm-booking-modal .woocommerce-billing-fields {
+	width: 100% !important;
+	max-width: 100% !important;
+	margin-bottom: 20px;
+}
+
+.tm-booking-modal #customer_details {
+	background: rgba(12, 12, 12, 0.6);
+	border: 0;
+	border-radius: 8px;
+	padding: 0;
+	margin: 0;
+}
+
+.tm-booking-modal.woocommerce-js #customer_details,
+.tm-booking-modal.woocommerce-js .woocommerce table.shop_table {
+	border-radius: 0;
+}
+
+.tm-booking-modal #customer_details .col-1 {
+	width: 100% !important;
+}
+
+.tm-booking-modal #customer_details .woocommerce-billing-fields {
+	margin: 0;
+}
+
+.tm-booking-modal #customer_details .woocommerce-billing-fields__field-wrapper {
+	margin: 0;
+}
+
+.tm-booking-modal #order_review .shop_table,
+.tm-booking-modal #order_review .woocommerce-checkout-review-order-table {
+	display: none !important;
+}
+
+.tm-booking-modal #payment {
+	margin-top: 12px;
+}
+
+.tm-booking-modal.tm-booking-modal--checkout .tm-booking-modal__subtitle {
+	display: none;
+}
+
+.tm-booking-modal .woocommerce-billing-fields__field-wrapper {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	align-items: start;
+	gap: 14px;
+	width: 100% !important;
+	max-width: 100% !important;
+}
+
+/* Hide last name field (auto-populated by JavaScript from full name) */
+.tm-booking-modal .form-row-hidden,
+.tm-booking-modal .tm-modal-last-name-hidden {
+	display: none !important;
+}
+
+.tm-booking-modal #billing_last_name_field {
+	display: none !important;
+}
+
+.tm-booking-modal .woocommerce-billing-fields__field-wrapper .form-row-third,
+.tm-booking-modal .woocommerce-billing-fields__field-wrapper .form-row {
+	width: 100% !important;
+	max-width: 100% !important;
+	float: none !important;
+	grid-column: auto !important;
+}
+
+.tm-booking-modal #billing_first_name_field,
+.tm-booking-modal #billing_email_field,
+.tm-booking-modal #billing_phone_field {
+	width: 100% !important;
+	max-width: 100% !important;
+	grid-column: span 1 !important;
+}
+
+/* Ensure form-rows display in grid */
+.tm-booking-modal .woocommerce-billing-fields__field-wrapper .form-row {
+	display: block !important;
+	margin: 0 !important;
+	width: 100% !important;
+}
+
+/* Make email and phone full width on small screens */
+@media (max-width: 600px) {
+	.tm-booking-modal .woocommerce-billing-fields__field-wrapper {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* Force all labels in billing fields to display */
+.tm-booking-modal .woocommerce-billing-fields label,
+.tm-booking-modal .woocommerce-billing-fields__field-wrapper label,
+.tm-booking-modal .form-row label,
+.tm-booking-modal .woocommerce-form__label {
+	color: #d7c28a !important;
+	font-size: 12px !important;
+	letter-spacing: 0.4px;
+	text-transform: uppercase;
+	margin-bottom: 6px !important;
+	display: inline-block !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	position: relative !important;
+	width: auto !important;
+	height: auto !important;
+	clip: auto !important;
+}
+
+/* Ensure form rows display properly */
+.tm-booking-modal .form-row {
+	display: block !important;
+	visibility: visible !important;
+}
+
+.tm-booking-modal .woocommerce-billing-fields__field-wrapper .input-text,
+.tm-booking-modal .woocommerce-billing-fields__field-wrapper select,
+.tm-booking-modal .form-row .input-text,
+.tm-booking-modal .form-row select {
+	background: rgba(18, 18, 18, 0.9);
+	border: 1px solid rgba(212, 175, 55, 0.35);
+	border-radius: 8px;
+	color: #f5e6bf;
+	padding: 10px 12px;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+/* Custom terms checkboxes layout */
+.tm-booking-modal .woocommerce-terms-and-conditions-wrapper {
+	margin-top: 12px;
+}
+
+.tm-booking-modal .tm-modal-terms-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px 16px;
+	align-items: center;
+}
+
+.tm-booking-modal .tm-modal-terms-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 28px;
+}
+
+.tm-booking-modal .tm-modal-terms-item input[type="checkbox"] {
+	margin: 0;
+}
+
+.tm-booking-modal .tm-modal-terms-item label {
+	margin: 0;
+	font-size: 13px;
+	color: #d7c28a;
+	text-transform: none;
+}
+
+.tm-booking-modal .tm-modal-terms-item a {
+	color: #eab150;
+	text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+	.tm-booking-modal .tm-modal-terms-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.tm-booking-modal__login {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-top: 12px;
+	padding: 10px 16px;
+	border-radius: 999px;
+	background: rgba(212, 175, 55, 0.2);
+	border: 1px solid rgba(212, 175, 55, 0.5);
+	color: #f5e6bf;
+	text-decoration: none;
+}
+
+/* WooCommerce Login/Register Banners */
+.tm-booking-modal .woocommerce-info,
+.tm-booking-modal .woocommerce-message,
+.tm-booking-modal .showcoupon,
+.tm-booking-modal .showlogin {
+	background: rgba(26, 26, 26, 0.8);
+	border-left: 3px solid rgba(212, 175, 55, 0.7);
+	color: #f5e6bf !important;
+	padding: 12px 16px;
+	border-radius: 6px;
+	margin-bottom: 16px;
+}
+
+.tm-booking-modal .woocommerce-info a,
+.tm-booking-modal .woocommerce-message a,
+.tm-booking-modal .showlogin {
+	color: #D4AF37 !important;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+/* Login form within checkout */
+.tm-booking-modal .login {
+	background: rgba(18, 18, 18, 0.9);
+	border: 1px solid rgba(212, 175, 55, 0.35);
+	border-radius: 8px;
+	padding: 16px;
+	margin-top: 12px;
+}
+
+.tm-booking-modal .login label {
+	color: #d7c28a !important;
+	display: block !important;
+	margin-bottom: 6px !important;
+}
+
+.tm-booking-modal .login input.input-text {
+	background: rgba(10, 10, 10, 0.6);
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	color: #f5e6bf;
+	padding: 10px 12px;
+	border-radius: 6px;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+/* Ensure input placeholders are visible */
+.tm-booking-modal .input-text::placeholder,
+.tm-booking-modal select::placeholder {
+	color: rgba(245, 230, 191, 0.5);
+	opacity: 1;
+}
+
+.tm-booking-modal__loading,
+.tm-booking-modal__message,
+.tm-booking-modal__empty {
+	font-size: 14px;
+	color: #d7d7d7;
+	padding: 12px 0;
+}
+
+.tm-booking-modal__section-title {
+	font-size: 15px;
+	font-weight: 600;
+	margin-bottom: 12px;
+	color: #f0f0f0;
+}
+
+body.tm-booking-modal-open {
+	overflow: hidden;
+}
+
+.tm-booking-modal .dokan-store-support-btn,
+.tm-booking-modal .dokan-store-support-btn-product {
+	display: none !important;
+}
+
+.tm-booking-modal .wc-bookings-date-picker {
+	background: rgba(12, 12, 12, 0.6);
+	border: 1px solid rgba(212, 175, 55, 0.25);
+	border-radius: 12px;
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+	backdrop-filter: blur(12px);
+	padding: 12px;
+}
+
+.tm-booking-modal .ui-datepicker {
+	background: rgba(15, 15, 15, 0.75);
+	border: 1px solid rgba(212, 175, 55, 0.3);
+	border-radius: 10px;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.tm-booking-modal .ui-datepicker-header {
+	background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.08));
+	border: 1px solid rgba(212, 175, 55, 0.35);
+	border-radius: 8px;
+	color: #f4e3b0;
+	font-weight: 600;
+}
+
+.tm-booking-modal .ui-datepicker .ui-datepicker-prev,
+.tm-booking-modal .ui-datepicker .ui-datepicker-next,
+.tm-booking-modal .ui-datepicker-header .ui-datepicker-prev,
+.tm-booking-modal .ui-datepicker-header .ui-datepicker-next {
+	width: 30px;
+	height: 30px;
+	top: 6px;
+	border-radius: 6px;
+	border: 2px solid #D4AF37 !important;
+	background: linear-gradient(135deg, #D4AF37 0%, #f4c430 100%) !important;
+	background-color: #D4AF37 !important;
+	background-image: none !important;
+	text-shadow: none !important;
+	box-shadow: 0 3px 10px rgba(212, 175, 55, 0.35);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tm-booking-modal .ui-datepicker .ui-datepicker-prev:hover,
+.tm-booking-modal .ui-datepicker .ui-datepicker-next:hover,
+.tm-booking-modal .ui-datepicker-header .ui-datepicker-prev:hover,
+.tm-booking-modal .ui-datepicker-header .ui-datepicker-next:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 6px 14px rgba(212, 175, 55, 0.45);
+}
+
+.tm-booking-modal .ui-datepicker .ui-datepicker-prev.ui-state-disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.tm-booking-modal .ui-datepicker .ui-datepicker-prev span,
+.tm-booking-modal .ui-datepicker .ui-datepicker-next span {
+	display: none;
+}
+
+.tm-booking-modal .ui-datepicker .ui-datepicker-prev::before,
+.tm-booking-modal .ui-datepicker .ui-datepicker-next::before {
+	color: #1b1406;
+	font-size: 16px;
+	font-weight: 700;
+	line-height: 30px;
+	text-align: center;
+	width: 100%;
+	display: block;
+}
+
+.tm-booking-modal .ui-datepicker .ui-datepicker-prev::before {
+	content: "<";
+}
+
+.tm-booking-modal .ui-datepicker .ui-datepicker-next::before {
+	content: ">";
+}
+
+.tm-booking-modal .ui-datepicker-title {
+	color: #f4e3b0;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	font-size: 12px;
+}
+
+.tm-booking-modal .ui-datepicker th {
+	color: #c7b887;
+	font-weight: 600;
+	text-transform: uppercase;
+	font-size: 11px;
+}
+
+.tm-booking-modal .ui-datepicker td {
+	border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tm-booking-modal .ui-datepicker td a,
+.tm-booking-modal .ui-datepicker td span {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	color: #f5f5f5;
+	border-radius: 6px;
+}
+
+.tm-booking-modal .ui-datepicker td a.ui-state-hover {
+	background: rgba(212, 175, 55, 0.22);
+	border-color: rgba(212, 175, 55, 0.45);
+	color: #fff4d6;
+}
+
+.tm-booking-modal .ui-datepicker td a.ui-state-active,
+.tm-booking-modal .ui-datepicker td a.ui-state-highlight {
+	background: linear-gradient(135deg, rgba(212, 175, 55, 0.85), rgba(212, 175, 55, 0.55));
+	border-color: rgba(212, 175, 55, 0.85);
+	color: #1b1406;
+	font-weight: 700;
+}
+
+.tm-booking-modal .ui-datepicker td.ui-datepicker-unselectable span {
+	background: rgba(255, 255, 255, 0.02);
+	color: rgba(255, 255, 255, 0.35);
+}
+
+.tm-booking-modal .wc-bookings-date-picker-date-fields input,
+.tm-booking-modal .wc-bookings-date-picker-date-fields select {
+	background: rgba(10, 10, 10, 0.6);
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	color: #f0e6c5;
+	border-radius: 6px;
+}
+
+.tm-booking-modal .wc-bookings-booking-cost.price {
+	background: rgba(9, 9, 9, 0.55);
+	border: 1px solid rgba(212, 175, 55, 0.3);
+	border-radius: 10px;
+	color: #f5e3b5;
+	padding: 12px 14px;
+	font-weight: 600;
+}
+
+/* Payment Methods Styling */
+.tm-booking-modal #payment .wc_payment_methods {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.tm-booking-modal #payment .wc_payment_methods li {
+	background: rgba(12, 12, 12, 0.6);
+	border: 1px solid rgba(212, 175, 55, 0.25);
+	border-radius: 8px;
+	padding: 12px;
+	margin-bottom: 8px;
+}
+
+.tm-booking-modal #payment .wc_payment_methods li label {
+	color: #f5e6bf !important;
+	font-size: 15px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+/* Stripe-only cleanup: hide header label, icons, and arrow */
+.tm-booking-modal #payment li.payment_method_stripe > label,
+.tm-booking-modal #payment li.payment_method_stripe > label img,
+.tm-booking-modal #payment li.payment_method_stripe > label .payment_method_title {
+	display: none !important;
+}
+
+.tm-booking-modal #payment .payment_box:before,
+.tm-booking-modal #payment .payment_box:after {
+	display: none !important;
+}
+
+.tm-booking-modal #payment .wc_payment_methods li input[type="radio"] {
+	margin-right: 8px;
+}
+
+.tm-booking-modal #payment .payment_box {
+	background: transparent !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	color: #d7c28a !important;
+}
+
+.tm-booking-modal #payment .payment_box p {
+	color: #d7c28a;
+	font-size: 13px;
+	margin-bottom: 8px;
+}
+
+.tm-booking-modal #payment div.payment_box {
+	position: relative;
+	box-sizing: border-box;
+	width: 100%;
+	padding: 0 !important;
+	margin: 0 !important;
+	font-size: 0.92em;
+	line-height: 1.5;
+	background-color: transparent !important;
+	color: #d7c28a !important;
+	border-radius: 0 !important;
+}
+
+.tm-booking-modal .wc_payment_methods li img,
+.tm-booking-modal .payment_methods li img {
+	filter: brightness(0.7) contrast(1.1) saturate(0.9) !important;
+}
+
+/* WooCommerce Stripe (UPE) Styling */
+.tm-booking-modal #wc-stripe-upe-form,
+.tm-booking-modal fieldset#wc-stripe-upe-form {
+	background: transparent;
+	border: none;
+	padding: 0;
+	margin-top: 0 !important;
+}
+
+/* Stripe Elements container - let Stripe handle its own styling */
+.tm-booking-modal #wc-stripe-upe-element,
+.tm-booking-modal .wc-stripe-upe-element {
+	min-height: 50px !important;
+	display: block !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	position: relative !important;
+	overflow: visible !important;
+	background: transparent !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+/* Ensure Stripe iframe and nested elements can render */
+.tm-booking-modal #wc-stripe-upe-element iframe,
+.tm-booking-modal #wc-stripe-upe-element .__PrivateStripeElement,
+.tm-booking-modal #wc-stripe-upe-element .__PrivateStripeElement iframe,
+.tm-booking-modal #wc-stripe-upe-element > div {
+	display: block !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	max-width: none !important;
+}
+
+.tm-booking-modal #wc-stripe-upe-errors {
+	color: #ff6b6b;
+	font-size: 13px;
+	margin-top: 8px;
+}
+
+/* Bank Transfer (BACS) Styling */
+.tm-booking-modal .payment_method_bacs .payment_box {
+	color: #d7c28a;
+}
+
+.tm-booking-modal .payment_method_bacs .payment_box strong,
+.tm-booking-modal .payment_method_bacs .payment_box .wc-bacs-bank-details-account-name,
+.tm-booking-modal .payment_method_bacs .payment_box .wc-bacs-bank-details-heading {
+	color: #f5e6bf;
+}
+
+.tm-booking-modal .payment_method_bacs ul {
+	color: #d7c28a;
+}
+
+.tm-booking-modal #place_order {
+	background: linear-gradient(135deg, rgba(212, 175, 55, 0.85), rgba(212, 175, 55, 0.65));
+	border: 1px solid rgba(212, 175, 55, 0.85);
+	color: #1b1406;
+	font-weight: 700;
+	padding: 12px 24px;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	width: 100%;
+	margin-top: 12px;
+}
+
+.tm-booking-modal #place_order:hover {
+	background: linear-gradient(135deg, rgba(212, 175, 55, 0.95), rgba(212, 175, 55, 0.75));
+}
+
+@media (max-width: 768px) {
+	.tm-booking-modal__dialog {
+		width: 94vw;
+		margin: 4vh auto;
+	}
+
+	.tm-booking-modal__body {
+		padding: 12px 16px 20px;
+	}
+
+	.tm-booking-modal__header {
+		padding: 18px 16px 0;
+	}
+}

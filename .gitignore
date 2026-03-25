@@ -1,0 +1,31 @@
+# ── Secrets & credentials ─────────────────────────────────────────────────────
+.env
+
+# ── Third-party dependency plugins (gitignored — store locally in deps/) ──────
+deps/
+
+# ── Database exports — never commit live or unscrubbed dumps ──────────────────
+db/*.sql
+# The scrubbed dev seed is the one exception — un-comment when ready:
+# !db/seed.sql
+
+# ── WordPress core (never committed) ──────────────────────────────────────────
+wp-content/
+
+# ── Theme output/generated files (contain live API tokens) ───────────────────
+theme/output-files/
+
+# ── Build & release artifacts ─────────────────────────────────────────────────
+output/releases/
+*.zip
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+logs/
+
+# ── OS & editor noise ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/settings.json

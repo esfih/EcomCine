@@ -1,0 +1,43 @@
+{
+  "project": "EcomCine",
+  "live_site": "https://castingagency.co",
+  "phase": "1",
+  "platform": "WordPress + WooCommerce + Dokan Pro",
+  "features": [
+    {
+      "id": "media-player",
+      "name": "Cinematic Media Player & Showcase",
+      "plugin": "tm-media-player",
+      "status": "active",
+      "description": "Full-screen showcase player with autoplay, vendor info overlay, and endless loop."
+    },
+    {
+      "id": "account-panel",
+      "name": "Front-End Account Panel & Talent Onboarding",
+      "plugin": "tm-account-panel",
+      "status": "active",
+      "description": "Front-end login/registration modal and admin-initiated talent onboarding workflow."
+    },
+    {
+      "id": "booking-modal",
+      "name": "Frictionless Booking Modal",
+      "plugin": "tm-vendor-booking-modal",
+      "status": "active",
+      "description": "Single-modal booking and checkout flow with minimal buyer friction."
+    },
+    {
+      "id": "category-attributes",
+      "name": "Dokan Category Attributes Manager",
+      "plugin": "dokan-category-attributes",
+      "status": "active",
+      "description": "Dynamic category-specific vendor profile attributes with conditional display and filters."
+    },
+    {
+      "id": "astra-child-theme",
+      "name": "Astra Child Theme (EcomCine Orchestrator)",
+      "folder": "theme",
+      "status": "active",
+      "description": "Central controller: asset loading, Dokan/WooCommerce overrides, vendor attributes integration, social metrics."
+    }
+  ]
+}

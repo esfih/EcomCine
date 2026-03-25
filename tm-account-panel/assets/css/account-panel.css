@@ -1,0 +1,990 @@
+:root {
+	--tm-account-gold: #D4AF37;
+	--tm-account-bg: rgba(0, 0, 0, 0.75);
+	--tm-account-border: rgba(255, 255, 255, 0.18);
+}
+
+.tm-account-tab {
+	position: fixed;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	background: rgba(0, 0, 0, 0.7);
+	color: var(--tm-account-gold);
+	border: 1px solid var(--tm-account-border);
+	border-right: none;
+	border-radius: 12px 0 0 12px;
+	padding: 12px 10px;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 1.2px;
+	text-transform: uppercase;
+	writing-mode: vertical-rl;
+	text-orientation: mixed;
+	cursor: pointer;
+	z-index: 1200;
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+}
+
+.tm-account-tab--admin {
+	top: calc(50% - 84px);
+	gap: 6px;
+}
+
+.tm-account-tab__icon {
+	font-size: 14px;
+	line-height: 1;
+}
+
+.tm-account-tab__label {
+	font-size: 10px;
+}
+
+.tm-account-tab--admin.is-loading {
+	opacity: 0.7;
+	pointer-events: none;
+}
+
+.tm-account-modal {
+	position: fixed;
+	inset: 0;
+	opacity: 0;
+	pointer-events: none;
+	z-index: 2000;
+}
+
+.tm-account-modal.is-open {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.tm-account-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.7);
+}
+
+.tm-account-dialog {
+	position: relative;
+	width: 70vw;
+	max-width: 70vw;
+	height: 95vh;
+	margin: 2.5vh auto;
+	background: rgba(0, 0, 0, 0.92);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 14px;
+	padding: 0 10px;
+	color: #fff;
+	box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+	overflow-y: auto;
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+	.tm-account-dialog {
+		width: 90vw;
+		max-width: 90vw;
+	}
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+	.tm-account-dialog {
+		width: 90vw;
+		max-width: 90vw;
+	}
+}
+
+.tm-account-header {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.tm-account-header-left {
+	flex: 0 0 auto;
+}
+
+.tm-account-header h3 {
+	margin: 0;
+	color: var(--tm-account-gold);
+	font-size: 18px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.tm-account-header h3 i {
+	font-size: 20px;
+}
+
+.tm-account-header-meta {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: baseline;
+	gap: 8px;
+	color: #fff;
+	font-size: 12px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.tm-account-balance {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.tm-account-balance-amount {
+	color: var(--tm-account-gold);
+	font-size: 14px;
+	letter-spacing: 0.02em;
+	text-transform: none;
+}
+
+
+@media (max-width: 900px) and (orientation: portrait) {
+	.tm-account-balance-amount,
+	.tm-account-balance-label {
+		color: #fff;
+		font-size: inherit;
+		letter-spacing: inherit;
+		text-transform: inherit;
+		font-weight: inherit;
+	}
+		.tm-account-header {
+			display: grid;
+			grid-template-columns: max-content max-content max-content;
+			align-items: center;
+			column-gap: 8px;
+			justify-content: space-between;
+		}
+		.tm-account-header-meta {
+			display: grid;
+			grid-auto-flow: column;
+			grid-auto-columns: max-content;
+			align-items: center;
+			column-gap: 8px;
+			font-size: 11px;
+			line-height: 1;
+			justify-content: start;
+		}
+		.tm-account-balance,
+		.tm-account-kpi {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			font-size: 11px;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			color: #fff;
+		}
+		.tm-account-balance {
+			display: inline-grid;
+			grid-auto-flow: row;
+			row-gap: 2px;
+			align-items: start;
+			justify-items: start;
+		}
+		.tm-account-balance-label,
+		.tm-account-balance-amount {
+			display: block;
+			font-size: inherit;
+			letter-spacing: inherit;
+			text-transform: inherit;
+			color: #fff;
+			margin: 0;
+			font-weight: inherit;
+		}
+		.tm-account-kpi {
+			display: inline-grid;
+			grid-auto-flow: row;
+			row-gap: 2px;
+			align-items: start;
+			justify-items: start;
+		}
+		.tm-account-kpi-label,
+		.tm-account-kpi-amount {
+			display: block;
+			font-size: inherit;
+			letter-spacing: inherit;
+			text-transform: inherit;
+			color: #fff;
+			margin: 0;
+			font-weight: inherit;
+		}
+		.tm-account-header-actions {
+			gap: 8px;
+		}
+		.tm-account-logout i {
+			font-size: 14px;
+		}
+		.tm-account-close {
+			font-size: 16px;
+		}
+	}
+}
+
+.tm-account-header-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.tm-account-logout {
+	color: var(--tm-account-gold);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	text-decoration: none;
+}
+
+.tm-account-logout i {
+	font-size: 16px;
+}
+
+.tm-account-logout:hover,
+.tm-account-logout:focus-visible {
+	color: #fff;
+}
+
+.tm-account-close {
+	background: transparent;
+	border: none;
+	color: #fff;
+	font-size: 18px;
+	cursor: pointer;
+}
+
+.tm-account-body h4 {
+	margin: 0 0 12px 0;
+	color: var(--tm-account-gold);
+	font-size: 13px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.tm-account-tabs {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 16px;
+}
+
+.tm-account-tab-btn {
+	flex: 0 0 auto;
+	padding: 8px 14px;
+	border-radius: 999px;
+	border: 1px solid var(--tm-account-border);
+	background: transparent;
+	color: var(--tm-account-gold);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.tm-account-tab-btn.is-active {
+	background: var(--tm-account-gold);
+	color: #000;
+	border-color: var(--tm-account-gold);
+}
+
+.tm-account-forms {
+	display: block;
+}
+
+.tm-account-form {
+	display: none;
+}
+
+.tm-account-form.is-active {
+	display: block;
+}
+
+.tm-account-actions {
+	display: flex;
+	gap: 12px;
+	margin-top: 12px;
+}
+
+.tm-account-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 10px 16px;
+	border-radius: 10px;
+	background: var(--tm-account-gold);
+	color: #000;
+	font-weight: 700;
+	text-decoration: none;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	font-size: 12px;
+}
+
+.tm-account-btn.is-secondary {
+	background: transparent;
+	color: var(--tm-account-gold);
+	border: 1px solid var(--tm-account-gold);
+}
+
+.tm-account-manage {
+	display: block;
+}
+
+.tm-account-manage-tabs {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 16px;
+	flex-wrap: wrap;
+}
+
+.tm-account-manage-tab {
+	flex: 0 0 auto;
+	padding: 8px 14px;
+	border-radius: 999px;
+	border: 1px solid var(--tm-account-border);
+	background: transparent;
+	color: var(--tm-account-gold);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.tm-account-manage-tab.is-active {
+	background: var(--tm-account-gold);
+	color: #000;
+	border-color: var(--tm-account-gold);
+}
+
+.tm-account-manage-panels {
+	display: block;
+}
+
+.tm-account-manage-panel {
+	display: none;
+}
+
+.tm-account-manage-panel.is-active {
+	display: block;
+}
+
+.tm-account-section {
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 12px;
+	padding: 16px;
+	background: rgba(0, 0, 0, 0.55);
+	margin-bottom: 16px;
+}
+
+.tm-account-section--orders {
+	margin-bottom: 0;
+	padding-bottom: 0;
+}
+
+.tm-account-section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.tm-account-section-header h4 {
+	margin: 0;
+}
+
+.tm-account-section-note {
+	font-size: 11px;
+	color: #bbb;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.tm-account-booking-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.tm-account-booking-card {
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 10px;
+	padding: 12px;
+	background: rgba(0, 0, 0, 0.6);
+}
+
+.tm-account-booking-card h5 {
+	margin: 0 0 10px 0;
+	color: var(--tm-account-gold);
+	font-size: 13px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+.tm-account-field {
+	display: grid;
+	gap: 6px;
+	margin-bottom: 10px;
+}
+
+.tm-account-field label {
+	font-size: 11px;
+	color: #cfcfcf;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.tm-account-field input {
+	background: rgba(0, 0, 0, 0.6);
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 8px;
+	color: #fff;
+	padding: 8px 10px;
+	font-size: 12px;
+}
+
+.tm-account-table-wrap {
+	overflow-x: auto;
+}
+
+.tm-account-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+}
+
+.tm-account-table th,
+.tm-account-table td {
+	padding: 10px 8px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	text-align: left;
+}
+
+.tm-account-table th {
+	color: #bbb;
+	font-size: 11px;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.tm-account-empty {
+	text-align: center;
+	color: #888;
+	padding: 16px 8px;
+}
+
+.tm-account-section--booking-detail {
+	border-style: dashed;
+}
+
+.tm-account-section--orders #order-filter > .dokan-form-group {
+	display: none;
+}
+
+.tm-account-section--orders .dokan-table {
+	background: transparent;
+}
+
+.tm-account-section--orders .dokan-table thead th {
+	color: #bdbdbd;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tm-account-section--orders .dokan-table tbody tr {
+	background: rgba(255, 255, 255, 0.04);
+	color: #e6e6e6;
+}
+
+.tm-account-section--orders .dokan-table tbody tr:nth-child(even) {
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.tm-account-section--orders .dokan-table tbody tr {
+	background: rgba(8, 8, 10, 0.75);
+	border-color: rgba(255, 255, 255, 0.08);
+}
+
+.tm-account-section--orders .dokan-table tbody tr:nth-child(even) {
+	background: rgba(18, 18, 22, 0.85);
+}
+
+.tm-account-section--orders .dokan-table tbody tr:hover {
+	background: rgba(24, 24, 28, 0.92);
+}
+
+.tm-account-section--orders .dokan-table tbody tr.is-expanded {
+	background: rgba(20, 20, 24, 0.9);
+}
+
+.tm-account-section--orders .dokan-table {
+	background: transparent;
+}
+
+.tm-account-section--orders .dokan-table tbody td,
+.tm-account-section--orders .dokan-table tbody th {
+	background: transparent;
+	border-color: rgba(255, 255, 255, 0.08);
+}
+
+.tm-account-section--orders .dokan-table tbody td:before,
+.tm-account-section--orders .dokan-table tbody th:before {
+	color: #bdbdbd;
+}
+
+.tm-account-section--orders .dokan-table tbody td,
+.tm-account-section--orders .dokan-table tbody th {
+	color: inherit;
+}
+
+.tm-account-section--orders .dokan-table tbody td,
+.tm-account-section--orders .dokan-table tbody th,
+.tm-account-section--orders .dokan-table tbody td a {
+	color: #f2f2f2;
+}
+
+.tm-account-section--orders .dokan-table a {
+	color: var(--tm-account-gold);
+}
+
+.tm-account-section--orders .dokan-order-id a:hover,
+.tm-account-section--orders .dokan-order-id a:focus-visible {
+	color: #ffd975;
+	text-shadow: 0 0 6px rgba(255, 217, 117, 0.4);
+}
+
+.tm-account-section--orders .dokan-order-id {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: nowrap;
+}
+
+.tm-account-section--orders .dokan-order-id a,
+.tm-account-section--orders .dokan-order-id strong {
+	display: inline-flex;
+	align-items: center;
+}
+
+.tm-account-section--orders .dokan-order-id a {
+	margin-right: 0;
+}
+
+.tm-account-section--orders .dokan-order-id .tm-account-order-view.dokan-btn,
+.tm-account-section--orders .dokan-order-id .tm-account-order-view {
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	color: #e6e6e6;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+}
+
+.tm-account-section--orders .dokan-order-id .toggle-row {
+	margin-left: auto;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	border-radius: 8px;
+	width: 32px;
+	height: 32px;
+}
+
+.tm-account-section--orders .dokan-order-id .toggle-row:after {
+	color: #e6e6e6;
+}
+
+.tm-account-section--orders .dokan-order-id .toggle-row:hover,
+.tm-account-section--orders .dokan-order-id .toggle-row:focus-visible {
+	background: rgba(212, 175, 55, 0.2);
+	border-color: rgba(212, 175, 55, 0.6);
+}
+
+.tm-account-section--orders .dokan-order-id .tm-account-order-view.dokan-btn:hover,
+.tm-account-section--orders .dokan-order-id .tm-account-order-view.dokan-btn:focus-visible,
+.tm-account-section--orders .dokan-order-id .tm-account-order-view:hover,
+.tm-account-section--orders .dokan-order-id .tm-account-order-view:focus-visible {
+	background: rgba(212, 175, 55, 0.2);
+	border-color: rgba(212, 175, 55, 0.6);
+	color: #fff;
+}
+
+.tm-account-section--orders .dokan-order-action .dokan-btn {
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	color: #e6e6e6;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.tm-account-section--orders .dokan-order-id .dokan-btn,
+.tm-account-section--orders .dokan-order-id .tm-account-order-view {
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	color: #e6e6e6;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 8px;
+}
+
+.tm-account-section--orders .dokan-order-action .dokan-btn:hover,
+.tm-account-section--orders .dokan-order-action .dokan-btn:focus-visible {
+	background: rgba(212, 175, 55, 0.2);
+	border-color: rgba(212, 175, 55, 0.6);
+	color: #fff;
+}
+
+.tm-account-section--orders .dokan-order-id .dokan-btn:hover,
+.tm-account-section--orders .dokan-order-id .dokan-btn:focus-visible,
+.tm-account-section--orders .dokan-order-id .tm-account-order-view:hover,
+.tm-account-section--orders .dokan-order-id .tm-account-order-view:focus-visible {
+	background: rgba(212, 175, 55, 0.2);
+	border-color: rgba(212, 175, 55, 0.6);
+	color: #fff;
+}
+
+.tm-account-section--orders .pagination-wrap {
+	display: none;
+}
+
+.tm-account-orders-list.is-hidden {
+	display: none;
+}
+
+.tm-account-orders-detail {
+	display: none;
+}
+
+.tm-account-orders-detail.is-active {
+	display: block;
+}
+
+.tm-account-orders-back {
+	appearance: none;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	background: rgba(255, 255, 255, 0.08);
+	color: #e6e6e6;
+	border-radius: 999px;
+	padding: 6px 12px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	cursor: pointer;
+	margin-bottom: 12px;
+}
+
+.tm-account-orders-back:hover,
+.tm-account-orders-back:focus-visible {
+	background: rgba(212, 175, 55, 0.2);
+	border-color: rgba(212, 175, 55, 0.6);
+	color: #fff;
+}
+
+.tm-account-section--orders .dokan-order-details-wrap {
+	color: #e6e6e6;
+}
+
+
+.tm-account-orders-detail .dokan-order-left-content {
+	width: 100%;
+	float: none;
+}
+
+.tm-account-orders-detail .dokan-order-details-wrap {
+	display: block;
+}
+
+.tm-account-order-summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 12px;
+	margin-bottom: 12px;
+	border-radius: 12px;
+	background: rgba(0, 0, 0, 0.6);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.tm-account-order-summary-left {
+	display: grid;
+	gap: 6px;
+}
+
+.tm-account-order-summary-financial {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+}
+
+.tm-account-order-id {
+	font-size: 16px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+}
+
+.tm-account-order-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	font-size: 12px;
+	color: #cfcfcf;
+}
+
+.tm-account-order-status {
+	background: rgba(212, 175, 55, 0.2);
+	border: 1px solid rgba(212, 175, 55, 0.5);
+	color: #f4d98a;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.tm-account-order-date {
+	font-size: 12px;
+}
+
+.tm-account-order-summary-right {
+	display: grid;
+	justify-items: end;
+	gap: 4px;
+}
+
+.tm-account-order-summary-middle {
+	display: grid;
+	justify-items: end;
+	gap: 4px;
+}
+
+.tm-account-order-earning-label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: #bdbdbd;
+}
+
+.tm-account-order-earning-amount {
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--tm-account-gold);
+}
+
+.tm-account-order-amount-label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: #bdbdbd;
+}
+
+.tm-account-order-amount-value {
+	font-size: 16px;
+	font-weight: 700;
+	color: #f0f0f0;
+}
+
+.tm-account-summary-label {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: #bdbdbd;
+}
+
+.tm-account-summary-value {
+	font-size: 14px;
+	font-weight: 700;
+	color: #f0f0f0;
+}
+
+.tm-account-booking-summary .tm-account-order-summary-right,
+.tm-account-booking-summary .tm-account-order-summary-middle {
+	justify-items: start;
+}
+
+.tm-account-booking-summary .tm-account-summary-value {
+	font-weight: 600;
+}
+
+.tm-account-order-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-bottom: 16px;
+}
+
+.tm-account-orders-detail .dokan-panel {
+	background: rgba(0, 0, 0, 0.6);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	box-shadow: none;
+}
+
+.tm-account-orders-detail .dokan-panel-heading {
+	background: rgba(255, 255, 255, 0.04);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	color: #e6e6e6;
+}
+
+.tm-account-orders-detail .dokan-panel-body {
+	color: #d6d6d6;
+}
+
+.tm-account-orders-detail table.order-items {
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tm-account-orders-detail table.order-items thead th {
+	color: #bdbdbd;
+	background: rgba(255, 255, 255, 0.03);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tm-account-orders-detail table.order-items tbody td,
+.tm-account-orders-detail table.order-items tfoot th,
+.tm-account-orders-detail table.order-items tfoot td {
+	border-color: rgba(255, 255, 255, 0.08);
+	color: #e6e6e6;
+}
+
+.tm-account-orders-detail .dokan-order-billing-address,
+.tm-account-orders-detail .dokan-order-shipping-address {
+	width: 100%;
+	float: none;
+	margin-bottom: 16px;
+}
+
+.tm-account-section-header--detail {
+	align-items: flex-start;
+}
+
+.tm-account-detail-actions {
+	display: inline-flex;
+	gap: 10px;
+}
+
+.tm-account-action-btn {
+	border-radius: 999px;
+	border: 1px solid var(--tm-account-gold);
+	background: var(--tm-account-gold);
+	color: #000;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	padding: 6px 12px;
+	cursor: pointer;
+}
+
+.tm-account-action-btn.is-ghost {
+	background: transparent;
+	color: var(--tm-account-gold);
+}
+
+.tm-account-detail-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.tm-account-detail-item {
+	display: grid;
+	gap: 4px;
+}
+
+.tm-account-detail-item--wide {
+	grid-column: 1 / -1;
+}
+
+.tm-account-detail-label {
+	font-size: 11px;
+	color: #bbb;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.tm-account-detail-value {
+	font-size: 12px;
+	color: #fff;
+}
+
+.tm-account-muted {
+	margin: 0;
+	color: #888;
+}
+
+.tm-account-hidden-field {
+	display: none !important;
+}
+
+.tm-account-modal label,
+.tm-account-modal .dokan-form-label,
+.tm-account-modal .form-row label {
+	color: #fff;
+}
+
+.tm-account-modal #dokan-vendor-register .reg_email_error + small {
+	display: none;
+}
+
+.tm-account-modal #dokan-login-form .dokan-popup-create-an-account {
+	display: none;
+}
+
+@media (max-width: 768px) {
+	.tm-account-dialog {
+		width: calc(100vw - 32px);
+		max-width: calc(100vw - 32px);
+		height: 95vh;
+		margin: 2.5vh 16px;
+		padding: 18px;
+	}
+	.tm-account-booking-grid {
+		grid-template-columns: 1fr;
+	}
+	.tm-account-detail-grid {
+		grid-template-columns: 1fr;
+	}
+	.tm-account-order-summary {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	.tm-account-order-summary-financial {
+		width: 100%;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 12px;
+	}
+	.tm-account-order-summary-right {
+		justify-items: start;
+	}
+	.tm-account-order-summary-middle {
+		justify-items: start;
+	}
+	.tm-account-orders-detail table.order-items thead {
+		display: none;
+	}
+	.tm-account-orders-detail table.order-items tbody tr {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 8px;
+		padding: 10px 0;
+	}
+	.tm-account-orders-detail table.order-items tbody td.name {
+		grid-column: 1 / -1;
+	}
+}

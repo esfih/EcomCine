@@ -1,0 +1,2835 @@
+.tm-showcase-play-overlay {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	width: 96px;
+	height: 96px;
+	border-radius: 50%;
+	border: 2px solid rgba(255, 255, 255, 0.6);
+	background: rgba(0, 0, 0, 0.45);
+	color: #ffffff;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+	cursor: pointer;
+	pointer-events: auto;
+	z-index: 999;
+	transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tm-showcase-play-overlay .tm-showcase-play-icon {
+	font-size: 34px;
+	line-height: 1;
+	transform: translateX(2px);
+}
+
+.tm-showcase-play-overlay:hover,
+.tm-showcase-play-overlay:focus-visible {
+	transform: translate(-50%, -50%) scale(1.05);
+	box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+	outline: none;
+}
+
+.tm-showcase-play-overlay.is-hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* "Tap to unmute" strip — shown when the browser forces muted autoplay on talent swap.
+ * Appears centre-screen as a small pill below the play overlay position.
+ * Auto-dismisses after 8 s or when the user taps it. */
+.tm-unmute-strip {
+	position: absolute;
+	bottom: 28%;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 110;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 9px 22px;
+	background: rgba(0, 0, 0, 0.72);
+	border: 1px solid rgba(255, 255, 255, 0.22);
+	border-radius: 50px;
+	color: #fff;
+	font-size: 13px;
+	font-weight: 500;
+	letter-spacing: 0.02em;
+	cursor: pointer;
+	white-space: nowrap;
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+	user-select: none;
+	pointer-events: auto;
+	transition: opacity 220ms ease, transform 220ms ease;
+}
+.tm-unmute-strip.is-hidden {
+	opacity: 0;
+	pointer-events: none;
+	transform: translateX(-50%) translateY(8px);
+}
+.tm-unmute-strip:hover,
+.tm-unmute-strip:focus-visible {
+	background: rgba(0, 0, 0, 0.88);
+	border-color: rgba(255, 255, 255, 0.38);
+	outline: none;
+}
+.tm-unmute-strip .tm-unmute-icon {
+	font-size: 15px;
+	opacity: 0.85;
+}
+
+/* A/B video buffer slots: always positioned behind the active slot.
+ * JS controls display and z-index; these rules are a safety net. */
+.hero-video-slot-b,
+.hero-video-slot-c {
+	z-index: 1 !important;
+}
+
+/**
+ * Vendor Store Pages - Consolidated CSS
+ * Includes: Store listing, product page, store page, and biography gallery styling
+ * Originally from functions.php wp_add_inline_style hooks
+ */
+
+/* ========================================
+   WRAPPER & CONTAINER RESETS
+   ======================================== */
+
+/* Cinematic store layout (moved from inline styles) */
+body.dokan-store,
+body.dokan-store #page,
+body.dokan-store .site {
+	background: #000000 !important;
+	min-height: 100vh !important;
+}
+
+/* Cinematic header placement and scroll-less layout */
+body.dokan-store #page {
+	position: relative !important;
+	overflow: visible !important;
+	min-height: 0 !important;
+}
+
+body.dokan-store.ast-theme-transparent-header #masthead,
+body.dokan-store #masthead {
+	position: absolute !important;
+	top: 20px !important;
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	max-width: 1920px !important;
+	width: calc(100% - 40px) !important;
+	z-index: 100 !important;
+	padding-left: 20px !important;
+	padding-right: 20px !important;
+}
+
+.ast-theme-transparent-header .site-primary-header-wrap[data-section="section-primary-header-builder"],
+.ast-theme-transparent-header .site-primary-header-wrap,
+.ast-theme-transparent-header .ast-primary-header-bar,
+.ast-theme-transparent-header .main-header-bar {
+	background: transparent !important;
+}
+
+body.dokan-store .site-content {
+	flex-grow: 0 !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+body.dokan-store .ast-container {
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+body.dokan-store .dokan-store-wrap,
+body.dokan-store #dokan-primary,
+body.dokan-store #dokan-content {
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+body.dokan-store .dokan-store-products-filter-area {
+	display: none !important;
+}
+
+body.dokan-store .site-footer,
+body.dokan-store #colophon {
+	display: none !important;
+}
+
+.woocommerce-breadcrumb,
+nav.woocommerce-breadcrumb,
+.dokan-store-wrap .woocommerce-breadcrumb,
+.dokan-store-wrap nav.woocommerce-breadcrumb,
+.ast-woocommerce-container .woocommerce-breadcrumb {
+	display: none !important;
+	visibility: hidden !important;
+	height: 0 !important;
+	overflow: hidden !important;
+}
+
+body.dokan-store #content,
+body.dokan-store .site-content,
+body.dokan-store .ast-container,
+body.dokan-store .content-area,
+body.dokan-store #primary,
+body.dokan-store .site-main,
+body.dokan-store .ast-woocommerce-container {
+	background: transparent !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	max-width: none !important;
+}
+
+/* Force full-width on vendor store pages - override Astra container constraints */
+.dokan-store #content,
+.dokan-store .site-content,
+.dokan-store .ast-container,
+.dokan-store #primary,
+.dokan-store #main,
+.dokan-store .site-main,
+.dokan-store .ast-woocommerce-container,
+.dokan-store-wrap,
+.dokan-single-store {
+	max-width: none !important;
+	width: 100% !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+	padding-left: 0 !important;
+	padding-right: 0 !important;
+}
+
+/* Remove top spacing */
+.dokan-store #content,
+.dokan-store .site-content,
+.dokan-store #primary,
+.dokan-store #main,
+.dokan-store .site-main,
+.dokan-store .ast-woocommerce-container,
+.dokan-store-wrap {
+	margin-top: 0 !important;
+	padding-top: 0 !important;
+}
+
+/* Dark background for store pages */
+.dokan-store-wrap,
+.dokan-single-store {
+	background: #000000 !important;
+}
+
+.dokan-store-tabs {
+	display: none !important;
+}
+
+.dokan-single-store {
+	background: #000000;
+	width: 100% !important;
+	max-width: 100% !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+.store-page-wrap {
+	background: #000000;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+.profile-info-img,
+.profile-banner-video {
+	width: 100% !important;
+	height: 100% !important;
+	object-fit: cover !important;
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	object-position: center !important;
+	/* Force GPU TextureView path on Android (avoids black screen on Samsung Mali GPU
+	   where the hardware SurfaceView overlay fails when ancestor has overflow:hidden) */
+	transform: translateZ(0) !important;
+	-webkit-transform: translateZ(0) !important;
+}
+
+.profile-info-summery-wrapper,
+.profile-info-summery {
+	position: relative !important;
+	z-index: 45 !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	line-height: 0 !important;
+	font-size: 0 !important;
+}
+
+.profile-banner-video ~ .profile-info-summery-wrapper,
+.profile-banner-video ~ .profile-info-summery-wrapper .profile-info-summery {
+	background: transparent !important;
+	backdrop-filter: none !important;
+	-webkit-backdrop-filter: none !important;
+	border: none !important;
+	border-radius: 0 !important;
+	padding: 0 !important;
+	box-shadow: none !important;
+	margin: 0 !important;
+}
+
+.profile-banner-video ~ .profile-info-summery-wrapper .store-data-container,
+.profile-banner-video ~ .profile-info-summery-wrapper p {
+	color: #ffffff !important;
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+}
+
+.profile-banner-video ~ .profile-info-summery-wrapper .profile-info-head .store-name,
+.profile-banner-video ~ .profile-info-summery-wrapper .profile-info-head h1 {
+	color: #D4AF37 !important;
+	text-shadow: none !important;
+}
+
+.profile-frame {
+	margin: 0 !important;
+	max-width: 1920px !important;
+	max-height: 1080px !important;
+	width: 100% !important;
+	height: calc(100vh - 40px) !important;
+	border: 3px solid #D4AF37 !important;
+	border-radius: 16px !important;
+	overflow: hidden !important;
+	box-shadow: 0 0 40px rgba(212, 175, 55, 0.3) !important;
+	position: relative !important;
+	display: flex !important;
+	flex-direction: column !important;
+	background: #000000 !important;
+}
+
+.profile-info-box {
+	background: #000000 !important;
+}
+
+.profile-info-summery .store-name {
+	color: #D4AF37 !important;
+}
+
+.dokan-store-info li {
+	color: #C0C0C0 !important;
+}
+
+.store-social-wrapper,
+.store-social {
+	display: none !important;
+}
+
+.dokan-store-info a {
+	color: #D4AF37 !important;
+}
+
+.dokan-store-section {
+	padding: 40px 30px;
+	margin: 0;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.dokan-store-section:nth-child(odd) {
+	background: #1a1a1a;
+}
+
+.dokan-store-section:nth-child(even) {
+	background: #000000;
+}
+
+.dokan-section-title {
+	font-size: 28px;
+	font-weight: 600;
+	margin: 0 0 25px 0;
+	padding-bottom: 15px;
+	border-bottom: 3px solid #D4AF37;
+	color: #D4AF37;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+}
+
+.dokan-section-content {
+	color: #C0C0C0;
+	line-height: 1.8;
+}
+
+.dokan-section-content p {
+	color: #C0C0C0;
+}
+
+.dokan-section-content h1,
+.dokan-section-content h2,
+.dokan-section-content h3,
+.dokan-section-content h4 {
+	color: #D4AF37;
+}
+
+.dokan-section-content a {
+	color: #D4AF37;
+}
+
+.dokan-section-content a:hover {
+	color: #F5D76E;
+}
+
+.dokan-no-reviews-message {
+	color: #666;
+	font-style: italic;
+	padding: 20px 0;
+}
+
+.seller-items {
+	background: transparent;
+}
+
+.dokan-store-wrap .woocommerce ul.products li.product,
+.dokan-store-wrap .products .product {
+	background: rgba(212, 175, 55, 0.05);
+	border: 1px solid #333;
+}
+
+.dokan-store-wrap .woocommerce ul.products li.product h2,
+.dokan-store-wrap .woocommerce ul.products li.product .woocommerce-loop-product__title {
+	color: #D4AF37 !important;
+}
+
+.dokan-store-wrap .woocommerce ul.products li.product .price {
+	color: #C0C0C0 !important;
+}
+
+.dokan-section-content .commentlist {
+	background: transparent;
+}
+
+.dokan-section-content .comment-text {
+	background: rgba(212, 175, 55, 0.05);
+	border-left: 2px solid #D4AF37;
+}
+
+.dokan-section-content .star-rating {
+	color: #D4AF37;
+}
+
+.ast-woocommerce-container {
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+@media (max-width: 768px) {
+	.dokan-store-section {
+		padding: 30px 20px;
+	}
+	.dokan-section-title {
+		font-size: 24px;
+	}
+}
+
+
+/* ========================================
+   VENDOR STORE PAGE - CINEMATIC LAYOUT
+   ======================================== */
+
+/* Gold talent name on profile page */
+.profile-info .store-name,
+.profile-info .store-name a,
+.profile-frame .profile-info .store-name,
+.dokan-store-tabs h1,
+.dokan-single-store h1,
+.store-name h1,
+.profile-info h1 {
+	color: #D4AF37 !important;
+}
+
+/* Silver talent info text */
+.profile-info p,
+.profile-info .store-address,
+.profile-info .dokan-store-info,
+.profile-frame .profile-info p,
+.dokan-single-store .profile-info p,
+.dokan-store-info p {
+	color: #C0C0C0 !important;
+}
+
+/* Center the profile info container */
+.profile-frame,
+.profile-frame .profile-info-box,
+.dokan-single-store .profile-frame {
+	display: block !important;
+	text-align: center !important;
+}
+
+/* PHASE 2: Boxed Golden Frame Layout - Best of Both Worlds */
+
+/* Full-width black backdrop container */
+.dokan-profile-frame-wrapper {
+	display: flex !important;
+	justify-content: center !important;
+	align-items: flex-start !important;
+	width: 100% !important;
+	height: 100vh !important;
+	background: #000000 !important;
+	padding: 0 !important; /* Full height - no padding */
+	margin: 0 !important;
+	overflow-x: visible !important; /* Allow collapsed avatar to bleed outside left edge */
+	overflow-y: hidden !important;
+	box-sizing: border-box !important;
+}
+
+/* Boxed glassmorphic frame with subtle border - takes full viewport width and height */
+.profile-frame {
+	width: calc(100% - 2px) !important; /* Account for 1px border on each side */
+	max-width: 100vw !important; /* Stretch to viewport */
+	height: 100vh !important; /* Full viewport height */
+	margin: 0 1px !important; /* Center the frame */
+	border: 1px solid rgba(255, 255, 255, 0.18) !important; /* Subtle glassmorphic border */
+	border-radius: 0 !important;
+	overflow-x: visible !important; /* Allow collapsed avatar to bleed outside left edge */
+	overflow-y: hidden !important;
+	box-shadow: 
+		0 8px 32px 0 rgba(0, 0, 0, 0.37),
+		inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+	position: relative !important;
+	display: flex !important;
+	flex-direction: column !important;
+	background: #000000 !important;
+}
+
+/* Blackout overlay — only exists when .tm-vendor-blackout is active.
+ * Intentionally NO animation and NO transition:
+ *  - No animation/forwards: Samsung Chrome (Vulkan) was holding the
+ *    animated forwards-filled layer (opacity:1) alive for the full
+ *    animation duration even after the DOM class was removed.
+ *  - No always-on base rule: an ::after with transition always creates
+ *    a permanent GPU compositor layer that blocks the hardware video
+ *    surface on Android, causing black screen on all subsequent videos.
+ * JS removes the class after 250 ms (stopBlackout) → ::after vanishes
+ * cleanly with no stale GPU layer. */
+.profile-frame.tm-vendor-blackout .profile-info-box::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: #000;
+	z-index: 5;
+	opacity: 1;
+	pointer-events: none;
+}
+
+.profile-frame.tm-vendor-transitioning .profile-banner-video,
+.profile-frame.tm-vendor-transitioning .hero-media-image,
+.profile-frame.tm-vendor-transitioning .hero-audio-eq {
+	opacity: 0;
+	transition: opacity 0.3s ease-out;
+}
+
+.profile-frame .profile-banner-video,
+.profile-frame .hero-media-image,
+.profile-frame .hero-audio-eq {
+	transition: opacity 0.3s ease-in;
+}
+
+
+.profile-frame.tm-vendor-wrap-cue {
+	animation: tm-vendor-wrap-cue 0.55s ease-out;
+}
+
+@keyframes tm-vendor-wrap-cue {
+	0% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	40% {
+		opacity: 0.82;
+		transform: scale(0.995);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+/* Full viewport banner/video section - fills entire frame */
+.profile-info-box {
+	border: none !important;
+	border-radius: 0 !important;
+	overflow-x: visible !important; /* Allow collapsed avatar to bleed outside left edge */
+	overflow-y: hidden !important;
+	box-shadow: none !important;
+	height: 100% !important;
+	width: 100% !important;
+	position: relative !important;
+	flex: 1 !important;
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+/* PHASE 2: Collapsible Glassmorphism Panel - Expanded State (Default) */
+.profile-info-head {
+	display: flex !important;
+	flex-direction: column !important;
+	position: absolute !important;
+	left: 0 !important;
+	top: 50% !important;
+	transform: translateY(-50%) translateX(0) !important;
+	--panel-width: clamp(280px, calc(50vh / 1.618), 360px);
+	width: var(--panel-width) !important;
+	max-width: var(--panel-width) !important;
+	height: 50vh !important;
+	min-height: 320px !important;
+	z-index: 80 !important;
+	--avatar-top: 30px;
+	--avatar-size: 125px;
+	
+	/* Glassmorphism visual styling */
+	background: rgba(0, 0, 0, 0.6) !important;
+	backdrop-filter: blur(10px) !important;
+	-webkit-backdrop-filter: blur(10px) !important;
+	border: 1px solid rgba(255, 255, 255, 0.18) !important;
+	border-left: none !important;
+	border-radius: 0 16px 16px 0 !important;
+	box-shadow: 
+		0 8px 32px 0 rgba(0, 0, 0, 0.37),
+		inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+	padding: 30px 20px !important;
+	padding-top: 120px !important; /* Reserve space for the fixed avatar circle */
+	
+	/* Smooth slide animation */
+	transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+	cursor: pointer !important;
+}
+
+
+/* Editing mode: replace the entire panel with the overlay editor */
+.profile-info-head.is-editing {
+	padding: 0 !important;
+	overflow: visible !important;
+}
+
+.profile-info-head.is-editing > *:not(.profile-info-content) {
+	opacity: 0 !important;
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
+.profile-info-head.is-editing .profile-info-content {
+	position: absolute !important;
+	inset: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	justify-content: flex-start !important;
+	align-items: stretch !important;
+	gap: 0 !important;
+}
+
+/* PHASE 2: Collapsed State (on click) */
+.profile-info-head.is-collapsed {
+	transform: translateY(-50%) translateX(calc(-1 * (var(--panel-width) - 42px))) !important;
+	overflow: visible !important;
+}
+
+/* Hide all content except collapsed-tab-label and profile-img when collapsed */
+.profile-info-head.is-collapsed > *:not(.collapsed-tab-label):not(.profile-img) {
+	opacity: 0 !important;
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
+.profile-info-head.is-collapsed .profile-img .edit-avatar-btn {
+	display: none !important;
+}
+
+/* Collapsed tab label container - hidden by default when expanded, shown when collapsed */
+.collapsed-tab-label {
+	position: absolute !important;
+	right: 0 !important;
+	top: var(--avatar-top) !important; /* Align to glassmorphic panel top padding */
+	transform: none !important;
+	width: 42px !important;
+	height: 200px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: center !important; /* Center contents horizontally within the 42px rail */
+	justify-content: flex-start !important;
+	gap: 12px !important;
+	padding-top: 145px !important; /* 125px avatar + ~20px breathing room for name */
+	box-sizing: border-box !important;
+	z-index: 10000 !important;
+	pointer-events: none !important;
+	opacity: 0 !important;
+	visibility: hidden !important;
+	transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+	cursor: pointer !important;
+	overflow: visible !important; /* Allow right-side overflow for hanging bridge effect */
+}
+
+/* Talent name in collapsed tab - rotated 90deg */
+.collapsed-tab-name {
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	letter-spacing: 1.3px !important;
+	text-transform: uppercase !important;
+	color: #D4AF37 !important;
+	text-shadow: 
+		0 0 15px rgba(212, 175, 55, 0.9),
+		0 0 8px rgba(212, 175, 55, 0.6),
+		0 2px 4px rgba(0, 0, 0, 0.9) !important;
+	display: block !important;
+	line-height: 1.1 !important;
+	position: relative !important;
+	writing-mode: vertical-rl !important;
+	text-orientation: mixed !important;
+	white-space: nowrap !important;
+	transform: none !important;
+	transform-origin: center center !important;
+	flex-shrink: 0 !important;
+	margin: 10px auto 0 auto !important; /* 10px gap below the avatar; auto sides for centering */
+	align-self: center !important; /* Center horizontally within the 42px collapsed tab */
+}
+
+/* Harmonize store name styling (collapsed & expanded) */
+.profile-info .store-name,
+.profile-info .store-name a,
+.profile-frame .profile-info .store-name,
+.profile-info-head .store-name,
+.profile-info h1.store-name,
+.profile-info-head h1.store-name,
+.dokan-store-tabs h1,
+.dokan-single-store h1,
+.store-name h1,
+.profile-info h1 {
+	text-transform: uppercase !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	letter-spacing: 1.3px !important;
+	color: #D4AF37 !important;
+	text-shadow: 
+		0 0 15px rgba(212, 175, 55, 0.9),
+		0 0 8px rgba(212, 175, 55, 0.6),
+		0 2px 4px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Vertical rhythm inside expanded panel */
+.profile-info-content {
+	position: relative !important;
+	flex: 1 1 auto !important;
+	min-height: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: center !important;
+	justify-content: center !important;
+	text-align: center !important;
+	gap: 10px !important;
+}
+
+.profile-info-content.has-contact-card {
+	align-items: stretch !important;
+	justify-content: flex-start !important;
+	gap: 8px !important;
+}
+
+.profile-info-content.has-contact-card .talent-info-block {
+	flex: 0 0 60%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	min-height: 0;
+	position: relative; /* For positioning floating contact icons */
+}
+
+.profile-info-content.has-contact-card .contact-info-section {
+	flex: 0 0 40%;
+	margin-top: -14px;
+	max-width: none;
+	align-self: stretch;
+}
+
+/* Badge slot collapses when empty; flex keeps alignment */
+.badge-slot {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	gap: 6px !important;
+}
+
+/* Profile header elements */
+.profile-img,
+.profile-frame .profile-img,
+.dokan-store-sidebar .profile-img,
+.dokan-single-store .profile-img {
+	width: var(--avatar-size, 125px) !important;
+	height: var(--avatar-size, 125px) !important;
+	border-radius: 50% !important;
+	overflow: hidden !important; /* Revert to hidden since we moved the badge out */
+	border: 3px solid #D4AF37 !important;
+	background: transparent !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	position: absolute !important;
+	top: var(--avatar-top) !important;
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	box-shadow: none !important;
+    /* Removed z-index override as it's cleaner now */
+}
+
+.profile-info-head.is-collapsed .profile-img {
+	left: calc(var(--panel-width) - 42px) !important;
+	transform: translateX(calc(-0.5 * var(--avatar-size, 125px))) !important;
+}
+
+/* Force override check removed as well */
+
+/* Featured and Verified badges containing wrapper - NEW SIBLING POSITIONING */
+.featured-favourite-avatar-overlay {
+    position: absolute !important;
+    top: var(--avatar-top) !important; /* Same top as avatar */
+    left: 50% !important; /* Start from center of panel (center of avatar) */
+    width: 0 !important; /* Zero width to not affect layout */
+    height: 125px !important; /* Match avatar height */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: flex-start !important; /* Align children to start */
+    z-index: 101 !important; /* Above avatar */
+    pointer-events: none !important;
+}
+
+.featured-favourite-avatar-overlay .featured-label,
+.featured-favourite-avatar-overlay .verified-label {
+    transform: translateX(25px); /* Move 25px right from center (starts at right-side of avatar face) */
+    /* 125px width / 2 = 62.5px radius. 25px is approx 40% */
+    white-space: nowrap !important;
+    pointer-events: auto !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4) !important;
+}
+
+/* Cleaner selector for the label styling */
+.featured-favourite-overlay .featured-label {
+    /* ... additional overrides if needed ... */
+}
+}
+
+.profile-img img,
+.profile-frame .profile-img img,
+.dokan-store-sidebar .profile-img img,
+img.profile-img,
+.dokan-single-store .profile-img img {
+	width: 100% !important;
+	height: 100% !important;
+	border-radius: 50% !important;
+	border: none !important;
+	object-fit: cover !important;
+	object-position: center center !important;
+	display: block !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+.profile-info-head .store-name {
+	margin: 3px 0 !important;
+}
+
+.store-categories-display {
+	color: #C0C0C0 !important;
+	font-size: 14px !important;
+	font-weight: 400 !important;
+	text-align: center !important;
+	margin: 3px 0 !important;
+	font-style: italic !important;
+}
+
+.contact-info-section {
+	width: 100% !important;
+	max-width: 280px;
+	margin-top: 10px;
+	padding: 0 12px 10px;
+	border-radius: 12px 12px 0 0;
+	border: 1px solid rgba(212, 175, 55, 0.22);
+	border-bottom: none;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.contact-info-title {
+	background: #D4AF37;
+	color: #ffffff;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+	margin: 0 -12px 12px;
+	text-align: center;
+	position: relative;
+	padding: 10px 12px;
+	border-radius: 11px 11px 0 0;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.contact-info-title::before,
+.contact-info-title::after {
+	display: none;
+}
+
+.contact-info-section .field-display {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.contact-info-row {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	line-height: 1.2;
+	text-align: left;
+}
+
+.contact-info-row.is-inline {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 8px;
+}
+
+.contact-phone-wrapper .contact-info-row.is-inline {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
+	text-align: left;
+}
+
+.contact-label {
+	color: rgba(255, 255, 255, 0.55);
+	font-size: 10px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.contact-value {
+	color: #E3E3E3;
+	font-size: 13px;
+	font-weight: 600;
+	word-break: break-word;
+}
+
+.contact-value-line {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.contact-extra-count {
+	margin-left: 6px;
+	color: #D4AF37;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+}
+
+.contact-login-row {
+	padding: 4px 0 8px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	margin-bottom: 4px;
+}
+
+.contact-main-summary {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.contact-main-summary .contact-label {
+	flex: 0 0 auto;
+	margin-right: 4px;
+}
+
+.contact-main-summary .contact-value {
+	flex: 1 1 auto;
+	line-height: 1.2;
+}
+
+.contact-email-wrapper,
+.contact-phone-wrapper {
+	width: 100%;
+	padding: 8px 0;
+}
+
+.contact-phone-wrapper {
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.contact-edit-entries {
+	flex: 1 1 auto;
+	overflow: auto;
+}
+
+.contact-edit-list {
+	display: flex;
+	flex-direction: column;
+}
+
+.contact-edit-row {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	grid-template-rows: auto auto;
+	gap: 4px 8px;
+	align-items: center;
+}
+
+.contact-edit-row .edit-field-input {
+	margin: 0 !important;
+	min-width: 0;
+	grid-column: 1;
+	grid-row: 1;
+}
+
+.contact-main-choice {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 10px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: #D4AF37;
+	white-space: nowrap;
+	grid-column: 1;
+	grid-row: 2;
+}
+
+.contact-main-choice input {
+	accent-color: #D4AF37;
+}
+
+
+.contact-info-section .edit-field-btn.profile-edit-btn {
+	width: 26px;
+	height: 26px;
+	min-width: 26px;
+	min-height: 26px;
+	border-radius: 50%;
+	background: rgba(212, 175, 55, 0.12);
+	border: 1px solid rgba(212, 175, 55, 0.35);
+}
+
+.contact-info-section .edit-field-btn.profile-edit-btn i {
+	color: #D4AF37;
+	font-size: 12px;
+}
+
+.contact-channel-row {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 14px;
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: -40px; /* Float 10px above talent info panel bottom */
+	color: #C0C0C0;
+	font-size: 12px;
+	z-index: 50; /* Above QR/CTA section but below tooltips */
+}
+
+.contact-channel-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.contact-channel-row .tm-header-icon {
+	--tm-header-size: 28px;
+	border-radius: 10px !important;
+}
+
+.contact-channel-row .tm-header-icon i {
+	font-size: 12px !important;
+}
+
+.contact-channel-row .tm-header-count {
+	min-width: 16px !important;
+	height: 16px !important;
+	font-size: 9px !important;
+	line-height: 16px !important;
+	top: -8px !important;
+	right: -8px !important;
+}
+
+.dokan-store-address-head,
+.dokan-store-info .dokan-store-address {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	gap: 8px !important;
+	margin: 3px 0 !important;
+	font-size: 14px !important;
+	list-style: none !important;
+	cursor: default !important;
+}
+
+.dokan-store-address-head i.fa-map-marker-alt,
+.dokan-store-info .dokan-store-address i.fa-map-marker-alt {
+	display: none !important;
+}
+
+/* Fix alignment of flag and text inside the wrapper */
+.dokan-store-address-head .field-value {
+	display: flex !important;
+	align-items: center !important;
+	gap: 10px !important;
+	min-height: 36px !important;
+}
+
+.dokan-store-address-head .country-flag,
+.dokan-store-info .dokan-store-address .country-flag {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	font-size: 36px !important;
+	line-height: 1 !important;
+	cursor: help !important;
+	width: 36px !important;
+	height: auto !important;
+	min-width: 36px !important;
+	min-height: 0 !important;
+	max-width: 36px !important;
+	max-height: 100% !important;
+	flex-shrink: 0 !important;
+}
+
+.dokan-store-address-head .country-flag img.emoji,
+.dokan-store-info .dokan-store-address .country-flag img.emoji {
+	width: 36px !important;
+	height: 36px !important;
+	min-width: 36px !important;
+	min-height: 36px !important;
+	max-width: 36px !important;
+	max-height: 36px !important;
+	flex-shrink: 0 !important;
+    object-fit: contain !important;
+}
+
+.dokan-store-address-head .geo-address,
+.dokan-store-info .dokan-store-address .geo-address {
+	background: rgba(212, 175, 55, 0.15) !important;
+	color: #C0C0C0 !important;
+	padding: 0 15px !important;
+	border-radius: 4px !important;
+	border: 1px solid rgba(212, 175, 55, 0.3) !important;
+	font-size: 13px !important;
+	font-weight: 500 !important;
+	height: auto !important;
+	min-height: 0 !important;
+	max-height: 100% !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	line-height: 1 !important;
+	box-sizing: border-box !important;
+	white-space: nowrap !important;
+	cursor: default !important;
+	pointer-events: none !important;
+	margin: 0 !important;
+}
+
+.dokan-store-address-head .geo-address::before,
+.dokan-store-info .dokan-store-address .geo-address::before {
+	content: none !important;
+	display: none !important;
+}
+
+.dokan-store-address-head .geo-address br,
+.dokan-store-info .dokan-store-address .geo-address br {
+	display: none !important;
+}
+
+.dokan-store-address-head .geo-address::after,
+.dokan-store-info .dokan-store-address .geo-address::after {
+	content: none !important;
+	display: none !important;
+}
+
+/* Show label when panel is collapsed (on click) */
+.profile-info-summery .profile-info-head.is-collapsed > .collapsed-tab-label {
+	right: 0px !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+	pointer-events: auto !important;
+}
+
+/* Show label when video profile panel is collapsed (on click) */
+.profile-banner-video ~ .profile-info-summery-wrapper .profile-info-head.is-collapsed > .collapsed-tab-label {
+	right: 0px !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+	pointer-events: auto !important;
+}
+
+/* ========================================
+   PHASE 2B: Bottom Trigger Tabs & Slide-Up Panels
+   ======================================== */
+
+/* Bottom drawer container anchors tabs + panels to frame bottom */
+.profile-bottom-drawer {
+	position: absolute !important;
+	left: 0 !important;
+	right: 0 !important;
+	bottom: 0 !important;
+	width: 100% !important;
+	pointer-events: auto !important;
+	--tab-height: 63px;
+	--panel-extra-height: 20px;
+}
+
+/* HERO REMOTE (visual stage) */
+.hero-remote {
+	position: absolute !important;
+	/* Sit directly beneath the play overlay (96px tall, centered at 50%).
+	   top = 50% (center) + 48px (half overlay) + 12px (gap) = calc(50% + 60px).
+	   Even when the overlay is hidden this position is kept so layout never jumps. */
+	top: calc(50% + 60px) !important;
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	display: inline-flex !important;
+	flex-direction: column !important;
+	align-items: center !important;
+	gap: 6px !important;
+	min-width: 240px !important;
+	max-width: 420px !important;
+	padding: 8px 14px !important;
+	background: rgba(255, 255, 255, 0.12) !important;
+	backdrop-filter: blur(12px) !important;
+	-webkit-backdrop-filter: blur(12px) !important;
+	border: 1px solid rgba(255, 255, 255, 0.25) !important;
+	border-radius: 12px !important;
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35) !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+	transition: opacity 180ms ease !important;
+	z-index: 90 !important;
+}
+
+.hero-toggle-row {
+	display: inline-flex !important;
+	gap: 8px !important;
+	align-items: center !important;
+	justify-content: center !important;
+	width: 100% !important;
+	flex-wrap: wrap !important;
+}
+
+.hero-toggle {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 4px !important;
+	color: #ffd1bf !important;
+	font-size: 11px !important;
+	letter-spacing: 0.3px !important;
+}
+
+.hero-toggle input[type="checkbox"] {
+	accent-color: #eab150 !important;
+	width: 16px !important;
+	height: 16px !important;
+}
+
+/* Toggle label text: long version shown by default; swapped to short on mobile */
+.toggle-text-short { display: none !important; }
+.toggle-text-full  { display: inline !important; }
+
+.hero-toggle--select {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 8px !important;
+}
+
+.hero-toggle--select .hero-toggle-label {
+	font-size: 12px !important;
+	letter-spacing: 0.3px !important;
+	text-transform: uppercase !important;
+	color: #ffd1bf !important;
+}
+
+.hero-toggle--select select.hero-toggle-loop {
+	appearance: none !important;
+	background: rgba(0, 0, 0, 0.55) !important;
+	border: 1px solid rgba(255, 255, 255, 0.2) !important;
+	border-radius: 999px !important;
+	color: #fff !important;
+	padding: 6px 28px 6px 12px !important;
+	font-size: 12px !important;
+	line-height: 1 !important;
+	background-image: linear-gradient(45deg, transparent 50%, rgba(255,255,255,0.7) 50%),
+		linear-gradient(135deg, rgba(255,255,255,0.7) 50%, transparent 50%) !important;
+	background-position: calc(100% - 14px) 50%, calc(100% - 8px) 50% !important;
+	background-size: 6px 6px, 6px 6px !important;
+	background-repeat: no-repeat !important;
+}
+
+.hero-toggle--select select.hero-toggle-loop:focus {
+	outline: none !important;
+	box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25) !important;
+}
+
+.hero-media-image {
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	object-fit: cover !important;
+	display: none;
+	z-index: 40 !important;
+}
+
+.profile-info-box .profile-banner-video {
+	width: 100% !important;
+	object-fit: cover !important;
+}
+
+.hero-audio {
+	display: none !important;
+}
+
+.hero-audio-eq {
+	position: absolute !important;
+	top: 50% !important;
+	left: 50% !important;
+	transform: translate(-50%, calc(-50% - 190px)) !important;
+	display: none !important;
+	gap: 4px !important;
+	z-index: 46 !important;
+}
+
+.hero-audio-eq.is-active {
+	display: inline-flex !important;
+}
+
+.hero-audio-eq .eq-bar {
+	width: 6px !important;
+	height: 22px !important;
+	background: #D4AF37 !important;
+	animation: heroEq 0.9s ease-in-out infinite;
+	border-radius: 3px !important;
+	opacity: 0.9 !important;
+}
+
+.hero-audio-eq .eq-bar:nth-child(2) { animation-delay: 0.1s; }
+.hero-audio-eq .eq-bar:nth-child(3) { animation-delay: 0.2s; }
+.hero-audio-eq .eq-bar:nth-child(4) { animation-delay: 0.3s; }
+.hero-audio-eq .eq-bar:nth-child(5) { animation-delay: 0.4s; }
+
+.hero-media-meta {
+	display: inline-flex !important;
+	gap: 6px !important;
+	align-items: center !important;
+	justify-content: center !important;
+	flex-wrap: wrap !important;
+	padding: 5px 8px !important;
+	background: rgba(0, 0, 0, 0.58) !important;
+	border: 1px solid rgba(234, 177, 80, 0.45) !important;
+	border-radius: 8px !important;
+	color: #ffd1bf !important;
+	font-size: 11px !important;
+	backdrop-filter: blur(4px) !important;
+	z-index: 47 !important;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4) !important;
+	pointer-events: none !important;
+	margin-top: 4px !important;
+}
+
+.hero-remote:not(.is-visible):not(.is-audio-mode) .hero-media-meta {
+	display: none !important;
+}
+
+.hero-media-meta .meta-label {
+	color: #eab150 !important;
+	font-size: 11px !important;
+	letter-spacing: 0.08em !important;
+	text-transform: uppercase !important;
+	opacity: 0.9 !important;
+}
+
+.hero-media-meta .meta-value {
+	font-weight: 600 !important;
+}
+
+.hero-media-meta .meta-divider {
+	opacity: 0.35 !important;
+	color: #eab150 !important;
+}
+
+@keyframes heroEq {
+	0% { transform: scaleY(0.35); }
+	50% { transform: scaleY(1); }
+	100% { transform: scaleY(0.35); }
+}
+
+.hero-remote-row {
+	display: inline-flex !important;
+	gap: 8px !important;
+	width: 100% !important;
+	justify-content: center !important;
+	position: relative !important;
+	z-index: 1 !important;
+}
+
+.hero-remote.is-visible {
+	opacity: 1 !important;
+	pointer-events: auto !important;
+}
+
+/* Audio mode: always show controls (no hover required) */
+.hero-remote.is-audio-mode {
+	opacity: 1 !important;
+	pointer-events: auto !important;
+}
+
+/* Ensure only one of play/pause is visible at a time */
+.hero-remote .hero-play,
+.hero-remote .hero-pause {
+	display: none !important;
+}
+
+.hero-remote.is-playing .hero-pause { display: inline-flex !important; }
+.hero-remote.is-playing .hero-play { display: none !important; }
+.hero-remote:not(.is-playing) .hero-pause { display: none !important; }
+.hero-remote:not(.is-playing) .hero-play { display: inline-flex !important; }
+
+.hero-btn {
+	appearance: none !important;
+	border: 1px solid rgba(255, 255, 255, 0.5) !important;
+	background: rgba(0, 0, 0, 0.55) !important;
+	color: #ffffff !important;
+	border-radius: 10px !important;
+	padding: 7px 12px !important;
+	font-size: 12px !important;
+	font-weight: 700 !important;
+	letter-spacing: 0.6px !important;
+	text-transform: uppercase !important;
+	line-height: 1 !important;
+	cursor: pointer !important;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+	transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease !important;
+	position: relative !important;
+	z-index: 2 !important;
+	pointer-events: auto !important;
+}
+
+.hero-btn:hover,
+.hero-btn:focus-visible {
+	transform: translateY(-1px) !important;
+	border-color: rgba(255, 255, 255, 0.75) !important;
+	background: rgba(0, 0, 0, 0.68) !important;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 14px 26px rgba(0, 0, 0, 0.45) !important;
+	outline: none !important;
+}
+
+.hero-btn:active {
+	transform: translateY(0) !important;
+}
+
+.hero-btn-icon {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	font-size: 24px !important;
+	font-weight: 800 !important;
+	gap: 6px !important;
+}
+
+/* Global controls - bottom right corner */
+.hero-global-controls {
+	position: absolute !important;
+	bottom: 0 !important;
+	right: 20px !important;
+	z-index: 80 !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 8px !important;
+}
+
+/* TV platform availability strip - aligned with logo */
+.tm-header-platforms {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	gap: 10px !important;
+	height: 42px !important;
+	padding: 0 14px !important;
+	border-radius: 999px !important;
+	background: #000 !important;
+	border: 1px solid rgba(212, 175, 55, 0.18) !important;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+	color: rgba(212, 175, 55, 0.8) !important;
+	font-size: 11px !important;
+	letter-spacing: 0.12em !important;
+	text-transform: uppercase !important;
+	backdrop-filter: blur(8px) !important;
+	-webkit-backdrop-filter: blur(8px) !important;
+	width: fit-content !important;
+	min-width: 0 !important;
+	z-index: 110 !important;
+	pointer-events: auto !important;
+}
+
+.tm-header-platforms__label {
+	opacity: 0.7 !important;
+}
+
+.tm-header-platforms__icons {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 10px !important;
+}
+
+.tm-header-platforms__icons .platform-logo {
+	width: auto !important;
+	height: 40px !important;
+	max-height: 40px !important;
+	object-fit: contain !important;
+	opacity: 0.75 !important;
+	transition: opacity 0.2s ease !important;
+	filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0)) !important;
+}
+
+.tm-header-platforms__icons .platform-logo:hover {
+	opacity: 1 !important;
+}
+
+/* Removed hero-platforms-strip - now using centered header placement */
+
+.hero-resolution-wrap {
+	position: relative !important;
+	display: inline-flex !important;
+	align-items: center !important;
+}
+
+.hero-global-resolution .resolution-label {
+	font-size: 12px !important;
+	font-weight: 800 !important;
+	letter-spacing: 0.08em !important;
+}
+
+.hero-resolution-panel {
+	position: absolute !important;
+	bottom: calc(100% + 10px) !important;
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	min-width: 90px !important;
+	padding: 8px 8px !important;
+	border-radius: 10px !important;
+	background: rgba(0, 0, 0, 0.85) !important;
+	border: 1px solid rgba(212, 175, 55, 0.35) !important;
+	box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45) !important;
+	display: none !important;
+	flex-direction: column-reverse !important;
+	gap: 6px !important;
+	backdrop-filter: blur(10px) !important;
+	-webkit-backdrop-filter: blur(10px) !important;
+	z-index: 90 !important;
+}
+
+.hero-global-controls.is-resolution-open .hero-resolution-panel {
+	display: flex !important;
+}
+
+.hero-resolution-option {
+	appearance: none !important;
+	border: 1px solid rgba(255, 255, 255, 0.15) !important;
+	background: rgba(255, 255, 255, 0.04) !important;
+	color: #d8d1c1 !important;
+	border-radius: 8px !important;
+	padding: 6px 10px !important;
+	font-size: 12px !important;
+	font-weight: 700 !important;
+	letter-spacing: 0.04em !important;
+	text-transform: uppercase !important;
+	cursor: default !important;
+}
+
+.hero-resolution-option.is-active {
+	color: #D4AF37 !important;
+	border-color: rgba(212, 175, 55, 0.6) !important;
+	background: rgba(0, 0, 0, 0.75) !important;
+}
+
+.hero-resolution-option.is-disabled {
+	opacity: 0.45 !important;
+}
+
+.hero-global-btn {
+	appearance: none !important;
+	border: 1px solid rgba(255, 255, 255, 0.18) !important;
+	background: rgba(0, 0, 0, 0.7) !important;
+	color: #D4AF37 !important;
+	border-radius: 8px !important;
+	width: var(--tab-height, 48px) !important;
+	height: var(--tab-height, 48px) !important;
+	min-width: var(--tab-height, 48px) !important;
+	min-height: var(--tab-height, 48px) !important;
+	max-width: var(--tab-height, 48px) !important;
+	max-height: var(--tab-height, 48px) !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	padding: 0 !important;
+	cursor: pointer !important;
+	backdrop-filter: blur(10px) !important;
+	-webkit-backdrop-filter: blur(10px) !important;
+	box-shadow:
+		0 4px 16px 0 rgba(0, 0, 0, 0.37),
+		inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.hero-global-btn:hover,
+.hero-global-btn:focus-visible {
+	transform: scale(1.1) translateY(-2px) !important;
+	border-color: rgba(212, 175, 55, 0.6) !important;
+	background: rgba(0, 0, 0, 0.85) !important;
+	box-shadow:
+		0 6px 24px rgba(212, 175, 55, 0.3),
+		inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
+	outline: none !important;
+	color: #ffffff !important;
+}
+
+.hero-global-btn.is-active,
+.hero-remote:not(.is-muted) ~ .hero-global-controls .hero-global-mute {
+	border-color: rgba(212, 175, 55, 0.8) !important;
+	background: rgba(0, 0, 0, 0.9) !important;
+	box-shadow:
+		0 6px 24px rgba(212, 175, 55, 0.35),
+		inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.hero-global-btn:active {
+	transform: scale(0.95) !important;
+	box-shadow:
+		0 2px 8px rgba(0, 0, 0, 0.4),
+		inset 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
+
+.hero-global-btn i {
+	font-size: 16px !important;
+}
+
+.tm-fullscreen-hint {
+	position: fixed !important;
+	left: 50% !important;
+	bottom: 16px !important;
+	transform: translateX(-50%) !important;
+	padding: 8px 12px !important;
+	background: rgba(0, 0, 0, 0.65) !important;
+	color: #ffffff !important;
+	border-radius: 999px !important;
+	font-size: 12px !important;
+	letter-spacing: 0.2px !important;
+	opacity: 0 !important;
+	transition: opacity 160ms ease !important;
+	z-index: 1500 !important;
+	pointer-events: none !important;
+}
+
+.tm-fullscreen-hint.is-visible {
+	opacity: 1 !important;
+}
+
+.hero-global-mute .mute-icon {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	font-size: 16px !important;
+}
+
+.hero-global-mute .mute-off { display: none !important; }
+.hero-remote.is-muted ~ .hero-global-controls .hero-global-mute .mute-on { display: none !important; }
+.hero-remote.is-muted ~ .hero-global-controls .hero-global-mute .mute-off { display: inline-flex !important; }
+
+/* Theatre mode - hide all UI except the player frame */
+body.theatre-mode {
+	overflow: hidden !important;
+}
+
+body.theatre-mode .ast-header,
+body.theatre-mode .site-header,
+body.theatre-mode .ast-footer,
+body.theatre-mode .site-footer,
+body.theatre-mode .ast-above-header,
+body.theatre-mode .ast-below-header,
+body.theatre-mode .ast-primary-header-bar,
+body.theatre-mode .main-header-bar,
+body.theatre-mode .ast-mobile-header,
+body.theatre-mode .profile-info-head,
+body.theatre-mode .profile-info-summery-wrapper,
+body.theatre-mode .profile-bottom-drawer,
+body.theatre-mode .keyboard-nav-container,
+body.theatre-mode .hero-remote,
+body.theatre-mode .hero-global-controls,
+body.theatre-mode .tm-account-tab,
+body.theatre-mode .tm-cinematic-header {
+	display: none !important;
+}
+
+.tm-onboard-actions {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: 10px;
+}
+
+.tm-onboard-actions.tm-onboard-actions--rail {
+	position: absolute;
+	right: -56px;
+	top: 12px;
+	margin-bottom: 0;
+	justify-content: center;
+	z-index: 5;
+}
+
+.tm-onboard-actions.tm-onboard-actions--rail .tm-onboard-share-btn {
+	writing-mode: vertical-rl;
+	transform: rotate(180deg);
+	padding: 14px 8px;
+	border-radius: 10px;
+}
+
+.tm-onboard-share-btn {
+	background: #D4AF37;
+	color: #000;
+	border: none;
+	border-radius: 8px;
+	padding: 8px 12px;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+@media (max-width: 921px) {
+	.tm-onboard-actions.tm-onboard-actions--rail {
+		right: -46px;
+	}
+}
+
+@media (max-width: 544px) {
+	.tm-onboard-actions.tm-onboard-actions--rail {
+		position: static;
+		right: auto;
+		top: auto;
+		margin: 8px auto 0;
+	}
+
+	.tm-onboard-actions.tm-onboard-actions--rail .tm-onboard-share-btn {
+		writing-mode: horizontal-tb;
+		transform: none;
+		padding: 8px 12px;
+	}
+}
+
+.tm-onboard-notice {
+	background: rgba(212, 175, 55, 0.15);
+	border: 1px solid rgba(212, 175, 55, 0.5);
+	color: #f5e6b3;
+	padding: 10px 12px;
+	border-radius: 8px;
+	margin: 10px 0 12px;
+	font-size: 13px;
+}
+
+.tm-onboard-notice.tm-onboard-error {
+	background: rgba(255, 77, 77, 0.15);
+	border-color: rgba(255, 77, 77, 0.5);
+	color: #ffd6d6;
+}
+
+.tm-onboard-notice.tm-onboard-success {
+	background: rgba(76, 175, 80, 0.15);
+	border-color: rgba(76, 175, 80, 0.5);
+	color: #d5f5d7;
+}
+
+.tm-onboard-claim {
+	display: grid;
+	gap: 10px;
+	margin-bottom: 16px;
+}
+
+.tm-onboard-claim-layout {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	justify-content: flex-start;
+	text-align: left;
+	background: rgba(0, 0, 0, 0.4);
+	border: 1px solid rgba(212, 175, 55, 0.3);
+	border-radius: 10px;
+	padding: 12px;
+}
+
+.tm-onboard-claim-avatar {
+	display: flex;
+	justify-content: flex-start;
+	flex: 0 0 auto;
+}
+
+.tm-onboard-claim-avatar .tm-onboard-avatar-preview {
+	width: 90px;
+	height: 90px;
+}
+
+.tm-onboard-claim-message {
+	font-size: 13px;
+	line-height: 1.4;
+	color: #f5e6b3;
+	flex: 1 1 auto;
+}
+
+.tm-onboard-claim-fields {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.tm-onboard-claim-terms {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+	font-size: 12px;
+	color: #fff;
+}
+
+.tm-onboard-claim-terms label {
+	color: #fff;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.tm-onboard-claim-terms a {
+	color: #D4AF37;
+	text-decoration: underline;
+}
+
+@media (max-width: 700px) {
+	.tm-onboard-admin-grid {
+		grid-template-columns: 1fr;
+	}
+	.tm-onboard-claim-layout {
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+	}
+	.tm-onboard-claim-fields,
+	.tm-onboard-claim-terms {
+		grid-template-columns: 1fr;
+	}
+}
+
+.tm-onboard-field label {
+	display: block;
+	font-size: 12px;
+	margin-bottom: 4px;
+	color: #fff;
+}
+
+.tm-onboard-field input {
+	width: 100%;
+	padding: 8px 10px;
+	border-radius: 6px;
+	border: 1px solid #555;
+	background: #111;
+	color: #fff;
+}
+
+.tm-onboard-claim-btn {
+	background: #D4AF37;
+	color: #000;
+	border: none;
+	border-radius: 8px;
+	padding: 10px 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	cursor: pointer;
+}
+
+.tm-onboard-claim-btn.is-disabled,
+.tm-onboard-claim-btn[aria-disabled="true"] {
+	opacity: 0.6;
+	filter: grayscale(0.3);
+	cursor: not-allowed;
+}
+
+.tm-onboard-modal {
+	color: #fff;
+	display: grid;
+	gap: 12px;
+}
+
+.tm-onboard-admin-grid {
+	display: grid;
+	grid-template-columns: 1fr 2fr;
+	gap: 12px;
+	align-items: start;
+}
+
+.tm-onboard-admin-avatar {
+	display: grid;
+	gap: 8px;
+	justify-items: center;
+}
+
+.tm-onboard-avatar-stack {
+	display: flex;
+	align-items: center;
+}
+
+.tm-onboard-avatar-preview {
+	width: 110px;
+	height: 110px;
+	border-radius: 50%;
+	overflow: hidden;
+	border: 2px solid #D4AF37;
+	background: rgba(0, 0, 0, 0.6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+}
+
+.tm-onboard-avatar-preview--admin {
+	z-index: 1;
+}
+
+.tm-onboard-avatar-preview--vendor {
+	margin-left: -10%;
+	z-index: 2;
+}
+
+.tm-onboard-avatar-preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.tm-onboard-avatar-fallback {
+	font-size: 12px;
+	color: #cfcfcf;
+}
+
+.tm-onboard-avatar-btn {
+	background: #111;
+	border: 1px solid #D4AF37;
+	color: #D4AF37;
+	padding: 6px 10px;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.tm-onboard-avatar-actions {
+	display: grid;
+	gap: 6px;
+	width: 100%;
+}
+
+.tm-onboard-admin-message label {
+	display: block;
+	margin-bottom: 6px;
+	font-weight: 600;
+	color: #D4AF37;
+}
+
+.tm-onboard-message {
+	width: 100%;
+	min-height: 120px;
+	resize: vertical;
+	border-radius: 6px;
+	border: 1px solid #444;
+	background: #0f0f0f;
+	color: #fff;
+	padding: 10px;
+}
+
+.tm-onboard-message-hint {
+	margin-top: 6px;
+	font-size: 12px;
+	color: #cfcfcf;
+}
+
+.tm-onboard-generate {
+	background: #D4AF37;
+	color: #000;
+	border: none;
+	border-radius: 6px;
+	padding: 8px 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	cursor: pointer;
+}
+
+.tm-onboard-link-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.tm-onboard-link {
+	flex: 1 1 auto;
+	background: #0f0f0f;
+	border: 1px solid #444;
+	color: #fff;
+	padding: 8px 10px;
+	border-radius: 6px;
+}
+
+.tm-onboard-copy {
+	background: #D4AF37;
+	color: #000;
+	border: none;
+	border-radius: 6px;
+	padding: 8px 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	cursor: pointer;
+}
+
+.tm-onboard-expiry {
+	font-size: 12px;
+	color: #cfcfcf;
+}
+
+.tm-onboard-qr {
+	display: flex;
+	justify-content: center;
+}
+
+/* ==========================================
+   CINEMATIC HEADER OVERLAY (STORE PAGE)
+   ========================================== */
+
+body.dokan-store #masthead {
+	display: none !important;
+}
+
+body.dokan-store .tm-cinematic-header {
+	position: absolute !important;
+	top: calc(20px + var(--wp-admin--admin-bar--height, 0px)) !important;
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	width: calc(100% - 40px) !important;
+	max-width: 1920px !important;
+	z-index: 110 !important;
+	pointer-events: none !important;
+}
+
+body.dokan-store .tm-cinematic-header__inner {
+	position: relative !important;
+	display: grid !important;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+	align-items: center !important;
+	gap: 16px !important;
+	padding: 8px 14px !important;
+	--tm-header-size: 48px;
+	background: rgba(0, 0, 0, 0.45) !important;
+	border: 1px solid rgba(212, 175, 55, 0.25) !important;
+	border-radius: 18px !important;
+	backdrop-filter: blur(18px) !important;
+	-webkit-backdrop-filter: blur(18px) !important;
+	box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35) !important;
+	pointer-events: auto !important;
+}
+
+body.dokan-store .tm-header-left {
+	display: flex !important;
+	align-items: center !important;
+	gap: 12px !important;
+}
+
+body.dokan-store .tm-header-left .custom-logo-link img,
+body.dokan-store .tm-header-left .custom-logo-link svg {
+	max-height: 42px !important;
+	width: auto !important;
+}
+
+body.dokan-store .tm-header-nav {
+	justify-self: center !important;
+	max-width: min(720px, 70vw) !important;
+	overflow: hidden !important;
+}
+
+body.dokan-store .tm-header-menu {
+	list-style: none !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	display: flex !important;
+	gap: 10px !important;
+	align-items: center !important;
+	justify-content: center !important;
+	flex-wrap: nowrap !important;
+}
+
+body.dokan-store .tm-header-menu > li {
+	margin: 0 !important;
+}
+
+body.dokan-store .tm-header-menu > li > a {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	padding: 8px 12px !important;
+	border-radius: 14px !important;
+	border: 1px solid rgba(212, 175, 55, 0.35) !important;
+	background: rgba(0, 0, 0, 0.55) !important;
+	color: #f2d889 !important;
+	font-size: 11px !important;
+	letter-spacing: 0.14em !important;
+	text-transform: uppercase !important;
+	font-weight: 700 !important;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+	transition: transform 180ms ease, box-shadow 180ms ease, color 180ms ease, border-color 180ms ease !important;
+}
+
+body.dokan-store .tm-header-menu > li > a:hover,
+body.dokan-store .tm-header-menu > li > a:focus-visible {
+	color: #ffffff !important;
+	border-color: rgba(212, 175, 55, 0.7) !important;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+	transform: translateY(-1px) !important;
+}
+
+body.dokan-store .tm-header-actions {
+	justify-self: end !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 10px !important;
+}
+
+body.dokan-store .tm-header-icon {
+	position: relative !important;
+	width: var(--tm-header-size) !important;
+	height: var(--tm-header-size) !important;
+	border-radius: 12px !important;
+	border: 1px solid rgba(255, 255, 255, 0.18) !important;
+	background: rgba(0, 0, 0, 0.65) !important;
+	color: #D4AF37 !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+	transition: transform 180ms ease, box-shadow 180ms ease, color 180ms ease !important;
+	cursor: pointer !important;
+}
+
+body.dokan-store .tm-header-icon:hover,
+body.dokan-store .tm-header-icon:focus-visible {
+	color: #ffffff !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+body.dokan-store .tm-header-icon i {
+	font-size: 16px !important;
+}
+
+body.dokan-store .tm-header-count {
+	position: absolute !important;
+	top: -5px !important;
+	right: -5px !important;
+	min-width: 18px !important;
+	height: 18px !important;
+	padding: 0 6px !important;
+	border-radius: 999px !important;
+	background: #D4AF37 !important;
+	color: #000000 !important;
+	font-size: 10px !important;
+	font-weight: 700 !important;
+	line-height: 18px !important;
+	text-align: center !important;
+	box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dokan-store .tm-header-toggle {
+	display: none !important;
+}
+
+@media (max-width: var(--bp-phone-portrait-max)) and (orientation: portrait),
+	(max-width: var(--bp-phone-landscape-max)) and (orientation: landscape),
+	(min-width: calc(var(--bp-phone-portrait-max) + 1px)) and (max-width: var(--bp-tablet-portrait-max)) and (orientation: portrait),
+	(min-width: calc(var(--bp-phone-landscape-max) + 1px)) and (max-width: var(--bp-tablet-landscape-max)) and (orientation: landscape) {
+	.collapsed-tab-label {
+		padding-top: 20px !important;
+	}
+
+	.collapsed-tab-name {
+		margin-top: 0 !important;
+	}
+
+	body.dokan-store .tm-cinematic-header {
+		width: min(75vw, 360px) !important;
+		top: var(--wp-admin--admin-bar--height, 0px) !important;
+	}
+
+	body.dokan-store .tm-cinematic-header__inner {
+		grid-template-columns: auto auto !important;
+		grid-template-areas: "logo actions" "nav nav" !important;
+		column-gap: 10px !important;
+		padding: 6px 8px !important;
+		row-gap: 6px !important;
+		justify-content: center !important;
+		justify-items: center !important;
+	}
+
+	body.dokan-store .tm-header-left {
+		grid-area: logo !important;
+		justify-self: center !important;
+	}
+
+	body.dokan-store .tm-header-actions {
+		grid-area: actions !important;
+		justify-self: center !important;
+		gap: 8px !important;
+		justify-content: center !important;
+	}
+
+	body.dokan-store .tm-header-nav {
+		grid-area: nav !important;
+		max-width: 100% !important;
+		overflow-x: auto !important;
+		padding-top: 6px !important;
+		display: none !important;
+		justify-self: center !important;
+	}
+
+	body.dokan-store .tm-header-menu {
+		justify-content: center !important;
+		padding-bottom: 4px !important;
+	}
+
+	body.dokan-store .tm-header-menu > li > a {
+		padding: 6px 8px !important;
+		font-size: 6px !important;
+		letter-spacing: 0.12em !important;
+	}
+
+	body.dokan-store .tm-header-toggle {
+		display: inline-flex !important;
+	}
+
+	body.dokan-store .tm-cinematic-header.is-menu-open .tm-header-nav {
+		display: block !important;
+	}
+
+	body.dokan-store .tm-cinematic-header .tm-header-menu {
+		display: none !important;
+	}
+
+	body.dokan-store .tm-cinematic-header.is-menu-open .tm-header-menu {
+		display: flex !important;
+	}
+
+	.profile-frame {
+		/* Prevent pull-to-refresh from hijacking swipe-down navigation. */
+		touch-action: pan-x !important;
+		overflow: hidden !important;
+	}
+
+	body,
+	html {
+		/* Avoid browser overscroll bounce during swipe navigation. */
+		overscroll-behavior: none !important;
+	}
+
+	.profile-info-head {
+		--avatar-size: 90px;
+		--avatar-top: 18px;
+		padding: 22px 16px !important;
+		padding-top: calc(var(--avatar-top) + var(--avatar-size) + 24px) !important;
+	}
+
+	.profile-img,
+	.profile-frame .profile-img,
+	.dokan-store-sidebar .profile-img,
+	.dokan-single-store .profile-img {
+		width: var(--avatar-size) !important;
+		height: var(--avatar-size) !important;
+	}
+
+	.profile-img img,
+	.profile-frame .profile-img img,
+	.dokan-store-sidebar .profile-img img,
+	img.profile-img,
+	.dokan-single-store .profile-img img {
+		width: var(--avatar-size) !important;
+		height: var(--avatar-size) !important;
+	}
+
+	.profile-info-content {
+		justify-content: flex-start !important;
+		gap: 6px !important;
+		padding-top: 8px !important;
+	}
+
+	.badge-slot {
+		min-height: 28px !important;
+		margin: 6px 0 4px !important;
+	}
+
+	.featured-favourite {
+		margin-bottom: 0 !important;
+	}
+
+	.profile-info-head .store-name {
+		margin: 2px 0 !important;
+	}
+
+	.store-categories-display,
+	.dokan-store-address-head,
+	.dokan-store-info .dokan-store-address {
+		margin: 2px 0 !important;
+	}
+
+	.vendor-cta-buttons {
+		margin-top: 8px !important;
+	}
+
+	.collapsed-tab-label {
+		width: 24px !important;
+		height: 120px !important;
+		gap: 6px !important;
+		padding-top: 78px !important;
+		right: -120px !important;
+	}
+
+	.profile-info-head.is-collapsed .collapsed-tab-label {
+		left: 247px !important;
+		right: auto !important;
+		top: 50% !important;
+		transform: translateY(-50%) !important;
+		padding: 0 !important;
+		gap: 0 !important;
+		justify-content: center !important;
+		align-items: center !important;
+	}
+
+	.collapsed-tab-name {
+		font-size: 8px !important;
+		letter-spacing: 0.6px !important;
+		margin: 0 auto !important;
+		text-shadow: 0 0 10px rgba(212, 175, 55, 0.6), 0 2px 3px rgba(0, 0, 0, 0.8) !important;
+	}
+
+	.profile-info-head.is-collapsed .collapsed-tab-name {
+		font-size: 16px !important;
+		letter-spacing: 0.8px !important;
+		margin: 0 auto !important;
+		line-height: 1 !important;
+		text-align: center !important;
+		align-self: center !important;
+		writing-mode: vertical-rl !important;
+		text-orientation: mixed !important;
+		position: relative !important;
+		display: block !important;
+		width: auto !important;
+		padding: 0 !important;
+	}
+}
+
+@media (max-width: var(--bp-phone-landscape-max)) and (orientation: landscape),
+	(min-width: calc(var(--bp-phone-landscape-max) + 1px)) and (max-width: var(--bp-tablet-landscape-max)) and (orientation: landscape) {
+	body.dokan-store .tm-cinematic-header {
+		width: min(75vw, 360px) !important;
+	}
+
+	body.dokan-store .tm-cinematic-header__inner {
+		--tm-header-size: 40px;
+		padding: 6px 8px !important;
+		column-gap: 8px !important;
+		row-gap: 6px !important;
+	}
+
+	body.dokan-store .tm-header-left .custom-logo-link img,
+	body.dokan-store .tm-header-left .custom-logo-link svg {
+		max-height: 38px !important;
+	}
+
+	body.dokan-store .tm-header-menu > li > a {
+		padding: 6px 8px !important;
+		font-size: 6px !important;
+		letter-spacing: 0.12em !important;
+	}
+}
+
+@media (max-width: var(--bp-phone-portrait-max)) and (orientation: portrait),
+	(max-width: var(--bp-phone-landscape-max)) and (orientation: landscape) {
+	body.dokan-store .tm-header-menu > li > a {
+		padding: 8px 12px !important;
+		font-size: 11px !important;
+	}
+
+	body.dokan-store .tm-header-icon {
+		width: 40px !important;
+		height: 40px !important;
+	}
+}
+
+body.tm-mobile-landscape .profile-info-head {
+	top: 0 !important;
+	transform: translateY(0) translateX(0) !important;
+	height: 95vh !important;
+	min-height: 95vh !important;
+	z-index: 1200 !important;
+}
+
+body.tm-mobile-landscape .profile-info-head.is-collapsed {
+	height: 95vh !important;
+	min-height: 95vh !important;
+	transform: translateY(0) translateX(calc(-1 * (var(--panel-width) - 42px))) !important;
+}
+
+body.tm-mobile-landscape .tm-cinematic-header {
+	z-index: 900 !important;
+}
+
+body.tm-mobile-landscape.tm-talent-panel-open .tm-cinematic-header {
+	left: auto !important;
+	right: 0 !important;
+	transform: none !important;
+}
+
+body.tm-mobile-landscape.tm-talent-panel-open .profile-bottom-tabs {
+	left: auto !important;
+	right: 0 !important;
+	transform: none !important;
+}
+
+body.tm-mobile-landscape .tm-header-menu .menu-text {
+	display: none !important;
+}
+
+body.tm-mobile-landscape .tm-header-menu .ast-icon {
+	display: none !important;
+}
+
+body.tm-mobile-landscape .tm-header-menu .menu-link::before {
+	font-family: "Font Awesome 5 Free" !important;
+	font-weight: 900 !important;
+	font-size: 16px !important;
+	line-height: 1 !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	margin: 0 6px !important;
+	color: #D4AF37 !important;
+	content: "";
+}
+
+body.tm-mobile-landscape .tm-header-menu .menu-item-96 > .menu-link::before {
+	content: "\f0c0";
+}
+
+body.tm-mobile-landscape .tm-header-menu .menu-item-518 > .menu-link::before {
+	content: "\f02c";
+}
+
+body.tm-mobile-landscape .tm-header-menu .menu-item-519 > .menu-link::before {
+	content: "\f3c5";
+}
+
+body.tm-mobile-landscape .tm-header-actions {
+	display: none !important;
+}
+
+body.tm-mobile-landscape .tm-cinematic-header {
+	top: 0 !important;
+	width: auto !important;
+	max-width: none !important;
+}
+
+body.tm-mobile-landscape .tm-cinematic-header__inner {
+	grid-template-columns: auto auto !important;
+	justify-content: flex-start !important;
+	padding-right: 6px !important;
+	padding-left: 6px !important;
+	width: auto !important;
+}
+
+body.tm-mobile-landscape .tm-header-nav {
+	max-width: none !important;
+	width: auto !important;
+	justify-self: start !important;
+}
+
+body.tm-mobile-portrait .tm-header-actions {
+	display: none !important;
+}
+
+body.tm-mobile-portrait .tm-cinematic-header {
+	top: 0 !important;
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	width: auto !important;
+	max-width: none !important;
+}
+
+body.tm-mobile-portrait .tm-cinematic-header__inner {
+	grid-template-columns: auto auto !important;
+	justify-content: center !important;
+	padding-right: 6px !important;
+	padding-left: 6px !important;
+	width: auto !important;
+}
+
+body.tm-mobile-portrait .tm-header-nav {
+	max-width: none !important;
+	width: auto !important;
+	justify-self: center !important;
+}
+
+body.tm-mobile-portrait .tm-header-menu {
+	justify-content: center !important;
+	gap: 6px !important;
+}
+
+body.tm-mobile-portrait .tm-header-menu > li > a {
+	padding: 6px 6px !important;
+}
+
+body.tm-mobile-portrait .tm-header-menu .menu-text,
+body.tm-mobile-portrait .tm-header-menu .ast-icon {
+	display: none !important;
+}
+
+body.tm-mobile-portrait .tm-header-menu .menu-link::before {
+	font-family: "Font Awesome 5 Free" !important;
+	font-weight: 900 !important;
+	font-size: 16px !important;
+	line-height: 1 !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	margin: 0 4px !important;
+	color: #D4AF37 !important;
+	content: "";
+}
+
+body.tm-mobile-portrait .tm-header-menu .menu-item-96 > .menu-link::before {
+	content: "\f0c0";
+}
+
+body.tm-mobile-portrait .tm-header-menu .menu-item-518 > .menu-link::before {
+	content: "\f02c";
+}
+
+body.tm-mobile-portrait .tm-header-menu .menu-item-519 > .menu-link::before {
+	content: "\f3c5";
+}
+
+body.tm-mobile-portrait .tm-header-menu > li:last-child > a {
+	margin-right: 3px !important;
+}
+
+@media (max-width: var(--bp-phone-portrait-max)) and (orientation: portrait) {
+	body.dokan-store .tm-header-actions,
+	body.dokan-store .tm-cinematic-header .tm-header-actions {
+		display: none !important;
+	}
+
+	body.dokan-store .tm-cinematic-header {
+		top: 0 !important;
+		width: auto !important;
+		max-width: none !important;
+	}
+
+	body.dokan-store .tm-cinematic-header__inner {
+		grid-template-columns: auto auto !important;
+		justify-content: flex-start !important;
+		padding-right: 6px !important;
+		padding-left: 6px !important;
+		width: auto !important;
+	}
+
+	body.dokan-store .tm-header-nav {
+		max-width: none !important;
+		width: auto !important;
+		justify-self: start !important;
+	}
+
+	body.dokan-store .tm-header-menu .menu-text,
+	body.dokan-store .tm-header-menu .ast-icon {
+		display: none !important;
+	}
+
+	body.dokan-store .tm-header-menu .menu-link::before {
+		font-family: "Font Awesome 5 Free" !important;
+		font-weight: 900 !important;
+		font-size: 16px !important;
+		line-height: 1 !important;
+		display: inline-flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		margin: 0 6px !important;
+		color: #D4AF37 !important;
+		content: "";
+	}
+
+	body.dokan-store .tm-header-menu .menu-item-96 > .menu-link::before {
+		content: "\f0c0";
+	}
+
+	body.dokan-store .tm-header-menu .menu-item-518 > .menu-link::before {
+		content: "\f02c";
+	}
+
+	body.dokan-store .tm-header-menu .menu-item-519 > .menu-link::before {
+		content: "\f3c5";
+	}
+}
+
+
+/* ==========================================
+   HEADER SKIN - GLASSMORPHIC RIBBON
+   ========================================== */
+
+/* Keyboard navigation controls - bottom left */
+.keyboard-nav-container {
+	position: absolute !important;
+	left: 20px !important;
+	bottom: 0 !important;
+	display: grid !important;
+	grid-template-columns: repeat(4, var(--tab-height, 48px)) !important;
+	grid-auto-rows: var(--tab-height, 48px) !important;
+	gap: 8px !important;
+	z-index: 90 !important;
+	pointer-events: auto !important;
+}
+
+.keyboard-nav-row {
+	display: contents !important;
+}
+
+.keyboard-nav-up {
+	grid-column: 2 !important;
+}
+
+.keyboard-nav-left {
+	grid-column: 1 !important;
+}
+
+.keyboard-nav-down {
+	grid-column: 2 !important;
+}
+
+.keyboard-nav-right {
+	grid-column: 3 !important;
+}
+
+.keyboard-nav-loop {
+	grid-column: 4 !important;
+	border-color: rgba(255, 255, 255, 0.15) !important;
+	background: rgba(0, 0, 0, 0.45) !important;
+	color: rgba(255, 255, 255, 0.45) !important;
+	box-shadow:
+		0 2px 10px rgba(0, 0, 0, 0.35),
+		inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.keyboard-nav-btn {
+	appearance: none !important;
+	border: 1px solid rgba(255, 255, 255, 0.18) !important;
+	background: rgba(0, 0, 0, 0.7) !important;
+	color: #D4AF37 !important;
+	border-radius: 10px !important;
+	width: var(--tab-height, 48px) !important;
+	height: var(--tab-height, 48px) !important;
+	min-width: var(--tab-height, 48px) !important;
+	min-height: var(--tab-height, 48px) !important;
+	max-width: var(--tab-height, 48px) !important;
+	max-height: var(--tab-height, 48px) !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	padding: 0 !important;
+	cursor: pointer !important;
+	backdrop-filter: blur(10px) !important;
+	-webkit-backdrop-filter: blur(10px) !important;
+	box-shadow:
+		0 4px 16px 0 rgba(0, 0, 0, 0.37),
+		inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+	transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+}
+
+.keyboard-nav-btn:hover,
+.keyboard-nav-btn:focus-visible {
+	transform: scale(1.05) translateY(-1px) !important;
+	border-color: rgba(212, 175, 55, 0.6) !important;
+	color: #ffffff !important;
+	box-shadow:
+		0 6px 24px rgba(212, 175, 55, 0.3),
+		inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
+	outline: none !important;
+}
+
+.keyboard-nav-btn:active {
+	transform: scale(0.96) !important;
+}
+
+.keyboard-nav-icon {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	font-size: 16px !important;
+	line-height: 1 !important;
+}
+
+.keyboard-nav-left .keyboard-nav-icon {
+	transform: rotate(-90deg) !important;
+}
+
+.keyboard-nav-right .keyboard-nav-icon {
+	transform: rotate(90deg) !important;
+}
+
+.keyboard-nav-loop .keyboard-nav-icon {
+	font-size: 16px !important;
+	line-height: 1 !important;
+}
+
+.keyboard-nav-loop.is-active {
+	border-color: rgba(80, 220, 140, 0.95) !important;
+	background: linear-gradient(135deg, rgba(20, 70, 45, 0.95), rgba(0, 0, 0, 0.9)) !important;
+	color: #e9fff2 !important;
+	box-shadow:
+		0 10px 28px rgba(80, 220, 140, 0.45),
+		0 0 18px rgba(80, 220, 140, 0.45),
+		inset 0 1px 0 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+.keyboard-nav-loop.is-active .keyboard-nav-icon {
+	filter: drop-shadow(0 0 6px rgba(80, 220, 140, 0.6));
+}
+
+/* Loading state during vendor switch */
+.keyboard-nav-btn.is-loading {
+	opacity: 0.5 !important;
+	pointer-events: none !important;
+}
+
+/* Disabled state when at first/last vendor */
+.keyboard-nav-btn:disabled {
+	opacity: 0.3 !important;
+	cursor: not-allowed !important;
+	pointer-events: none !important;
+}
+
+@media (max-width: var(--bp-phone-portrait-max)) and (orientation: portrait),
+	(max-width: var(--bp-phone-landscape-max)) and (orientation: landscape),
+	(min-width: calc(var(--bp-phone-portrait-max) + 1px)) and (max-width: var(--bp-tablet-portrait-max)) and (orientation: portrait),
+	(min-width: calc(var(--bp-phone-landscape-max) + 1px)) and (max-width: var(--bp-tablet-landscape-max)) and (orientation: landscape) {
+	.keyboard-nav-btn:not(.keyboard-nav-loop) {
+		display: none !important;
+	}
+}
+
+/* ============================================================
+   GPU COMPOSITOR FIX — Touch-only devices (phones, foldables)
+   backdrop-filter over hardware-decoded video causes a black
+   screen on Android Vulkan/GLES and iOS Metal compositors
+   (Galaxy Z Fold, standard phones, tablets).
+   Selector (pointer:coarse)+(hover:none) = touch-ONLY devices.
+   Desktop touchscreens (Surface Studio, iPad + Pencil) report
+   hover:hover from their pen/mouse, so they keep the blur.
+   ============================================================ */
+@media (pointer: coarse) and (hover: none) {
+	/* ── Always-visible player chrome ─────────────────────── */
+	.profile-info-head {
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+	.tm-cinematic-header__inner {
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+	.tm-header-platforms {
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+	.hero-global-btn {
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+	.keyboard-nav-btn {
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+	/* ── Conditionally-visible (opacity:0 ≠ display:none —
+	      compositor still holds the layer alive) ───────────── */
+	.tm-showcase-play-overlay {
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+	.tm-unmute-strip {
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+	.hero-settings-panel {
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+	.hero-media-meta {
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+
+	/* ── overflow:hidden ancestor fix ────────────────────────
+	   Any overflow:hidden on a .profile-banner-video ancestor
+	   forces Android Chrome to clip the hardware SurfaceView.
+	   On Samsung Galaxy S20/Z Fold (Mali-G77 / Vulkan backend)
+	   this clipping fails silently → video surface renders
+	   black while all CSS overlays render correctly.
+	   On mobile the frame fills the full viewport so removing
+	   overflow clipping has no visible side-effect.         ── */
+	.dokan-profile-frame-wrapper {
+		overflow: visible !important;
+	}
+	.profile-frame {
+		border-radius: 0 !important;
+		overflow: visible !important;
+	}
+	.profile-info-box {
+		overflow: visible !important;
+	}
+
+	/* ── Zero drop-shadow filter on platform logos ────────────
+	   filter: drop-shadow() forces a composited stacking
+	   context even when the shadow value is 0/transparent.
+	   Remove on touch devices to reduce compositor pressure.  ── */
+	.tm-header-platforms__icons .platform-logo {
+		filter: none !important;
+	}
+}

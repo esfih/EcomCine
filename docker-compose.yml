@@ -1,0 +1,61 @@
+services:
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-wordpress}
+      MYSQL_USER: ${DB_USER:-wp_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-wp_pass_dev}
+      MYSQL_ROOT_PASSWORD: root_pass_dev
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: unless-stopped
+
+  wordpress:
+    build:
+      context: foundation/wp/docker
+      args:
+        WORDPRESS_BASE_IMAGE: ${WP_IMAGE:-wordpress:6.5-php8.1-apache}
+    depends_on:
+      - db
+    ports:
+      - "${WP_PORT:-8180}:80"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
+      WORDPRESS_DB_USER: ${DB_USER:-wp_user}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wp_pass_dev}
+      WORDPRESS_DEBUG: 1
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_DEBUG_LOG', true);
+        define('WP_DEBUG_DISPLAY', false);
+        define('SCRIPT_DEBUG', true);
+    volumes:
+      # ── Custom theme ──────────────────────────────────────────────────────
+      - ./theme:/var/www/html/wp-content/themes/astra-child
+      # ── Custom plugins (committed to this repo) ───────────────────────────
+      - ./tm-media-player:/var/www/html/wp-content/plugins/tm-media-player
+      - ./tm-account-panel:/var/www/html/wp-content/plugins/tm-account-panel
+      - ./tm-vendor-booking-modal:/var/www/html/wp-content/plugins/tm-vendor-booking-modal
+      - ./dokan-category-attributes:/var/www/html/wp-content/plugins/dokan-category-attributes
+      # ── Third-party deps (gitignored — must exist locally in deps/) ───────
+      - ./deps/dokan-lite:/var/www/html/wp-content/plugins/dokan-lite
+      - ./deps/dokan-pro:/var/www/html/wp-content/plugins/dokan-pro
+      - ./deps/woocommerce:/var/www/html/wp-content/plugins/woocommerce
+      - ./deps/woocommerce-bookings:/var/www/html/wp-content/plugins/woocommerce-bookings
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    depends_on:
+      - db
+    ports:
+      - "${PMA_PORT:-8181}:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: ${DB_USER:-wp_user}
+      PMA_PASSWORD: ${DB_PASSWORD:-wp_pass_dev}
+    restart: unless-stopped
+
+volumes:
+  db_data:
