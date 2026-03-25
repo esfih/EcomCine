@@ -11,6 +11,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function tm_account_panel_is_store_page() {
+	if ( function_exists( 'tm_is_showcase_page' ) && tm_is_showcase_page() ) {
+		return true;
+	}
+
 	if ( function_exists( 'dokan_is_store_page' ) ) {
 		return dokan_is_store_page();
 	}

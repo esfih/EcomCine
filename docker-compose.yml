@@ -31,6 +31,8 @@ services:
         define('WP_DEBUG_DISPLAY', false);
         define('SCRIPT_DEBUG', true);
     volumes:
+      # ── PHP config overrides ──────────────────────────────────────────────
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
       # ── Custom theme ──────────────────────────────────────────────────────
       - ./theme:/var/www/html/wp-content/themes/astra-child
       # ── Custom plugins (committed to this repo) ───────────────────────────
@@ -43,6 +45,15 @@ services:
       - ./deps/dokan-pro:/var/www/html/wp-content/plugins/dokan-pro
       - ./deps/woocommerce:/var/www/html/wp-content/plugins/woocommerce
       - ./deps/woocommerce-bookings:/var/www/html/wp-content/plugins/woocommerce-bookings
+      # ── Public root assets (SVGs etc.) ────────────────────────────────────
+      - ./public/FireTV.svg:/var/www/html/FireTV.svg:ro
+      - ./public/FireTV-White-Outline.svg:/var/www/html/FireTV-White-Outline.svg:ro
+      - ./public/ROKU.svg:/var/www/html/ROKU.svg:ro
+      - ./public/ROKU-White-Outline.svg:/var/www/html/ROKU-White-Outline.svg:ro
+      - ./public/AppleTV.svg:/var/www/html/AppleTV.svg:ro
+      - ./public/AppleTV-White-Outline.svg:/var/www/html/AppleTV-White-Outline.svg:ro
+      - ./public/AndroidTV.svg:/var/www/html/AndroidTV.svg:ro
+      - ./public/AndroidTV-White-Outline.svg:/var/www/html/AndroidTV-White-Outline.svg:ro
     restart: unless-stopped
 
   phpmyadmin:

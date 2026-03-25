@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Store Lists / [dokan-stores] Shortcode — Custom Hooks & Filters
  *

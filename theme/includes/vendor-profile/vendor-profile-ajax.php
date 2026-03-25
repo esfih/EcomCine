@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Vendor Profile  AJAX Handlers
  *
