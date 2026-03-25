@@ -1,0 +1,73 @@
+{
+  "_comment": "VS Code tasks template for Ollama no-think proxy lifecycle management.",
+  "_usage": "Merge the tasks in this file into your repo's .vscode/tasks.json.",
+  "_proxy_file": "tools/ollama-nothink-proxy.js",
+  "_log_file": "logs/ollama-nothink-proxy.log",
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "_comment": "Auto-start task — runs on folder open. Skips start if proxy is already on port 11435.",
+      "label": "Start Ollama No-Think Proxy On Folder Open",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$portInUse = Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort 11435 -State Listen -ErrorAction SilentlyContinue; if (-not $portInUse) { $wd = (Resolve-Path '${workspaceFolder}').Path; $script = Join-Path $wd 'tools\\ollama-nothink-proxy.js'; Start-Process -WindowStyle Hidden -FilePath 'node' -ArgumentList @($script) -WorkingDirectory $wd }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "presentation": {
+        "reveal": "silent",
+        "close": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "_comment": "Manual start task — use when the proxy has been killed and needs to be restarted.",
+      "label": "Start Ollama No-Think Proxy",
+      "type": "shell",
+      "command": "node",
+      "args": [
+        "tools/ollama-nothink-proxy.js"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": false,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "_comment": "Log viewer — tails the proxy log in real time. Runs as a background task.",
+      "label": "Show Ollama No-Think Proxy Log",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "if (!(Test-Path 'logs/ollama-nothink-proxy.log')) { New-Item -ItemType File -Path 'logs/ollama-nothink-proxy.log' | Out-Null }; Get-Content 'logs/ollama-nothink-proxy.log' -Wait"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
