@@ -82,7 +82,29 @@ final class Dokan_Category_Attributes {
 		require_once DCA_PLUGIN_DIR . 'includes/class-dashboard-fields.php';
 		require_once DCA_PLUGIN_DIR . 'includes/class-store-filters.php';
 		require_once DCA_PLUGIN_DIR . 'includes/class-sample-data.php';
-		
+
+		// Adapter layer — Phase 1 (additive; existing hook behaviour unchanged)
+		// Contracts (interfaces)
+		require_once DCA_PLUGIN_DIR . 'includes/contracts/interface-attribute-repository.php';
+		require_once DCA_PLUGIN_DIR . 'includes/contracts/interface-category-resolver.php';
+		require_once DCA_PLUGIN_DIR . 'includes/contracts/interface-dashboard-renderer.php';
+		require_once DCA_PLUGIN_DIR . 'includes/contracts/interface-profile-projector.php';
+		require_once DCA_PLUGIN_DIR . 'includes/contracts/interface-filter-provider.php';
+		// Compatibility adapters (wrap existing classes)
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-attribute-repository.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-category-resolver.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-dashboard-renderer.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-profile-projector.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-filter-provider.php';
+		// Default WP adapter scaffolds
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-attribute-repository.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-category-resolver.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-dashboard-renderer.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-profile-projector.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-filter-provider.php';
+		// Registry (loaded last — depends on all adapter classes above)
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/class-adapter-registry.php';
+
 		// Admin classes
 		if ( is_admin() ) {
 			require_once DCA_PLUGIN_DIR . 'includes/class-admin-menu.php';
