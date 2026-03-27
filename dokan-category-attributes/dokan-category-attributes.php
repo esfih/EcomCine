@@ -96,7 +96,8 @@ final class Dokan_Category_Attributes {
 		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-dashboard-renderer.php';
 		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-profile-projector.php';
 		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-filter-provider.php';
-		// Default WP adapter scaffolds
+		// Default WP adapter — Phase 2 (CPT-based full implementations)
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-cpt-storage.php';
 		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-attribute-repository.php';
 		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-category-resolver.php';
 		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-dashboard-renderer.php';
@@ -104,6 +105,8 @@ final class Dokan_Category_Attributes {
 		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-filter-provider.php';
 		// Registry (loaded last — depends on all adapter classes above)
 		require_once DCA_PLUGIN_DIR . 'includes/adapters/class-adapter-registry.php';
+		// Parity check (Phase 2 — development/staging use only)
+		require_once DCA_PLUGIN_DIR . 'includes/parity/class-parity-check.php';
 
 		// Admin classes
 		if ( is_admin() ) {
@@ -119,7 +122,10 @@ final class Dokan_Category_Attributes {
 		// Activation/deactivation hooks
 		register_activation_hook( __FILE__, array( $this, 'activate' ) );
 		register_deactivation_hook( __FILE__, array( $this, 'deactivate' ) );
-		
+
+		// Register Default WP adapter CPTs unconditionally (no Dokan dependency).
+		add_action( 'init', array( 'DCA_WP_CPT_Storage', 'register_post_types' ), 5 );
+
 		// Init plugin
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
 		
