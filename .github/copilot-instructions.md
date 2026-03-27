@@ -27,6 +27,8 @@ Custom artifacts: `theme/` (astra-child), `tm-media-player/`, `tm-account-panel/
 | Shared workflow and AI-context rules | `foundation/core/` |
 | Technical architecture | `technical-documentation.md` |
 | Migration / new-computer setup | `New-Migrate-WP-Local-Setup.md` |
+| Canonical IDE AI terminal commands | `specs/IDE-AI-Command-Catalog.md` |
+| Root-cause remediation governance | `specs/AI-Root-Cause-Remediation-Policy.md` |
 
 ---
 
@@ -46,7 +48,7 @@ Custom artifacts: `theme/` (astra-child), `tm-media-player/`, `tm-account-panel/
 
 - `deps/` — premium plugin folders (dokan-pro, woocommerce-bookings, etc.) — must be copied manually
 - `.env` — credentials; copy from `.env.example`
-- `db/*.sql` — database dumps; re-export from live server via SSH
+- `db/*.sql` — database dumps; re-export from live server via SSH (except approved scrubbed fixtures such as `db/seed.sql` and `db/fluentcart-control-plane-seed.sql`)
 - `castingagency-uploads.tar.gz` — WordPress media library archive
 
 See `New-Migrate-WP-Local-Setup.md` → "EcomCine — Re-Setup on a New Computer" for full transfer instructions.
@@ -69,3 +71,23 @@ See `New-Migrate-WP-Local-Setup.md` → "EcomCine — Re-Setup on a New Computer
 - `MSYS_NO_PATHCONV=1` is required before `docker exec` commands with Linux absolute paths
 - For Docker container patching: write a local file → `docker cp` → `docker exec`. Never inline heredocs into `docker exec`
 - `isBackground: true` only for genuine long-running processes (servers, file watchers) — never for inspection commands
+- Enforce repository hooks via `./scripts/install-git-hooks.sh` when setting up or migrating a workspace
+
+---
+
+## IDE AI Command Contract Policy (Mandatory)
+
+- Use only commands defined in `specs/IDE-AI-Command-Catalog.md` for terminal operations.
+- Prefer `./scripts/run-catalog-command.sh <command-id> [args...]` when executing catalog entries.
+- Do not improvise arbitrary shell commands for task execution.
+- If no catalog command exists for the task: stop, report the missing command ID, and ask the user to approve creating a new catalog entry before proceeding.
+- Exit code is canonical pass/fail signal; warning text alone must not be treated as failure.
+
+---
+
+## Root-Cause Decision Gate (Mandatory)
+
+- Before implementing a fix, classify remediation as `source-fix` or `mitigation`.
+- Prefer `source-fix`; do not ship cosmetic/hiding changes as final remediation.
+- If `mitigation` is unavoidable, require explicit fields: `Root-Cause`, `Mitigation-Reason`, `Removal-Trigger`, `Follow-Up-Issue`.
+- Do not mark work complete on transport success alone; require semantic validation against the expected contract/state outcome.

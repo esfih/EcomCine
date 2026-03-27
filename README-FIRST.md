@@ -54,6 +54,9 @@ marketplaces. Phase 1 is live at `castingagency.co`.
 # 1. Bootstrap shared foundation layers (Docker runtime, WP-CLI, scripts)
 ./scripts/bootstrap-foundation.sh
 
+# 1.1 Enable repository policy hooks (commit-msg, pre-push)
+./scripts/install-git-hooks.sh
+
 # 2. Start WordPress
 docker compose up -d
 
@@ -99,6 +102,33 @@ docker compose up -d
 # Health check
 ./scripts/check-local-wp.sh
 ```
+
+### Canonical IDE AI Commands
+
+For deterministic IDE AI behavior, terminal operations must follow the command contracts in `specs/IDE-AI-Command-Catalog.md`.
+
+Preferred execution path:
+
+```bash
+./scripts/run-catalog-command.sh <command-id> [args...]
+```
+
+If a required task has no catalog entry, stop and create/approve a new catalog command contract first.
+
+### Root-Cause Remediation Policy
+
+All fixes must follow the mandatory decision gate in `specs/AI-Root-Cause-Remediation-Policy.md`.
+
+Enforcement intent:
+
+- prefer source-fix over mitigation
+- require explicit mitigation metadata when source-fix is blocked
+- require semantic validation, not only transport success
+
+Policy hooks:
+
+- `commit-msg` validates required remediation trailers
+- `pre-push` validates remediation trailers for pushed commits
 
 ---
 

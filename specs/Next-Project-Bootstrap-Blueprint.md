@@ -57,6 +57,8 @@ Every new project should start from a baseline repository that already includes:
 - README-FIRST with runtime rules and setup steps.
 - Migration/setup guide with explicit handoff checklist.
 - Execution-plan phase log for major milestones and validations.
+- Canonical AI command contract file: `specs/IDE-AI-Command-Catalog.md`.
+- Canonical remediation governance file: `specs/AI-Root-Cause-Remediation-Policy.md`.
 
 ## Bootstrap Inputs
 
@@ -87,6 +89,7 @@ Execute in order:
 
 3. Start runtime and baseline checks
 - Run bootstrap foundation script.
+- Install repository hooks.
 - Start docker compose stack.
 - Run local infra check.
 
@@ -146,6 +149,11 @@ Gate E: Distribution readiness
 - ZIP artifacts contain exactly one top-level plugin folder.
 - Bootstrap file paths are correct.
 - Release assets are attached to GitHub release.
+
+Gate F: Remediation governance
+- Remediation type is declared (`source-fix` or `mitigation`) for each fix.
+- Mitigation changes include required metadata fields.
+- Commit and push hooks enforce remediation policy trailers.
 
 ## Data Pack Strategy
 

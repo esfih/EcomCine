@@ -60,6 +60,9 @@ Go to [esfih/wp-plugin-dev-template](https://github.com/esfih/wp-plugin-dev-temp
 git clone https://github.com/<your-org>/my-marketplace.git
 cd my-marketplace
 ./scripts/bootstrap-foundation.sh
+
+# Enable repository-local policy hooks
+./scripts/install-git-hooks.sh
 ```
 
 ---
