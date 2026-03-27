@@ -27,18 +27,13 @@ if ( $vendor_id ) {
 // (rendered via wp_body_open hook) instead. This prevents Astra's transparent-header JS
 // from finding a #masthead to measure, so it never injects an inline padding-top on #content.
 add_filter( 'astra_header_display', '__return_false' );
-add_filter( 'astra_footer_display', '__return_false' );
 
-// Belt-and-suspenders: inject the hide rule at priority 1 so it is in the DOM before
-// any JS has a chance to measure #masthead height (same technique as page-platform.php).
-add_action( 'wp_head', function() {
-	echo '<style id="showcase-header-hide">'
-		. '#masthead,#ast-desktop-header,#ast-mobile-header{'
-		. 'display:none!important;height:0!important;}'
-		. '#content.site-content,#page{'
-		. 'padding-top:0!important;margin-top:0!important;}'
-		. '</style>' . "\n";
-}, 1 );
+add_filter( 'body_class', function( $classes ) {
+	if ( ! in_array( 'tm-showcase-page', $classes, true ) ) {
+		$classes[] = 'tm-showcase-page';
+	}
+	return array_diff( $classes, [ 'ast-theme-transparent-header' ] );
+} );
 
 // Output the vendor ID list for the JS swap loop.
 if ( ! empty( $vendor_ids ) ) {

@@ -4732,6 +4732,20 @@ body.tm-mobile-portrait .hero-toggle-row {
 	-webkit-backdrop-filter: blur(12px);
 	overflow: hidden;
 }
+
+.tm-strip-details-inline {
+	margin-top: 10px;
+	width: 100%;
+}
+
+.tm-strip-details-inline .tm-strip-details-popup__inner {
+	box-shadow: none;
+}
+
+.tm-strip-details-inline .tm-strip-details-popup__body {
+	max-height: none;
+	overflow: visible;
+}
 .tm-strip-details-popup__header {
 	display: flex;
 	align-items: center;
@@ -5041,20 +5055,8 @@ pointer-events: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SHOWCASE PAGE — hide Astra's native #masthead
-   The padding-top gap is prevented in PHP (functions.php) by removing
-   ast-theme-transparent-header from body classes on the showcase page,
-   which stops Astra's JS from ever injecting an inline padding-top.
-   This rule just hides the now-redundant native header element.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-body.tm-showcase-page #masthead {
-	display: none !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   CINEMATIC HEADER — Home icon menu item
-   ═══════════════════════════════════════════════════════════════════════════ */
+	CINEMATIC HEADER — Home icon menu item
+	═══════════════════════════════════════════════════════════════════════════ */
 
 .tm-header-home-item {
 	display: flex;
@@ -5083,10 +5085,304 @@ body.tm-showcase-page #masthead {
 	display: block;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   CINEMATIC HEADER — Corporate menu item icon
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Allow the nav to grow wide enough to show all items without clipping */
+body.dokan-store .tm-header-nav {
+	max-width: none !important;
+	overflow: visible !important;
+	min-width: 0 !important;
+	width: 100% !important;
+	justify-self: stretch !important;
+}
+
+/* Keep left/social block single-line and allocate reliable space to center/right areas. */
+body.dokan-store .tm-cinematic-header__inner {
+	grid-template-columns: auto minmax(0, 1fr) auto !important;
+	column-gap: 12px !important;
+}
+
+body.dokan-store .tm-cinematic-header .tm-header-nav {
+	max-width: min(980px, 76vw) !important;
+	margin: 0 auto !important;
+	overflow: visible !important;
+}
+
+body.dokan-store .tm-header-left {
+	flex-wrap: nowrap !important;
+	min-width: 0 !important;
+}
+
+body.dokan-store .tm-header-platforms {
+	flex-wrap: nowrap !important;
+	white-space: nowrap !important;
+	padding: 0 12px !important;
+	gap: 8px !important;
+}
+
+body.dokan-store .tm-header-platforms__label {
+	display: inline-flex !important;
+	align-items: center !important;
+	white-space: nowrap !important;
+	line-height: 1 !important;
+	letter-spacing: 0.08em !important;
+}
+
+body.dokan-store .tm-header-platforms__icons {
+	flex-wrap: nowrap !important;
+}
+
+body.dokan-store .tm-header-menu {
+	overflow: visible !important;
+	gap: 8px !important;
+}
+
+body.dokan-store .tm-header-menu > li {
+	flex: 0 0 auto !important;
+}
+
+#menu-item-1091 {
+	margin-left: 20px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CINEMATIC HEADER — Sign in / Sign up account menu item
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.tm-header-account-item {
+	margin: 0 0 0 10px !important;
+	padding: 0 !important;
+	list-style: none !important;
+	flex-shrink: 0 !important;
+}
+
+.tm-header-account-pill {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 5px !important;
+	padding: 7px 10px !important;
+	border-radius: 14px !important;
+	border: 1px solid rgba(212, 175, 55, 0.35) !important;
+	background: rgba(0, 0, 0, 0.55) !important;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+	transition: border-color 180ms ease, box-shadow 180ms ease !important;
+	white-space: nowrap !important;
+}
+
+.tm-header-account-pill:hover {
+	border-color: rgba(212, 175, 55, 0.7) !important;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+.tm-header-account-icon {
+	color: #f2d889 !important;
+	font-size: 14px !important;
+	opacity: 0.85 !important;
+}
+
+.tm-header-account-link {
+	color: #f2d889 !important;
+	font-size: 10px !important;
+	letter-spacing: 0.11em !important;
+	text-transform: uppercase !important;
+	font-weight: 700 !important;
+	text-decoration: none !important;
+	opacity: 0.85 !important;
+	transition: opacity 0.2s, color 0.2s !important;
+}
+
+.tm-header-account-link:hover,
+.tm-header-account-link:focus-visible {
+	opacity: 1 !important;
+	color: #ffffff !important;
+}
+
+.tm-header-account-item--logged-in .tm-header-account-link {
+	display: inline-flex !important;
+	align-items: center !important;
+	text-transform: none !important;
+	letter-spacing: 0.03em !important;
+	font-size: 11px !important;
+	font-weight: 600 !important;
+	max-width: 220px !important;
+}
+
+.tm-header-account-pill--logged-in {
+	gap: 8px !important;
+	padding: 6px 10px !important;
+}
+
+.tm-header-account-avatar {
+	display: inline-flex !important;
+	width: 22px !important;
+	height: 22px !important;
+	border-radius: 50% !important;
+	overflow: hidden !important;
+	border: 1px solid rgba(212, 175, 55, 0.65) !important;
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55) inset !important;
+	flex: 0 0 22px !important;
+}
+
+.tm-header-account-avatar img {
+	width: 100% !important;
+	height: 100% !important;
+	object-fit: cover !important;
+	display: block !important;
+}
+
+.tm-header-account-name {
+	display: inline-block !important;
+	max-width: 165px !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+	white-space: nowrap !important;
+	color: #f2d889 !important;
+}
+
+.tm-header-account-sep {
+	color: rgba(242, 216, 137, 0.45) !important;
+	font-size: 11px !important;
+	font-weight: 400 !important;
+}
+
+#menu-item-1091 > a {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	background: #eab150 !important;
+	border-color: #eab150 !important;
+	color: #000000 !important;
+}
+
+.tm-menu-icon {
+	font-size: 16px;
+	opacity: 0.85;
+	transition: opacity 0.2s, color 0.2s;
+}
+
+#menu-item-1091 > a:hover,
+#menu-item-1091 > a:focus-visible {
+	background: #f2d889 !important;
+	border-color: #f2d889 !important;
+	color: #000000 !important;
+}
+
+#menu-item-1091 > a:hover .tm-menu-icon,
+#menu-item-1091 > a:focus .tm-menu-icon {
+	opacity: 1;
+	color: #000000;
+}
+
 /* Compensate for any residual spacing above the showcase content area.
    Pulls the takeover div up so content starts flush with the custom header. */
 body.tm-showcase-page .tm-showcase-takeover {
 	margin-top: -30px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEMPLATE LAYOUT NORMALIZATION — Showcase + Platform
+   Keeps template files free of inline style blocks by centralizing the
+   page-scoped layout/visibility rules used by these custom templates.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Showcase pages: hide native Astra header wrappers and neutralize top offsets. */
+body.tm-showcase-page #masthead,
+body.tm-showcase-page #ast-desktop-header,
+body.tm-showcase-page #ast-mobile-header {
+	display: none !important;
+	height: 0 !important;
+}
+
+body.tm-showcase-page #content.site-content,
+body.tm-showcase-page #page {
+	padding-top: 0 !important;
+	margin-top: 0 !important;
+}
+
+/* Platform template: same header suppression and viewport lock behavior. */
+body.tm-platform-page #masthead,
+body.tm-platform-page #ast-desktop-header,
+body.tm-platform-page #ast-mobile-header {
+	display: none !important;
+}
+
+html body.tm-platform-page {
+	overflow: hidden !important;
+	height: 100% !important;
+}
+
+body.tm-platform-page #tm-platform-content {
+	width: 100%;
+	height: 100vh;
+	box-sizing: border-box;
+	background: #0a0a0a;
+	padding-top: var(--tm-header-height, 70px);
+	padding-bottom: 80px;
+	overflow-y: auto;
+}
+
+body.tm-platform-page #page {
+	min-height: 0 !important;
+}
+
+body.tm-platform-page #content.site-content {
+	flex-grow: 0 !important;
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+/* Dokan settings: centralized banner dimension rules (replaces inline <style>). */
+.tm-dokan-store-form .tm-dokan-banner-dimensions {
+	max-width: var(--tm-dokan-banner-width, 625px);
+	max-height: var(--tm-dokan-banner-height, 300px);
+}
+
+.tm-dokan-store-form .tm-dokan-banner-dimensions .dokan-remove-banner-image {
+	height: var(--tm-dokan-banner-height, 300px);
+}
+
+.tm-dokan-store-form .tm-banner-video-preview {
+	max-width: 100%;
+	height: auto;
+}
+
+.tm-dokan-store-form .tm-hidden-by-default {
+	display: none;
+}
+
+.tm-dokan-store-form .tm-physical-attributes-title {
+	margin-top: 30px;
+	margin-bottom: 20px;
+	font-size: 18px;
+	border-bottom: 2px solid #f05025;
+	padding-bottom: 10px;
+}
+
+.tm-dokan-store-form .tm-store-settings-submit-wrap {
+	margin-left: 24%;
+}
+
+/* Full-showcase takeover layout (migrated from template inline styles). */
+.tm-showcase-takeover {
+	width: 100vw;
+	margin-left: calc(50% - 50vw);
+	margin-right: calc(50% - 50vw);
+}
+
+.tm-showcase-takeover .dokan-store-wrap {
+	width: 100%;
+	margin: 0;
+}
+
+.tm-showcase-takeover #dokan-primary,
+.tm-showcase-takeover .dokan-single-store {
+	width: 100%;
+}
+
+.tm-showcase-takeover .profile-frame {
+	min-height: 100vh;
 }
 
 /* Also zero out the Astra container's top/bottom padding on the showcase page */

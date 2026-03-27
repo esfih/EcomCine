@@ -18,8 +18,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Enforce canonical WSL2 runtime baseline for all wp.sh operations.
+"$REPO_ROOT/scripts/check-local-dev-infra.sh" >/dev/null
+
 # ── Defaults (override via .env) ──────────────────────────────────────────────
-WP_SERVICE="wordpress"
+# Resolve the actual running container name for the wordpress service.
+# docker compose uses "<project>-<service>-<n>"; fall back to bare service name.
+WP_SERVICE="$(docker compose ps -q wordpress 2>/dev/null | xargs -r docker inspect --format '{{.Name}}' 2>/dev/null | sed 's|^/||' || true)"
+WP_SERVICE="${WP_SERVICE:-wordpress}"
 DB_SERVICE="db"
 DB_NAME="${DB_NAME:-wordpress}"
 DB_USER="${DB_USER:-wp_user}"

@@ -32,11 +32,12 @@ Custom artifacts: `theme/` (astra-child), `tm-media-player/`, `tm-account-panel/
 
 ## Runtime baseline (always on)
 
-- **Shell:** Git Bash for all repository work; PowerShell only for Windows-specific tasks
+- **Shell:** Ubuntu WSL2 for all repository work; PowerShell only for Windows-specific tasks
+- **Workspace path:** Active repos must live on WSL filesystem (`/home/<user>/dev/...`), never `C:\...` or `/mnt/c/...`
 - **Docker:** containers `ecomcine_dev-wordpress-1` (port 8180), `ecomcine_dev-db-1`, `ecomcine_dev-phpmyadmin-1` (port 8181)
 - **WP-CLI:** always via `./scripts/wp.sh` — never call `wp` directly
 - **MSYS_NO_PATHCONV=1** — set before any `docker exec` command using Linux absolute paths
-- **One shared Git Bash terminal** for ordinary work; do not spawn extra terminals for short commands
+- **One shared WSL terminal** for ordinary work; do not spawn extra terminals for short commands
 - **No repo-local .venv** unless the repo explicitly requires it
 
 ---

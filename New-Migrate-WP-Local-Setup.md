@@ -319,6 +319,13 @@ Install these on the new machine before anything else:
 - **Docker Desktop** (running, WSL2 backend on Windows)
 - **GitHub CLI** (`gh`) — authenticated to your GitHub account
 
+### Mandatory Workspace Baseline (WSL2-only)
+
+- Use Ubuntu WSL2 as the primary development shell.
+- Keep project folders under `/home/<user>/dev/` (Linux ext4), not `C:\dev` and not `/mnt/c/dev`.
+- Run Docker/Compose commands from the WSL path of the repo.
+- Validate with `./scripts/check-local-dev-infra.sh` before importing DB or running feature work.
+
 ---
 
 ## What to Transfer Manually (not in Git)
@@ -328,9 +335,9 @@ share, or cloud storage) **before** running the setup steps:
 
 | Item | Where to place it | Why it's not in Git |
 |---|---|---|
-| `deps/` folder | `C:\dev\EcomCine\deps\` | Premium plugins — cannot be redistributed |
-| `castingagency-uploads.tar.gz` | `C:\dev\EcomCine\castingagency-uploads.tar.gz` | 198 MB binary, WP media library |
-| `.env` file | `C:\dev\EcomCine\.env` | Contains credentials |
+| `deps/` folder | `/home/<you>/dev/EcomCine/deps/` | Premium plugins — cannot be redistributed |
+| `castingagency-uploads.tar.gz` | `/home/<you>/dev/EcomCine/castingagency-uploads.tar.gz` | 198 MB binary, WP media library |
+| `.env` file | `/home/<you>/dev/EcomCine/.env` | Contains credentials |
 | `repeated-prompt.instructions.md` | `C:\Users\<you>\.copilot\instructions\` | User-level VS Code Copilot file — outside any repo |
 | `~/.ssh/castingagency_debug` | `C:\Users\<you>\.ssh\` | SSH private key for live server |
 
@@ -343,7 +350,8 @@ deps/
 ├── dokan-lite/
 ├── dokan-pro/
 ├── woocommerce/
-└── woocommerce-bookings/
+├── woocommerce-bookings/
+└── greenshift/
 ```
 Each is an extracted plugin folder (not a ZIP), matching the volume mounts in
 `docker-compose.yml`.
@@ -359,6 +367,8 @@ Each is an extracted plugin folder (not a ZIP), matching the volume mounts in
 ### 1. Clone the repo
 
 ```bash
+mkdir -p ~/dev
+cd ~/dev
 git clone https://github.com/esfih/EcomCine
 cd EcomCine
 ```
@@ -367,10 +377,16 @@ cd EcomCine
 
 Confirm these exist before continuing:
 ```
-C:\dev\EcomCine\deps\dokan-pro\        ← must be present
-C:\dev\EcomCine\deps\woocommerce-bookings\  ← must be present
-C:\dev\EcomCine\castingagency-uploads.tar.gz
-C:\dev\EcomCine\.env
+/home/<you>/dev/EcomCine/deps/dokan-pro/        ← must be present
+/home/<you>/dev/EcomCine/deps/woocommerce-bookings/  ← must be present
+/home/<you>/dev/EcomCine/castingagency-uploads.tar.gz
+/home/<you>/dev/EcomCine/.env
+```
+
+Run infrastructure validation before continuing:
+
+```bash
+./scripts/check-local-dev-infra.sh
 ```
 
 ### 3. Start the containers
@@ -398,7 +414,7 @@ scp -i ~/.ssh/castingagency_debug -P 5022 \
 
 **Option B — copy the SQL file from your old machine:**
 
-Place it at `C:\dev\EcomCine\db\castingagency-live.sql`.
+Place it at `/home/<you>/dev/EcomCine/db/castingagency-live.sql`.
 
 **Then import and fix URLs:**
 
@@ -408,6 +424,17 @@ Place it at `C:\dev\EcomCine\db\castingagency-live.sql`.
 ./scripts/wp.sh wp user update 1 --user_pass=admin
 ./scripts/wp.sh wp rewrite structure '/%postname%/' --hard
 ```
+
+### 4.1 Decommission Windows Working Copy (Required)
+
+After confirming the WSL stack is healthy, remove the Windows repo copy to prevent
+accidental fallback to Windows-mounted binds:
+
+```powershell
+Remove-Item -Recurse -Force C:\dev\EcomCine
+```
+
+Do not run active project runtime from `C:\dev\...` after this point.
 
 ### 5. Extract the uploads archive
 
@@ -430,6 +457,7 @@ WooCommerce → Dokan Lite → Dokan Pro → WooCommerce Bookings → EcomCine p
 ### 7. Verify
 
 ```bash
+./scripts/check-local-dev-infra.sh
 ./scripts/check-local-wp.sh
 ```
 
@@ -500,7 +528,8 @@ ssh -i ~/.ssh/castingagency_debug -p 5022 efttsqrtff@209.16.158.249 "echo connec
 | Vendor cards show no images | Uploads not extracted | Repeat step 5 |
 | `deps/` plugin not activating | Folder present but wrong structure | Plugin folder must contain the main `.php` file directly (not nested in a ZIP subfolder) |
 | Port 8180 already in use | Port conflict with another project | Change `WP_PORT` in `.env` and restart containers |
+| Infra check fails with Windows path warning | Repo started from Windows filesystem | Move repo to `/home/<you>/dev`, restart from WSL terminal, rerun checks |
 | Control-plane reuse guide | `foundation/wp/docs/CONTROL-PLANE-REUSE-GUIDE.md` |
 | Implementation rules | `foundation/core/docs/IMPLEMENTATION-RULES.md` |
 | Security protocol | `foundation/core/docs/SECURITY-VALIDATION-PROTOCOL.md` |
-| Terminal rules (Git Bash) | `foundation/core/docs/TERMINAL-RULES.md` |
+| Terminal rules (WSL shell) | `foundation/core/docs/TERMINAL-RULES.md` |

@@ -1189,7 +1189,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
             // Shown to the vendor owner (or admin editing) for ALL vendors — published
             // or not — so every vendor sees their current level and what's needed next.
             // Calls tm_vendor_completeness() from includes/vendor-profile/vendor-completeness.php.
-            if ( ( $is_owner || $is_admin_editing ) && ! $is_onboarding_context && function_exists( 'tm_vendor_completeness' ) ) :
+            if ( ( $is_owner || $is_admin_editing ) && function_exists( 'tm_vendor_completeness' ) ) :
                 // Reuse the pre-computed completeness data from the top of this template.
                 $_c = $_tm_completeness;
                 if ( $_c ) :
@@ -1244,6 +1244,10 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                             return $item;
                         }, $_l2['missing'] );
                     }
+                    $_missing_total = 0;
+                    foreach ( $_missing_by_section as $_section_items ) {
+                        $_missing_total += is_array( $_section_items ) ? count( $_section_items ) : 0;
+                    }
                     $_missing_json = wp_json_encode( $_missing_by_section );
                     ?>
             <div class="tm-publish-strip tm-publish-strip--<?php echo esc_attr( $_state ); ?>"
@@ -1264,9 +1268,6 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 <strong><?php echo esc_html( $_miss ); ?> field<?php echo $_miss !== 1 ? 's' : ''; ?></strong>
                                 still needed before you can publish.
                             </span>
-                            <?php if ( $_miss > 0 ) : ?>
-                            <button type="button" class="tm-strip-details-btn" aria-expanded="false" aria-controls="tm-strip-details-popup">View details</button>
-                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
@@ -1335,6 +1336,42 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                     </div>
                     <?php endif; ?>
 
+                    <?php if ( $_missing_total > 0 ) : ?>
+                    <?php
+                    $_section_icons = [
+                        'Identity'            => '👤',
+                        'Contact'             => '📞',
+                        'Demographics'        => '📋',
+                        'Physical'            => '📏',
+                        'Equipment'           => '🎥',
+                        'Level 2 · Mediatic' => '🎬',
+                        'Other'               => '📌',
+                    ];
+                    ?>
+                    <div class="tm-strip-details-inline">
+                        <div class="tm-strip-details-popup__inner">
+                            <div class="tm-strip-details-popup__header">
+                                <strong class="tm-strip-details-popup__title">Missing Profile Fields</strong>
+                            </div>
+                            <div class="tm-strip-details-popup__body">
+                                <?php foreach ( $_missing_by_section as $_section => $_items ) : ?>
+                                    <?php if ( empty( $_items ) || ! is_array( $_items ) ) { continue; } ?>
+                                    <div class="tm-sdp-section">
+                                        <div class="tm-sdp-section__name">
+                                            <?php echo esc_html( ( $_section_icons[ $_section ] ?? '📌' ) . ' ' . $_section ); ?>
+                                        </div>
+                                        <ul class="tm-sdp-section__items">
+                                            <?php foreach ( $_items as $_item ) : ?>
+                                                <li><?php echo esc_html( $_item ); ?></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                     <?php
                     // ── Visibility (Publish / Unpublish) Action Button ──────────────────────
                     // State derives directly from $_state:
@@ -1390,17 +1427,6 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                 </div><!-- .tm-publish-strip__inner -->
             </div><!-- .tm-publish-strip -->
 
-            <div id="tm-strip-details-popup" class="tm-strip-details-popup" hidden aria-hidden="true" role="dialog" aria-label="Missing profile fields">
-                <div class="tm-strip-details-popup__arrow"></div>
-                <div class="tm-strip-details-popup__inner">
-                    <div class="tm-strip-details-popup__header">
-                        <strong class="tm-strip-details-popup__title">Missing Profile Fields</strong>
-                        <button type="button" class="tm-strip-details-close" aria-label="Close">✕</button>
-                    </div>
-                    <div class="tm-strip-details-popup__body"></div>
-                </div>
-            </div>
-
             <script>
             (function($){
                 var _ajaxUrl = (window.vendorStoreData && vendorStoreData.ajax_url) || '/wp-admin/admin-ajax.php';
@@ -1452,80 +1478,6 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                     var $strip     = $(this).closest('.tm-publish-strip');
                     var actionType = $(this).data('action');
                     tmFireVisibility( $strip.data('vendor-id'), $strip.data('nonce'), actionType, $(this) );
-                });
-
-                // ── "View details" missing-fields popup ────────────────────────────────
-                var _sectionIcons = {
-                    'Identity'            : '\uD83D\uDC64',
-                    'Contact'             : '\uD83D\uDCDE',
-                    'Demographics'        : '\uD83D\uDCCB',
-                    'Physical'            : '\uD83D\uDCCF',
-                    'Equipment'           : '\uD83C\uDFA5',
-                    'Level 2 \u00B7 Mediatic' : '\uD83C\uDFAC',
-                    'Other'               : '\uD83D\uDCCC',
-                };
-
-                function tmOpenDetailsPopup( $strip ) {
-                    var raw = $strip.attr('data-missing');
-                    if ( ! raw ) return;
-                    var groups;
-                    try { groups = JSON.parse(raw); } catch(e) { return; }
-                    var $body = $('#tm-strip-details-popup .tm-strip-details-popup__body').empty();
-                    var hasContent = false;
-                    $.each( groups, function( section, items ) {
-                        if ( ! items || ! items.length ) return;
-                        hasContent = true;
-                        var icon = _sectionIcons[section] || '\uD83D\uDCCC';
-                        var $sec = $('<div class="tm-sdp-section">');
-                        $sec.append( $('<div class="tm-sdp-section__name">').text( icon + '\u2002' + section ) );
-                        var $ul = $('<ul class="tm-sdp-section__items">');
-                        $.each( items, function(i, item) {
-                            $ul.append( $('<li>').text(item) );
-                        });
-                        $sec.append($ul);
-                        $body.append($sec);
-                    });
-                    if ( ! hasContent ) {
-                        $body.append('<p class="tm-sdp-empty">All fields are complete!</p>');
-                    }
-                    var $popup = $('#tm-strip-details-popup');
-                    $popup.prop('hidden', false).attr('aria-hidden','false');
-                    // Position fixed, just below the strip
-                    var rect = $strip[0].getBoundingClientRect();
-                    $popup.css({
-                        top   : ( rect.bottom + 6 ) + 'px',
-                        left  : rect.left + 'px',
-                        width : rect.width + 'px',
-                    });
-                }
-
-                function tmCloseDetailsPopup() {
-                    $('#tm-strip-details-popup').prop('hidden', true).attr('aria-hidden','true');
-                    $('.tm-strip-details-btn').attr('aria-expanded','false');
-                }
-
-                $(document).on('click', '.tm-strip-details-btn', function(e) {
-                    e.stopPropagation();
-                    var $popup = $('#tm-strip-details-popup');
-                    if ( ! $popup.prop('hidden') ) {
-                        tmCloseDetailsPopup();
-                        return;
-                    }
-                    tmOpenDetailsPopup( $(this).closest('.tm-publish-strip') );
-                    $(this).attr('aria-expanded','true');
-                });
-
-                $(document).on('click', '.tm-strip-details-close', function(e) {
-                    e.stopPropagation();
-                    tmCloseDetailsPopup();
-                });
-
-                $(document).on('click', function(e) {
-                    if ( ! $(e.target).closest('#tm-strip-details-popup, .tm-strip-details-btn').length ) {
-                        if ( ! $('#tm-strip-details-popup').prop('hidden') ) {
-                            tmCloseDetailsPopup();
-                        }
-                    }
                 });
 
             })(jQuery);

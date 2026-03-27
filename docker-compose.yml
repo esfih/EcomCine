@@ -33,9 +33,13 @@ services:
     volumes:
       # ── PHP config overrides ──────────────────────────────────────────────
       - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+      # ── Media uploads (persist on WSL project path) ──────────────────────
+      - ./wp-content/uploads:/var/www/html/wp-content/uploads
       # ── Custom theme ──────────────────────────────────────────────────────
       - ./theme:/var/www/html/wp-content/themes/astra-child
       # ── Custom plugins (committed to this repo) ───────────────────────────
+      - ./ecomcine:/var/www/html/wp-content/plugins/ecomcine
+      - ./ecomcine-control-plane:/var/www/html/wp-content/plugins/ecomcine-control-plane
       - ./tm-media-player:/var/www/html/wp-content/plugins/tm-media-player
       - ./tm-account-panel:/var/www/html/wp-content/plugins/tm-account-panel
       - ./tm-vendor-booking-modal:/var/www/html/wp-content/plugins/tm-vendor-booking-modal
@@ -45,6 +49,7 @@ services:
       - ./deps/dokan-pro:/var/www/html/wp-content/plugins/dokan-pro
       - ./deps/woocommerce:/var/www/html/wp-content/plugins/woocommerce
       - ./deps/woocommerce-bookings:/var/www/html/wp-content/plugins/woocommerce-bookings
+      - ./deps/greenshift:/var/www/html/wp-content/plugins/greenshift
       # ── Public root assets (SVGs etc.) ────────────────────────────────────
       - ./public/FireTV.svg:/var/www/html/FireTV.svg:ro
       - ./public/FireTV-White-Outline.svg:/var/www/html/FireTV-White-Outline.svg:ro

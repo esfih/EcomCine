@@ -557,8 +557,10 @@ jQuery(document).ready(function($) {
 		// Get current location data
 		var currentAddress = $wrapper.find('.location-search-input').val() || '';
 		var $mapboxPanel = $wrapper.find('.inline-mapbox-panel').first();
-		var lat = $mapboxPanel.data('lat') || '';
-		var lng = $mapboxPanel.data('lng') || '';
+		var lat = $mapboxPanel.length ? ($mapboxPanel.data('lat') || '') : '';
+		var lng = $mapboxPanel.length ? ($mapboxPanel.data('lng') || '') : '';
+
+		$body.empty();
 		
 		// Create location search input
 		var $searchInput = $('<input type="text" id="vendor-location-search-modal" name="geo_location" class="edit-field-input location-search-input" placeholder="Start typing location..." />');
@@ -576,6 +578,10 @@ jQuery(document).ready(function($) {
 		$body.append($searchInput);
 		$body.append($hiddenInput);
 		$body.append($mapboxPanelClone);
+
+		if (!$body.find('.inline-mapbox-panel .inline-mapbox-map').length) {
+			$body.append('<div class="inline-mapbox-panel"><div class="inline-mapbox-search"></div><div class="inline-mapbox-map"></div></div>');
+		}
 		
 		// Initialize Mapbox for the modal
 		setTimeout(function() {
@@ -2333,9 +2339,12 @@ jQuery(document).ready(function($) {
 		injectMapboxCss('https://api.mapbox.com/mapbox-gl-js/v1.4.1/mapbox-gl.css', 'gl');
 		injectMapboxCss('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.css', 'geocoder');
 
-		pending += 2;
-		injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.min.js', done);
-		injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/v1.4.1/mapbox-gl.js', done);
+		pending += 1;
+		injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/v1.4.1/mapbox-gl.js', function() {
+			pending += 1;
+			injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.min.js', done);
+			done();
+		});
 	}
 
 	function initInlineLocationMap($wrapper) {
@@ -2343,13 +2352,21 @@ jQuery(document).ready(function($) {
 		var $panel = $wrapper.find('.inline-mapbox-panel').first();
 		if (!$panel.length) return;
 		if ($panel.data('mapbox-initialized')) return;
-		if (!vendorStoreUiData.mapbox_token) return;
+
+		var mapboxToken = '';
+		if (window.vendorStoreUiData && window.vendorStoreUiData.mapbox_token) {
+			mapboxToken = window.vendorStoreUiData.mapbox_token;
+		}
+		if (!mapboxToken && window.vendorStoreData && window.vendorStoreData.mapbox_token) {
+			mapboxToken = window.vendorStoreData.mapbox_token;
+		}
+		if (!mapboxToken) return;
 
 		ensureMapboxAssets(function() {
 			if ($panel.data('mapbox-initialized')) return;
 			if (typeof mapboxgl === 'undefined' || typeof MapboxGeocoder === 'undefined') return;
 
-			mapboxgl.accessToken = vendorStoreUiData.mapbox_token;
+			mapboxgl.accessToken = mapboxToken;
 
 			var $mapEl = $panel.find('.inline-mapbox-map').first();
 			var $searchEl = $panel.find('.inline-mapbox-search').first();
@@ -2414,7 +2431,7 @@ jQuery(document).ready(function($) {
 			}
 
 			var geocoder = new MapboxGeocoder({
-				accessToken: vendorStoreUiData.mapbox_token,
+				accessToken: mapboxToken,
 				types: 'country,region,place,postcode,locality,neighborhood',
 				placeholder: 'Start typing location...',
 				marker: false,
@@ -2490,6 +2507,28 @@ jQuery(document).ready(function($) {
 	// Initialize non-player store page controls on DOM ready
 	$(function() {
 		initStorePageControls();
+	});
+
+	// ══════════════════════════════════════════════════════════════════
+	// HEADER MENU — Sign in / Sign up → open account modal
+	// ══════════════════════════════════════════════════════════════════
+
+	$(document).on('click', '.tm-open-signin, .tm-open-signup', function (e) {
+		e.preventDefault();
+		var isSignup = $(this).hasClass('tm-open-signup');
+		// Trigger the existing side account-tab to open the modal.
+		$('.tm-account-tab:not(.tm-account-tab--admin)').first().trigger('click');
+		if (isSignup) {
+			// After modal opens, switch to the Register tab.
+			setTimeout(function () {
+				$('#tm-account-modal [data-tab="register"]').trigger('click');
+			}, 80);
+		}
+	});
+
+	$(document).on('click', '.tm-open-account-seller', function (e) {
+		e.preventDefault();
+		$('.tm-account-tab:not(.tm-account-tab--admin)').first().trigger('click');
 	});
 
 });

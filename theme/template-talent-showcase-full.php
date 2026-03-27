@@ -9,23 +9,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 add_filter( 'astra_header_display', '__return_false' );
-add_filter( 'astra_footer_display', '__return_false' );
-
-// Belt-and-suspenders: inject the hide rule at priority 1 so it is in the DOM
-// before Astra's transparent-header JS can measure #masthead.offsetHeight and
-// inject an inline padding-top on #content (which CSS !important cannot beat).
-// Also strip ast-theme-transparent-header from body classes to prevent Astra's
-// transparent-header JS from ever running its offset measurement in the first place.
-add_action( 'wp_head', function() {
-	echo '<style id="showcase-header-hide">'
-		. '#masthead,#ast-desktop-header,#ast-mobile-header{'
-		. 'display:none!important;height:0!important;}'
-		. '#content.site-content,#page{'
-		. 'padding-top:0!important;margin-top:0!important;}'
-		. '</style>' . "\n";
-}, 1 );
 
 add_filter( 'body_class', function( $classes ) {
+	if ( ! in_array( 'tm-showcase-page', $classes, true ) ) {
+		$classes[] = 'tm-showcase-page';
+	}
 	return array_diff( $classes, [ 'ast-theme-transparent-header' ] );
 } );
 
@@ -54,15 +42,6 @@ if ( ! empty( $vendor_ids ) ) {
 
 get_header();
 ?>
-
-<style>
-	.tm-showcase-takeover { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); margin-top: -30px; }
-	.tm-showcase-takeover .dokan-store-wrap { width: 100%; margin: 0; }
-	.tm-showcase-takeover #dokan-primary { width: 100%; }
-	.tm-showcase-takeover .dokan-single-store { width: 100%; }
-	.tm-showcase-takeover .profile-frame { min-height: 100vh; }
-	.site-footer, .site-below-footer-wrap, #colophon { display: none !important; }
-</style>
 
 <div class="tm-showcase-takeover">
 	<div class="dokan-store-wrap layout-full">

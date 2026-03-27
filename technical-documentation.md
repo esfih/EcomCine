@@ -86,6 +86,19 @@ This is the collection of custom components that deliver the unique functionalit
 *   **`tm-account-panel` (Plugin):** Handles all user account functions from a front-end modal. It provides the seamless login/registration and the admin-driven "Talent Onboarding" workflow.
 *   **`tm-vendor-booking-modal` (Plugin):** Manages the entire frictionless booking and checkout process within a single, self-contained modal window.
 
+### 2.3. Local Development Runtime (Canonical Requirement)
+
+To preserve performance and eliminate cross-filesystem latency, local development is
+standardized on a WSL2-first runtime baseline:
+
+*   **Primary shell:** Ubuntu WSL2
+*   **Workspace location:** Linux filesystem paths only (`/home/<user>/dev/...`)
+*   **Disallowed active workspace paths:** `C:\...` and `/mnt/c/...`
+*   **Container orchestration:** Docker Desktop (WSL2 backend), launched from WSL workspace paths
+*   **Health enforcement:** run `./scripts/check-local-dev-infra.sh` before normal development
+
+This requirement is mandatory for all new-machine setup and migration workflows.
+
  (Conceptual Diagram: Base Stack -> Custom Theme & Plugins -> Final User Experience)
 
 ---

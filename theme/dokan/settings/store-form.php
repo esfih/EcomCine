@@ -69,11 +69,16 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
 ?>
 <?php do_action( 'dokan_settings_before_form', $current_user, $profile_info ); ?>
 
-<form method="post" id="store-form" action="" class="dokan-form-horizontal">
+<form method="post" id="store-form" action="" class="dokan-form-horizontal tm-dokan-store-form">
 
     <?php wp_nonce_field( 'dokan_store_settings_nonce' ); ?>
 
-    <div id="dokan-banner-wrapper" class="dokan-banner">
+    <div
+        id="dokan-banner-wrapper"
+        class="dokan-banner tm-dokan-banner-dimensions"
+        data-banner-width="<?php echo esc_attr( dokan_get_vendor_store_banner_width() ); ?>"
+        data-banner-height="<?php echo esc_attr( dokan_get_vendor_store_banner_height() ); ?>"
+    >
         <div class="image-wrap<?php echo esc_url( $banner_url ) ? '' : ' dokan-hide'; ?>">
             <input type="hidden" class="dokan-file-field" value="<?php echo esc_attr( $banner_id ); ?>" name="dokan_banner">
             <img alt="banner" class="dokan-banner-img" src="<?php echo esc_url( $banner_url ); ?>">
@@ -125,7 +130,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
         
         <div class="video-wrap<?php echo $banner_video_url ? '' : ' dokan-hide'; ?>">
             <input type="hidden" class="dokan-video-field" value="<?php echo esc_attr( $banner_video_id ); ?>" name="dokan_banner_video">
-            <video class="dokan-banner-video-preview" src="<?php echo esc_url( $banner_video_url ); ?>" controls style="max-width: 100%; height: auto;"></video>
+            <video class="dokan-banner-video-preview tm-banner-video-preview" src="<?php echo esc_url( $banner_video_url ); ?>" controls></video>
             <a class="close dokan-remove-banner-video">&times;</a>
         </div>
 
@@ -332,9 +337,9 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
     <?php } ?>
 
     <!-- Physical Attributes Section (Model/Artist only) - Updated 2026-01-27 -->
-    <div class="dokan-form-group physical-attributes-section" data-category="model,artist" style="display:none;">
+    <div class="dokan-form-group physical-attributes-section tm-hidden-by-default" data-category="model,artist">
         <div class="dokan-w12">
-            <h3 style="margin-top: 30px; margin-bottom: 20px; font-size: 18px; border-bottom: 2px solid #f05025; padding-bottom: 10px;">
+            <h3 class="tm-physical-attributes-title">
                 📏 <?php esc_html_e( 'Physical Attributes', 'astra-child' ); ?>
             </h3>
         </div>
@@ -346,7 +351,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
     ?>
 
     <!-- Body Measurements Row 1 -->
-    <div class="dokan-form-group talent_height" data-category="model,artist" style="display:none;">
+    <div class="dokan-form-group talent_height tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_height">
             📏 <?php esc_html_e( 'Height', 'astra-child' ); ?>
         </label>
@@ -367,7 +372,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
         </div>
     </div>
 
-    <div class="dokan-form-group talent_weight" data-category="model,artist" style="display:none;">
+    <div class="dokan-form-group talent_weight tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_weight">
             ⚖️ <?php esc_html_e( 'Weight', 'astra-child' ); ?>
         </label>
@@ -389,7 +394,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
     </div>
 
     <!-- Body Measurements Row 2 -->
-    <div class="dokan-form-group talent_waist" data-category="model,artist" style="display:none;">
+    <div class="dokan-form-group talent_waist tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_waist">
             📐 <?php esc_html_e( 'Waist', 'astra-child' ); ?>
         </label>
@@ -410,7 +415,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
         </div>
     </div>
 
-    <div class="dokan-form-group talent_hip" data-category="model,artist" style="display:none;">
+    <div class="dokan-form-group talent_hip tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_hip">
             📐 <?php esc_html_e( 'Hip', 'astra-child' ); ?>
         </label>
@@ -431,7 +436,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
         </div>
     </div>
 
-    <div class="dokan-form-group talent_chest" data-category="model,artist" style="display:none;">
+    <div class="dokan-form-group talent_chest tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_chest">
             📐 <?php esc_html_e( 'Chest', 'astra-child' ); ?>
         </label>
@@ -452,7 +457,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
         </div>
     </div>
 
-    <div class="dokan-form-group talent_shoe_size" data-category="model,artist" style="display:none;">
+    <div class="dokan-form-group talent_shoe_size tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_shoe_size">
             👟 <?php esc_html_e( 'Shoe Size (US)', 'astra-child' ); ?>
         </label>
@@ -474,7 +479,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
     </div>
 
     <!-- Features -->
-    <div class="dokan-form-group talent_eye_color" data-category="model,artist" style="display:none;">
+    <div class="dokan-form-group talent_eye_color tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_eye_color">
             👁️ <?php esc_html_e( 'Eye Color', 'astra-child' ); ?>
         </label>
@@ -495,7 +500,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
         </div>
     </div>
 
-    <div class="dokan-form-group talent_hair_color" data-category="model,artist" style="display:none;">
+    <div class="dokan-form-group talent_hair_color tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_hair_color">
             💇 <?php esc_html_e( 'Hair Color', 'astra-child' ); ?>
         </label>
@@ -520,28 +525,29 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
 
     <div class="dokan-form-group">
 
-        <div class="dokan-w4 ajax_prev dokan-text-left" style="margin-left:24%;">
+        <div class="dokan-w4 ajax_prev dokan-text-left tm-store-settings-submit-wrap">
             <input type="submit" name="dokan_update_store_settings" class="dokan-btn dokan-btn-theme" value="<?php esc_attr_e( 'Update Settings', 'dokan-lite' ); ?>">
         </div>
     </div>
 </form>
 
 <?php do_action( 'dokan_settings_after_form', $current_user, $profile_info ); ?>
-
-<style>
-    .dokan-settings-content .dokan-settings-area .dokan-banner {
-        max-width: <?php echo esc_attr( $banner_width ) . 'px'; ?>;
-        max-height: <?php echo esc_attr( $banner_height ) . 'px'; ?>;
-    }
-
-    .dokan-settings-content .dokan-settings-area .dokan-banner .dokan-remove-banner-image {
-        height: <?php echo esc_attr( $banner_height ) . 'px'; ?>;
-    }
-
-</style>
 <script type="text/javascript">
 
     (function($) {
+        var $bannerWrapper = $( '#dokan-banner-wrapper.tm-dokan-banner-dimensions' );
+        if ( $bannerWrapper.length ) {
+            var bannerWidth = parseInt( $bannerWrapper.data( 'bannerWidth' ), 10 );
+            var bannerHeight = parseInt( $bannerWrapper.data( 'bannerHeight' ), 10 );
+
+            if ( bannerWidth > 0 ) {
+                $bannerWrapper.css( '--tm-dokan-banner-width', bannerWidth + 'px' );
+            }
+            if ( bannerHeight > 0 ) {
+                $bannerWrapper.css( '--tm-dokan-banner-height', bannerHeight + 'px' );
+            }
+        }
+
         // dokan store open close scripts starts //
         var store_opencolse = $( '.store-open-close' );
         store_opencolse.hide();

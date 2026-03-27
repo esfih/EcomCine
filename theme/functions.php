@@ -68,6 +68,47 @@ add_filter( 'show_admin_bar', function( $show ) {
 } );
 
 /**
+ * Remove low-value Astra shell nodes from frontend HTML.
+ *
+ * Keeps changes low-risk by targeting exact inert markup patterns only.
+ */
+function tm_cleanup_frontend_shell_markup( $html ) {
+	if ( ! is_string( $html ) || '' === $html ) {
+		return $html;
+	}
+
+	// Remove the skip-link element requested for cleanup.
+	$html = preg_replace(
+		'#<a[^>]*class="skip-link\s+screen-reader-text"[^>]*>\s*Skip\s+to\s+content\s*</a>\s*#i',
+		'',
+		$html
+	);
+
+	// Remove any empty Astra primary-header section wrappers.
+	$html = preg_replace(
+		'#<div\s+class="site-header-primary-section-[^"]*\s+site-header-section\s+ast-flex\s+ast-grid-[^"]*section"\s*>\s*</div>\s*#i',
+		'',
+		$html
+	);
+
+	return $html;
+}
+
+add_action( 'template_redirect', function() {
+	if ( is_admin() || is_feed() || is_customize_preview() ) {
+		return;
+	}
+	if ( ( defined( 'DOING_AJAX' ) && DOING_AJAX ) || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+		return;
+	}
+
+	ob_start( 'tm_cleanup_frontend_shell_markup' );
+}, 0 );
+
+// Remove Astra footer markup site-wide at source (no CSS/JS hiding).
+add_filter( 'astra_footer_display', '__return_false', 20 );
+
+/**
  * Enqueue styles
  */
 function child_enqueue_styles() {
@@ -154,33 +195,39 @@ add_action( 'wp_enqueue_scripts', 'child_enqueue_styles', 15 );
 /**
  * Remove Dokan Mapbox assets on store pages (we load Mapbox on-demand in the modal).
  */
-function tm_remove_dokan_mapbox_on_store_page() {
-	if ( ! function_exists( 'dokan_is_store_page' ) || ! dokan_is_store_page() ) {
-		return;
-	}
 
-	wp_dequeue_style( 'dokan-mapbox-gl' );
-	wp_dequeue_style( 'dokan-mapbox-gl-geocoder' );
-	wp_dequeue_script( 'dokan-mapbox-gl-geocoder' );
-	wp_dequeue_script( 'dokan-maps' );
-	wp_deregister_style( 'dokan-mapbox-gl' );
-	wp_deregister_style( 'dokan-mapbox-gl-geocoder' );
-	wp_deregister_script( 'dokan-mapbox-gl-geocoder' );
-	wp_deregister_script( 'dokan-maps' );
+if ( ! function_exists( 'tm_remove_dokan_mapbox_on_store_page' ) ) {
+	function tm_remove_dokan_mapbox_on_store_page() {
+		if ( ! function_exists( 'dokan_is_store_page' ) || ! dokan_is_store_page() ) {
+			return;
+		}
+
+		wp_dequeue_style( 'dokan-mapbox-gl' );
+		wp_dequeue_style( 'dokan-mapbox-gl-geocoder' );
+		wp_dequeue_script( 'dokan-mapbox-gl-geocoder' );
+		wp_dequeue_script( 'dokan-maps' );
+		wp_deregister_style( 'dokan-mapbox-gl' );
+		wp_deregister_style( 'dokan-mapbox-gl-geocoder' );
+		wp_deregister_script( 'dokan-mapbox-gl-geocoder' );
+		wp_deregister_script( 'dokan-maps' );
+	}
 }
 add_action( 'dokan_enqueue_scripts', 'tm_remove_dokan_mapbox_on_store_page', 20 );
 
-function tm_strip_mapbox_resource_hints( $urls, $relation_type ) {
-	if ( ! function_exists( 'dokan_is_store_page' ) || ! dokan_is_store_page() ) {
-		return $urls;
-	}
-	if ( 'dns-prefetch' !== $relation_type && 'preconnect' !== $relation_type ) {
-		return $urls;
-	}
 
-	return array_values( array_filter( $urls, function( $url ) {
-		return false === strpos( $url, 'api.mapbox.com' );
-	} ) );
+if ( ! function_exists( 'tm_strip_mapbox_resource_hints' ) ) {
+	function tm_strip_mapbox_resource_hints( $urls, $relation_type ) {
+		if ( ! function_exists( 'dokan_is_store_page' ) || ! dokan_is_store_page() ) {
+			return $urls;
+		}
+		if ( 'dns-prefetch' !== $relation_type && 'preconnect' !== $relation_type ) {
+			return $urls;
+		}
+
+		return array_values( array_filter( $urls, function( $url ) {
+			return false === strpos( $url, 'api.mapbox.com' );
+		} ) );
+	}
 }
 add_filter( 'wp_resource_hints', 'tm_strip_mapbox_resource_hints', 10, 2 );
 
@@ -188,33 +235,39 @@ add_filter( 'wp_resource_hints', 'tm_strip_mapbox_resource_hints', 10, 2 );
  * Remove Google-hosted assets on the frontend.
  * Keep registrations so booking modal can load assets on-demand.
  */
-function tm_remove_google_assets() {
-	if ( is_admin() ) {
-		return;
-	}
 
-	wp_dequeue_style( 'astra-google-fonts' );
-	wp_deregister_style( 'astra-google-fonts' );
+if ( ! function_exists( 'tm_remove_google_assets' ) ) {
+	function tm_remove_google_assets() {
+		if ( is_admin() ) {
+			return;
+		}
 
-	if ( function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
-		wp_dequeue_style( 'jquery-ui-style' );
+		wp_dequeue_style( 'astra-google-fonts' );
+		wp_deregister_style( 'astra-google-fonts' );
+
+		if ( function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
+			wp_dequeue_style( 'jquery-ui-style' );
+		}
 	}
 }
 add_action( 'wp_enqueue_scripts', 'tm_remove_google_assets', 30 );
 
-function tm_strip_google_resource_hints( $urls, $relation_type ) {
-	if ( is_admin() ) {
-		return $urls;
-	}
-	if ( 'dns-prefetch' !== $relation_type && 'preconnect' !== $relation_type ) {
-		return $urls;
-	}
 
-	return array_values( array_filter( $urls, function( $url ) {
-		return false === strpos( $url, 'fonts.googleapis.com' )
-			&& false === strpos( $url, 'fonts.gstatic.com' )
-			&& false === strpos( $url, 'ajax.googleapis.com' );
-	} ) );
+if ( ! function_exists( 'tm_strip_google_resource_hints' ) ) {
+	function tm_strip_google_resource_hints( $urls, $relation_type ) {
+		if ( is_admin() ) {
+			return $urls;
+		}
+		if ( 'dns-prefetch' !== $relation_type && 'preconnect' !== $relation_type ) {
+			return $urls;
+		}
+
+		return array_values( array_filter( $urls, function( $url ) {
+			return false === strpos( $url, 'fonts.googleapis.com' )
+				&& false === strpos( $url, 'fonts.gstatic.com' )
+				&& false === strpos( $url, 'ajax.googleapis.com' );
+		} ) );
+	}
 }
 add_filter( 'wp_resource_hints', 'tm_strip_google_resource_hints', 10, 2 );
 
@@ -228,52 +281,55 @@ add_action( 'init', function() {
  * Remove WooCommerce + block assets on vendor store pages.
  * Keep registrations so booking modal can load assets on-demand.
  */
-function tm_remove_woocommerce_assets_on_store_page() {
-	if ( is_admin() ) {
-		return;
-	}
-	if ( ! function_exists( 'dokan_is_store_page' ) || ! dokan_is_store_page() ) {
-		return;
-	}
-	$vendor_id = absint( get_query_var( 'author' ) );
-	$can_edit = $vendor_id && function_exists( 'tm_can_edit_vendor_profile' )
-		? tm_can_edit_vendor_profile( $vendor_id )
-		: false;
 
-	$style_handles = [
-		'woocommerce-layout',
-		'woocommerce-smallscreen',
-		'woocommerce-general',
-		'woocommerce-inline',
-		'astra-wc-dokan-compatibility-css',
-		'wc-blocks-style',
-		'wp-block-library',
-		'global-styles',
-		'global-styles-inline',
-		'dashicons',
-	];
+if ( ! function_exists( 'tm_remove_woocommerce_assets_on_store_page' ) ) {
+	function tm_remove_woocommerce_assets_on_store_page() {
+		if ( is_admin() ) {
+			return;
+		}
+		if ( ! function_exists( 'dokan_is_store_page' ) || ! dokan_is_store_page() ) {
+			return;
+		}
+		$vendor_id = absint( get_query_var( 'author' ) );
+		$can_edit = $vendor_id && function_exists( 'tm_can_edit_vendor_profile' )
+			? tm_can_edit_vendor_profile( $vendor_id )
+			: false;
 
-	if ( $can_edit ) {
-		$style_handles = array_values( array_diff( $style_handles, [ 'dashicons' ] ) );
-	}
+		$style_handles = [
+			'woocommerce-layout',
+			'woocommerce-smallscreen',
+			'woocommerce-general',
+			'woocommerce-inline',
+			'astra-wc-dokan-compatibility-css',
+			'wc-blocks-style',
+			'wp-block-library',
+			'global-styles',
+			'global-styles-inline',
+			'dashicons',
+		];
 
-	foreach ( $style_handles as $handle ) {
-		wp_dequeue_style( $handle );
-	}
+		if ( $can_edit ) {
+			$style_handles = array_values( array_diff( $style_handles, [ 'dashicons' ] ) );
+		}
 
-	$script_handles = [
-		'woocommerce',
-		'wc-add-to-cart',
-		'wc-cart-fragments',
-		'wc-checkout',
-		'wc-country-select',
-		'wc-address-i18n',
-		'wc-jquery-blockui',
-		'js-cookie',
-	];
+		foreach ( $style_handles as $handle ) {
+			wp_dequeue_style( $handle );
+		}
 
-	foreach ( $script_handles as $handle ) {
-		wp_dequeue_script( $handle );
+		$script_handles = [
+			'woocommerce',
+			'wc-add-to-cart',
+			'wc-cart-fragments',
+			'wc-checkout',
+			'wc-country-select',
+			'wc-address-i18n',
+			'wc-jquery-blockui',
+			'js-cookie',
+		];
+
+		foreach ( $script_handles as $handle ) {
+			wp_dequeue_script( $handle );
+		}
 	}
 }
 add_action( 'wp_enqueue_scripts', 'tm_remove_woocommerce_assets_on_store_page', 100 );
@@ -287,36 +343,25 @@ add_action( 'wp_enqueue_scripts', 'tm_remove_woocommerce_assets_on_store_page', 
  * "invalid_json" error because the 401 body is an HTML login redirect rather than
  * JSON. None of these packages are needed on the store-listing front-end.
  */
-function tm_remove_editor_assets_on_store_listing() {
-	if ( is_admin() ) {
-		return;
-	}
-	if ( ! function_exists( 'dokan_is_store_listing' ) || ! dokan_is_store_listing() ) {
-		return;
-	}
 
-	$script_handles = [
-		// These packages fire a REST /wp/v2/users/me call on every page load to
-		// hydrate user preferences. On a public front-end page that call returns
-		// 401 → "invalid_json" error. They have no functional role here.
-		'wp-preferences',
-		'wp-preferences-persistence',
-	];
+if ( ! function_exists( 'tm_remove_editor_assets_on_store_listing' ) ) {
+	function tm_remove_editor_assets_on_store_listing() {
+		if ( is_admin() ) {
+			return;
+		}
+		if ( ! function_exists( 'dokan_is_store_listing' ) || ! dokan_is_store_listing() ) {
+			return;
+		}
 
-	foreach ( $script_handles as $handle ) {
-		wp_dequeue_script( $handle );
-		wp_deregister_script( $handle );
-	}
+		$script_handles = [
+			'wp-preferences',
+			'wp-preferences-persistence',
+		];
 
-	$style_handles = [
-		'wp-block-library',
-		'global-styles',
-		'global-styles-inline',
-	];
-
-	foreach ( $style_handles as $handle ) {
-		wp_dequeue_style( $handle );
-		wp_deregister_style( $handle );
+		foreach ( $script_handles as $handle ) {
+			wp_dequeue_script( $handle );
+			wp_deregister_script( $handle );
+		}
 	}
 }
 add_action( 'wp_enqueue_scripts', 'tm_remove_editor_assets_on_store_listing', 100 );
@@ -324,21 +369,25 @@ add_action( 'wp_enqueue_scripts', 'tm_remove_editor_assets_on_store_listing', 10
 /**
  * Hide default WooCommerce terms/privacy output in the modal checkout.
  */
-function tm_modal_hide_woo_terms( $show_terms ) {
-	if ( defined( 'TM_BOOKING_MODAL_CHECKOUT' ) && TM_BOOKING_MODAL_CHECKOUT ) {
-		return false;
-	}
+if ( ! function_exists( 'tm_modal_hide_woo_terms' ) ) {
+	function tm_modal_hide_woo_terms( $show_terms ) {
+		if ( defined( 'TM_BOOKING_MODAL_CHECKOUT' ) && TM_BOOKING_MODAL_CHECKOUT ) {
+			return false;
+		}
 
-	return $show_terms;
+		return $show_terms;
+	}
 }
 add_filter( 'woocommerce_checkout_show_terms', 'tm_modal_hide_woo_terms', 20 );
 
-function tm_modal_privacy_text_filter( $text ) {
-	if ( defined( 'TM_BOOKING_MODAL_CHECKOUT' ) && TM_BOOKING_MODAL_CHECKOUT ) {
-		return '';
-	}
+if ( ! function_exists( 'tm_modal_privacy_text_filter' ) ) {
+	function tm_modal_privacy_text_filter( $text ) {
+		if ( defined( 'TM_BOOKING_MODAL_CHECKOUT' ) && TM_BOOKING_MODAL_CHECKOUT ) {
+			return '';
+		}
 
-	return $text;
+		return $text;
+	}
 }
 add_filter( 'woocommerce_get_privacy_policy_text', 'tm_modal_privacy_text_filter', 20 );
 add_filter( 'woocommerce_checkout_privacy_policy_text', 'tm_modal_privacy_text_filter', 20 );
@@ -351,86 +400,97 @@ add_filter( 'woocommerce_checkout_privacy_policy_text', 'tm_modal_privacy_text_f
 /**
  * Helper function to calculate age from birth date
  */
-function calculate_age_from_birth_date( $birth_date ) {
-	if ( empty( $birth_date ) ) {
-		return null;
-	}
-	
-	try {
-		$birth = new DateTime( $birth_date );
-		$today = new DateTime();
-		return $today->diff( $birth )->y;
-	} catch ( Exception $e ) {
-		return null;
+
+if ( ! function_exists( 'calculate_age_from_birth_date' ) ) {
+	function calculate_age_from_birth_date( $birth_date ) {
+		if ( empty( $birth_date ) ) {
+			return null;
+		}
+
+		try {
+			$birth = new DateTime( $birth_date );
+			$today = new DateTime();
+			return $today->diff( $birth )->y;
+		} catch ( Exception $e ) {
+			return null;
+		}
 	}
 }
 
 /**
  * Helper function to check if age falls within a range
  */
-function age_matches_range( $birth_date, $range ) {
-	$age = calculate_age_from_birth_date( $birth_date );
-	if ( $age === null ) {
-		return false;
-	}
-	
-	switch ( $range ) {
-		case '18-25':
-			return $age >= 18 && $age <= 25;
-		case '26-35':
-			return $age >= 26 && $age <= 35;
-		case '36-45':
-			return $age >= 36 && $age <= 45;
-		case '46-55':
-			return $age >= 46 && $age <= 55;
-		case '56-65':
-			return $age >= 56 && $age <= 65;
-		case '66+':
-			return $age >= 66;
-		default:
+
+if ( ! function_exists( 'age_matches_range' ) ) {
+	function age_matches_range( $birth_date, $range ) {
+		$age = calculate_age_from_birth_date( $birth_date );
+		if ( $age === null ) {
 			return false;
+		}
+
+		switch ( $range ) {
+			case '18-25':
+				return $age >= 18 && $age <= 25;
+			case '26-35':
+				return $age >= 26 && $age <= 35;
+			case '36-45':
+				return $age >= 36 && $age <= 45;
+			case '46-55':
+				return $age >= 46 && $age <= 55;
+			case '56-65':
+				return $age >= 56 && $age <= 65;
+			case '66+':
+				return $age >= 66;
+			default:
+				return false;
+		}
 	}
 }
 
 /**
  * Get the public profile URL for a vendor.
  */
-function tm_get_vendor_public_profile_url( $vendor_id ) {
-	$vendor_id = (int) $vendor_id;
-	if ( ! $vendor_id || ! function_exists( 'dokan_get_store_url' ) ) {
-		return '';
-	}
+if ( ! function_exists( 'tm_get_vendor_public_profile_url' ) ) {
+	function tm_get_vendor_public_profile_url( $vendor_id ) {
+		$vendor_id = (int) $vendor_id;
+		if ( ! $vendor_id || ! function_exists( 'dokan_get_store_url' ) ) {
+			return '';
+		}
 
-	$url = dokan_get_store_url( $vendor_id );
-	return $url ? $url : '';
+		$url = dokan_get_store_url( $vendor_id );
+		return $url ? $url : '';
+	}
 }
 
 /**
  * Try to load the QR code library if it exists in the theme.
  */
-function tm_load_qr_library() {
-	if ( class_exists( '\\chillerlan\\QRCode\\QRCode' ) ) {
-		return true;
-	}
-
-	$autoload_paths = [
-		get_stylesheet_directory() . '/vendor/autoload.php',
-		get_stylesheet_directory() . '/lib/php-qrcode/vendor/autoload.php',
-	];
-
-	foreach ( $autoload_paths as $autoload ) {
-		if ( file_exists( $autoload ) ) {
-			require_once $autoload;
-			break;
+if ( ! function_exists( 'tm_load_qr_library' ) ) {
+	function tm_load_qr_library() {
+		if ( class_exists( '\\chillerlan\\QRCode\\QRCode' ) ) {
+			return true;
 		}
-	}
 
-	return class_exists( '\\chillerlan\\QRCode\\QRCode' );
+		$autoload_paths = [
+			get_stylesheet_directory() . '/vendor/autoload.php',
+			get_stylesheet_directory() . '/lib/php-qrcode/vendor/autoload.php',
+		];
+
+		foreach ( $autoload_paths as $autoload ) {
+			if ( file_exists( $autoload ) ) {
+				require_once $autoload;
+				break;
+			}
+		}
+
+		return class_exists( '\\chillerlan\\QRCode\\QRCode' );
+	}
 }
 
 /**
  * Build a sanitized SVG QR code markup for a vendor URL.
  */
+if ( ! function_exists( 'tm_get_vendor_qr_svg_markup' ) ) {
 function tm_get_vendor_qr_svg_markup( $vendor_id, $args = [] ) {
 	$vendor_id = (int) $vendor_id;
 	if ( ! $vendor_id ) {
@@ -577,6 +637,7 @@ function tm_get_vendor_qr_svg_markup( $vendor_id, $args = [] ) {
 
 	return '';
 }
+}
 
 // Vendor attribute-sets data layer.
 require_once get_stylesheet_directory() . '/includes/vendor-attributes/vendor-attribute-sets.php';
@@ -611,116 +672,115 @@ add_filter( 'template_include', function( $template ) {
 /**
  * Get vendor ID from Dokan store user object/array
  */
-function get_vendor_id_from_store_user( $store_user ) {
-	if ( is_object( $store_user ) ) {
-		if ( method_exists( $store_user, 'get_id' ) ) {
-			return $store_user->get_id();
+
+if ( ! function_exists( 'get_vendor_id_from_store_user' ) ) {
+	function get_vendor_id_from_store_user( $store_user ) {
+		if ( is_object( $store_user ) ) {
+			if ( method_exists( $store_user, 'get_id' ) ) {
+				return $store_user->get_id();
+			}
+			if ( isset( $store_user->ID ) ) {
+				return $store_user->ID;
+			}
 		}
-		if ( isset( $store_user->ID ) ) {
-			return $store_user->ID;
+		if ( is_array( $store_user ) ) {
+			if ( isset( $store_user['ID'] ) ) {
+				return $store_user['ID'];
+			}
+			if ( isset( $store_user['id'] ) ) {
+				return $store_user['id'];
+			}
 		}
+		return null;
 	}
-	if ( is_array( $store_user ) ) {
-		if ( isset( $store_user['ID'] ) ) {
-			return $store_user['ID'];
-		}
-		if ( isset( $store_user['id'] ) ) {
-			return $store_user['id'];
-		}
-	}
-	return null;
 }
 
 /**
  * Render a single editable attribute field for vendor profiles
  * Displays value in read mode, and edit controls when vendor is viewing their own profile
  */
-function render_editable_attribute( $args ) {
-	$field_name = $args['name'];
-	$label = $args['label'];
-	$icon = $args['icon'] ?? '';
-	$user_id = $args['user_id'];
-	$is_owner = $args['is_owner'];
-	$options = $args['options'] ?? [];
-	$editable = array_key_exists( 'editable', $args ) ? (bool) $args['editable'] : true;
-	$is_multi = ! empty( $args['multi'] );
-	$input_type = $args['type'] ?? 'select'; // select, date, text
-	$edit_label = $args['edit_label'] ?? $label; // Different label for edit mode
-	$help_text = $args['help_text'] ?? ''; // Help tooltip text
-	$value = array_key_exists( 'value', $args ) ? $args['value'] : get_user_meta( $user_id, $field_name, true );
-	$raw_value = $args['raw_value'] ?? $value; // For date fields, store raw date separate from display
-	
-	// Get display text
-	$display_text = '';
-	if ( $is_multi && is_array( $value ) ) {
-		$labels = [];
-		foreach ( $value as $val ) {
-			if ( isset( $options[ $val ] ) ) {
-				$labels[] = $options[ $val ];
-			} elseif ( ! empty( $val ) ) {
-				$labels[] = $val;
-			}
-		}
-		$display_text = implode( ', ', $labels );
-	} elseif ( ! empty( $value ) && isset( $options[ $value ] ) ) {
-		$display_text = $options[ $value ];
-	} elseif ( ! empty( $value ) ) {
-		$display_text = $value;
-	}
-	
-	// Only render if there's a value OR owner is viewing (so they can add values)
-	if ( empty( $display_text ) && ! $is_owner ) {
-		return;
-	}
-	
-	if ( empty( $display_text ) ) {
-		$display_text = 'Not set';
-	}
-	
-	// Use unified modal editing pattern
-	$wrapper_class = $is_owner ? 'editable-field' : '';
-	$data_attrs = [
-		'data-field' => esc_attr( $field_name ),
-		'data-label' => esc_attr( $label ),
-		'data-edit-label' => esc_attr( $edit_label ),
-		'data-input-type' => esc_attr( $input_type ),
-		'data-multi' => $is_multi ? '1' : '0',
-		'data-help' => esc_attr( $help_text ),
-		'data-editor' => 'attribute',
-	];
-	if ( ! empty( $options ) ) {
-		$data_attrs['data-options'] = esc_attr( wp_json_encode( $options ) );
-	}
-	if ( $input_type === 'date' ) {
-		$data_attrs['data-raw-value'] = esc_attr( $raw_value );
-	}
-	if ( $is_multi ) {
-		$data_attrs['data-values'] = esc_attr( wp_json_encode( array_values( (array) $value ) ) );
-	} else {
-		$data_attrs['data-value'] = esc_attr( is_array( $value ) ? '' : (string) $value );
-	}
-	$data_attr_string = '';
-	foreach ( $data_attrs as $attr_key => $attr_value ) {
-		if ( $attr_value === '' ) {
-			continue;
-		}
-		$data_attr_string .= ' ' . $attr_key . '="' . $attr_value . '"';
-	}
 
-	echo '<div class="stat-item ' . $wrapper_class . '"' . $data_attr_string . '>';
-	
-	// Display Mode (System A pattern)
-	echo '<div class="field-display">';
-	echo '<span class="stat-icon--attribute">' . $icon . '</span>';
-	echo esc_html( $label ) . ': ';
-	echo '<strong class="field-value stat-value--gold">' . esc_html( $display_text ) . '</strong>';
-	if ( $is_owner && $editable ) {
-		echo '<button class="edit-field-btn" type="button" title="Edit ' . esc_attr( $label ) . '"><i class="fas fa-pencil-alt"></i></button>';
+if ( ! function_exists( 'render_editable_attribute' ) ) {
+	function render_editable_attribute( $args ) {
+		$field_name = $args['name'];
+		$label = $args['label'];
+		$icon = $args['icon'] ?? '';
+		$user_id = $args['user_id'];
+		$is_owner = $args['is_owner'];
+		$options = $args['options'] ?? [];
+		$editable = array_key_exists( 'editable', $args ) ? (bool) $args['editable'] : true;
+		$is_multi = ! empty( $args['multi'] );
+		$input_type = $args['type'] ?? 'select'; // select, date, text
+		$edit_label = $args['edit_label'] ?? $label; // Different label for edit mode
+		$help_text = $args['help_text'] ?? ''; // Help tooltip text
+		$value = array_key_exists( 'value', $args ) ? $args['value'] : get_user_meta( $user_id, $field_name, true );
+		$raw_value = $args['raw_value'] ?? $value; // For date fields, store raw date separate from display
+
+		$display_text = '';
+		if ( $is_multi && is_array( $value ) ) {
+			$labels = [];
+			foreach ( $value as $val ) {
+				if ( isset( $options[ $val ] ) ) {
+					$labels[] = $options[ $val ];
+				} elseif ( ! empty( $val ) ) {
+					$labels[] = $val;
+				}
+			}
+			$display_text = implode( ', ', $labels );
+		} elseif ( ! empty( $value ) && isset( $options[ $value ] ) ) {
+			$display_text = $options[ $value ];
+		} elseif ( ! empty( $value ) ) {
+			$display_text = $value;
+		}
+
+		if ( empty( $display_text ) && ! $is_owner ) {
+			return;
+		}
+
+		if ( empty( $display_text ) ) {
+			$display_text = 'Not set';
+		}
+
+		$wrapper_class = $is_owner ? 'editable-field' : '';
+		$data_attrs = [
+			'data-field' => esc_attr( $field_name ),
+			'data-label' => esc_attr( $label ),
+			'data-edit-label' => esc_attr( $edit_label ),
+			'data-input-type' => esc_attr( $input_type ),
+			'data-multi' => $is_multi ? '1' : '0',
+			'data-help' => esc_attr( $help_text ),
+			'data-editor' => 'attribute',
+		];
+		if ( ! empty( $options ) ) {
+			$data_attrs['data-options'] = esc_attr( wp_json_encode( $options ) );
+		}
+		if ( $input_type === 'date' ) {
+			$data_attrs['data-raw-value'] = esc_attr( $raw_value );
+		}
+		if ( $is_multi ) {
+			$data_attrs['data-values'] = esc_attr( wp_json_encode( array_values( (array) $value ) ) );
+		} else {
+			$data_attrs['data-value'] = esc_attr( is_array( $value ) ? '' : (string) $value );
+		}
+		$data_attr_string = '';
+		foreach ( $data_attrs as $attr_key => $attr_value ) {
+			if ( $attr_value === '' ) {
+				continue;
+			}
+			$data_attr_string .= ' ' . $attr_key . '="' . $attr_value . '"';
+		}
+
+		echo '<div class="stat-item ' . $wrapper_class . '"' . $data_attr_string . '>';
+		echo '<div class="field-display">';
+		echo '<span class="stat-icon--attribute">' . $icon . '</span>';
+		echo esc_html( $label ) . ': ';
+		echo '<strong class="field-value stat-value--gold">' . esc_html( $display_text ) . '</strong>';
+		if ( $is_owner && $editable ) {
+			echo '<button class="edit-field-btn" type="button" title="Edit ' . esc_attr( $label ) . '"><i class="fas fa-pencil-alt"></i></button>';
+		}
+		echo '</div>';
+		echo '</div>';
 	}
-	echo '</div>';
-	
-	
-	echo '</div>';
 }
 // Social Metrics Engine (Bright Data, fetch/snapshot, dashboard JS, store panel)
 //  includes/social-metrics/social-metrics.php
@@ -1025,47 +1085,57 @@ add_action( 'woocommerce_single_product_summary', function () {
 /**
  * Get vendor avatar URL (Dokan store gravatar if set, else WP avatar).
  */
-function mp_get_vendor_avatar_url( $vendor_id, $size = 240 ) {
-	$url = '';
+if ( ! function_exists( 'mp_get_vendor_avatar_url' ) ) {
+	function mp_get_vendor_avatar_url( $vendor_id, $size = 240 ) {
+		$url = '';
 
-	if ( function_exists( 'dokan_get_store_info' ) ) {
-		$store_info = dokan_get_store_info( $vendor_id );
+		if ( function_exists( 'dokan_get_store_info' ) ) {
+			$store_info = dokan_get_store_info( $vendor_id );
 
-		// Dokan often stores avatar as attachment ID in 'gravatar'
-		if ( ! empty( $store_info['gravatar'] ) ) {
-			$img_id = absint( $store_info['gravatar'] );
-			$url    = wp_get_attachment_image_url( $img_id, array( $size, $size ) );
+			// Dokan often stores avatar as attachment ID in 'gravatar'
+			if ( ! empty( $store_info['gravatar'] ) ) {
+				$img_id = absint( $store_info['gravatar'] );
+				$url    = wp_get_attachment_image_url( $img_id, array( $size, $size ) );
+			}
 		}
-	}
 
-	if ( ! $url ) {
-		$url = get_avatar_url( $vendor_id, array( 'size' => $size ) );
-	}
+		if ( ! $url ) {
+			$url = get_avatar_url( $vendor_id, array( 'size' => $size ) );
+		}
 
-	return $url;
+		return $url;
+	}
 }
 
 /**
  * Print the overlay badge HTML.
  */
-function mp_print_vendor_avatar_badge( $product_id ) {
-	if ( ! function_exists( 'dokan_get_store_url' ) ) return;
+if ( ! function_exists( 'mp_print_vendor_avatar_badge' ) ) {
+	function mp_print_vendor_avatar_badge( $product_id ) {
+		if ( ! function_exists( 'dokan_get_store_url' ) ) {
+			return;
+		}
 
-	$vendor_id = (int) get_post_field( 'post_author', $product_id );
-	if ( ! $vendor_id ) return;
+		$vendor_id = (int) get_post_field( 'post_author', $product_id );
+		if ( ! $vendor_id ) {
+			return;
+		}
 
-	$avatar = mp_get_vendor_avatar_url( $vendor_id, 200 );
-	if ( ! $avatar ) return;
+		$avatar = mp_get_vendor_avatar_url( $vendor_id, 200 );
+		if ( ! $avatar ) {
+			return;
+		}
 
-	$store_url  = dokan_get_store_url( $vendor_id );
-	$store_info = dokan_get_store_info( $vendor_id );
-	$store_name = ! empty( $store_info['store_name'] )
-		? $store_info['store_name']
-		: get_the_author_meta( 'display_name', $vendor_id );
+		$store_url  = dokan_get_store_url( $vendor_id );
+		$store_info = dokan_get_store_info( $vendor_id );
+		$store_name = ! empty( $store_info['store_name'] )
+			? $store_info['store_name']
+			: get_the_author_meta( 'display_name', $vendor_id );
 
-	echo '<a class="mp-vendor-avatar-badge" href="' . esc_url( $store_url ) . '" aria-label="View vendor: ' . esc_attr( $store_name ) . '">'
-		. '<img src="' . esc_url( $avatar ) . '" alt="' . esc_attr( $store_name ) . '" loading="lazy" />'
-		. '</a>';
+		echo '<a class="mp-vendor-avatar-badge" href="' . esc_url( $store_url ) . '" aria-label="View vendor: ' . esc_attr( $store_name ) . '">'
+			. '<img src="' . esc_url( $avatar ) . '" alt="' . esc_attr( $store_name ) . '" loading="lazy" />'
+			. '</a>';
+	}
 }
 
 add_action( 'woocommerce_before_single_product_summary', function () {
@@ -1277,6 +1347,68 @@ add_action( 'wp_body_open', function() {
 			. '</a>'
 			. '</li>';
 		$menu_html = preg_replace( '/<ul([^>]*)>/', '<ul$1>' . $home_li, $menu_html, 1 );
+
+		// Inject building icon into the Corporate menu item (menu-item-1091).
+		$menu_html = preg_replace(
+			'/(<li[^>]*id="menu-item-1091"[^>]*>\s*<a[^>]*>)/',
+			'$1<i class="fas fa-building tm-menu-icon" aria-hidden="true"></i>',
+			$menu_html
+		);
+
+		// Append account item: guest => Sign in/Sign up, logged-in => avatar + name.
+		if ( ! is_user_logged_in() ) {
+			$account_li = '<li class="menu-item tm-header-account-item">'
+				. '<span class="tm-header-account-pill">'
+				. '<i class="fas fa-user tm-header-account-icon" aria-hidden="true"></i>'
+				. '<a href="#" class="tm-header-account-link tm-open-signin">Sign in</a>'
+				. '<span class="tm-header-account-sep" aria-hidden="true">/</span>'
+				. '<a href="#" class="tm-header-account-link tm-open-signup">Sign up</a>'
+				. '</span>'
+				. '</li>';
+			$menu_html = preg_replace( '/<\/ul>/', $account_li . '</ul>', $menu_html, 1 );
+		} else {
+			$current_user = wp_get_current_user();
+			$user_id = (int) $current_user->ID;
+
+			$full_name = trim( (string) get_user_meta( $user_id, 'first_name', true ) . ' ' . (string) get_user_meta( $user_id, 'last_name', true ) );
+			if ( '' === $full_name ) {
+				$full_name = $current_user->display_name;
+			}
+
+			$is_seller = false;
+			if ( function_exists( 'dokan_is_user_seller' ) ) {
+				$is_seller = (bool) dokan_is_user_seller( $user_id );
+			} else {
+				$is_seller = user_can( $user_id, 'dokandar' );
+			}
+
+			$avatar_url = '';
+			if ( $is_seller && function_exists( 'mp_get_vendor_avatar_url' ) ) {
+				$avatar_url = mp_get_vendor_avatar_url( $user_id, 80 );
+			}
+			if ( empty( $avatar_url ) ) {
+				$avatar_url = get_avatar_url( $user_id, [ 'size' => 80 ] );
+			}
+
+			$account_href = '#';
+			$account_classes = 'tm-header-account-link tm-open-account-seller';
+			$account_aria = 'Open account panel';
+			if ( ! $is_seller ) {
+				$account_href = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' );
+				$account_classes = 'tm-header-account-link tm-open-account-customer';
+				$account_aria = 'Open customer dashboard';
+			}
+
+			$account_li = '<li class="menu-item tm-header-account-item tm-header-account-item--logged-in ' . ( $is_seller ? 'tm-header-account-item--seller' : 'tm-header-account-item--customer' ) . '">'
+				. '<a href="' . esc_url( $account_href ) . '" class="' . esc_attr( $account_classes ) . '" aria-label="' . esc_attr( $account_aria ) . '">'
+				. '<span class="tm-header-account-pill tm-header-account-pill--logged-in">'
+				. '<span class="tm-header-account-avatar"><img src="' . esc_url( $avatar_url ) . '" alt="' . esc_attr( $full_name ) . '" /></span>'
+				. '<span class="tm-header-account-name">' . esc_html( $full_name ) . '</span>'
+				. '</span>'
+				. '</a>'
+				. '</li>';
+			$menu_html = preg_replace( '/<\/ul>/', $account_li . '</ul>', $menu_html, 1 );
+		}
 	}
 
 	$cart_count = 0;
@@ -1292,13 +1424,14 @@ add_action( 'wp_body_open', function() {
 			<?php $wp_root = home_url( '/' ); ?>
 			<div class="tm-header-left">
 				<?php echo get_custom_logo(); ?>
-				<div class="tm-header-platforms" aria-label="Watch on TV platforms">
-					<span class="tm-header-platforms__label">Watch on</span>
-					<span class="tm-header-platforms__icons" aria-hidden="true">
-						<img class="platform-logo" src="<?php echo esc_url( $wp_root . 'FireTV.svg' ); ?>" alt="" title="Fire TV" loading="lazy" />
-						<img class="platform-logo" src="<?php echo esc_url( $wp_root . 'ROKU.svg' ); ?>" alt="" title="Roku" loading="lazy" />
-						<img class="platform-logo" src="<?php echo esc_url( $wp_root . 'AppleTV.svg' ); ?>" alt="" title="Apple TV" loading="lazy" />
-						<img class="platform-logo" src="<?php echo esc_url( $wp_root . 'AndroidTV.svg' ); ?>" alt="" title="Android TV" loading="lazy" />
+				<div class="tm-header-platforms" aria-label="Follow us on social media">
+					<span class="tm-header-platforms__label">Follow us</span>
+					<span class="tm-header-platforms__icons">
+						<a class="social-icon" href="https://www.youtube.com/@castingagencyco" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><i class="fab fa-youtube" aria-hidden="true"></i></a>
+						<a class="social-icon" href="https://www.facebook.com/castingagencyco" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="fab fa-facebook" aria-hidden="true"></i></a>
+						<a class="social-icon" href="https://www.instagram.com/castingagencyco" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
+						<a class="social-icon" href="https://x.com/castingagencyco" target="_blank" rel="noopener noreferrer" aria-label="X"><i class="fab fa-x-twitter" aria-hidden="true"></i></a>
+						<a class="social-icon" href="https://www.linkedin.com/company/castingagencyco" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fab fa-linkedin" aria-hidden="true"></i></a>
 					</span>
 				</div>
 			</div>
@@ -1563,6 +1696,7 @@ add_filter( 'gettext', function( $translated_text, $text, $domain ) {
  * Build vendor location display - Use Dokan Geolocation Data Only
  * Display: Country Flag + Full Address from map autocomplete
  */
+if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 function tm_get_vendor_geo_location_display( $vendor_id, $store_info = array(), $store_address = array() ) {
 	$vendor_id = (int) $vendor_id;
 	if ( ! $vendor_id || ! function_exists( 'WC' ) ) {
@@ -1623,6 +1757,7 @@ function tm_get_vendor_geo_location_display( $vendor_id, $store_info = array(), 
 	$display_parts[] = '<span class="geo-address">' . $geo_address_without_country . '</span>';
 
 	return implode( '', $display_parts );
+}
 }
 
 /**
