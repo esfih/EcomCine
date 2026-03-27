@@ -250,6 +250,24 @@ Also verify in browser:
 
 ---
 
+## Step 9.5 — Import Control-Plane FluentCart Baseline (Recommended)
+
+If the project uses the private control-plane licensing model, import the reusable FluentCart/control-plane baseline fixture in one action:
+
+```bash
+./scripts/licensing/import-fluentcart-control-plane-seed.sh
+```
+
+This imports the committed SQL fixture `db/fluentcart-control-plane-seed.sql` using the active WordPress table prefix.
+
+What it seeds:
+- canonical product/licensing settings
+- demo customer and 4 demo orders
+- generated license keys and subscription graph
+- FluentCart store/modules activation options required by the control-plane flow
+
+---
+
 ## Step 10 — Set Up Specs and Copilot Instructions
 
 ```bash

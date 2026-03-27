@@ -6,8 +6,9 @@ deps/
 
 # ── Database exports — never commit live or unscrubbed dumps ──────────────────
 db/*.sql
-# The scrubbed dev seed is the one exception — un-comment when ready:
-# !db/seed.sql
+# Allowed scrubbed fixtures used for reproducible local bootstrap:
+!db/seed.sql
+!db/fluentcart-control-plane-seed.sql
 
 # ── WordPress core (never committed) ──────────────────────────────────────────
 wp-content/

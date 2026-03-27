@@ -36,6 +36,34 @@ php scripts/licensing/extract-wmos-billing-seed.php /root/dev/WebMasterOS-main/W
 ./scripts/wp.sh wp eval 'print_r( ecomcine_get_license_status_snapshot() );'
 ```
 
+## Reusable SQL Seed (One-Action Import)
+
+The finalized FluentCart/control-plane baseline is committed as:
+
+- `db/fluentcart-control-plane-seed.sql`
+
+This seed includes:
+
+- product settings and variation pricing payloads
+- licensing product meta and allowances
+- demo customer + 4 orders + subscriptions
+- generated licenses and compatibility license mirror rows
+- required FluentCart store/modules activation options
+
+To import in one action on any project/environment:
+
+```bash
+./scripts/licensing/import-fluentcart-control-plane-seed.sh
+```
+
+The importer auto-detects the active WordPress table prefix and applies the SQL safely using the current database container credentials.
+
+To regenerate the SQL fixture from a validated local baseline:
+
+```bash
+./scripts/licensing/export-fluentcart-control-plane-seed.sh
+```
+
 ## Notes
 
 - This parity map is intentionally seeded before a dedicated private ecomcine-control-plane plugin is finalized.
