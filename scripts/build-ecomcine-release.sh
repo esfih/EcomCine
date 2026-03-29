@@ -42,6 +42,26 @@ if command -v zip >/dev/null 2>&1; then
   )
   ARCHIVE_EXT="zip"
   ARCHIVE_PATH="$DIST_DIR/${ARCHIVE_BASENAME}.zip"
+elif command -v python3 >/dev/null 2>&1; then
+  python3 - "$DIST_DIR" "${ARCHIVE_BASENAME}.zip" <<'PY'
+import os
+import sys
+import zipfile
+
+dist_dir = sys.argv[1]
+zip_name = sys.argv[2]
+plugin_dir = os.path.join(dist_dir, 'ecomcine')
+zip_path = os.path.join(dist_dir, zip_name)
+
+with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+    for root, _, files in os.walk(plugin_dir):
+        for file_name in files:
+            file_path = os.path.join(root, file_name)
+            arcname = os.path.relpath(file_path, dist_dir)
+            zf.write(file_path, arcname)
+PY
+  ARCHIVE_EXT="zip"
+  ARCHIVE_PATH="$DIST_DIR/${ARCHIVE_BASENAME}.zip"
 else
   (
     cd "$DIST_DIR"
