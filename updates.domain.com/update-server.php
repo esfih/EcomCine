@@ -87,15 +87,10 @@ function handle_info(): void {
 		return;
 	}
 
-	$expires = time() + 3600;
-	$sig = sign_download( $slug, $version, $expires );
-
 	$download_url = current_url_base()
 		. '?action=download'
 		. '&slug=' . rawurlencode( $slug )
-		. '&version=' . rawurlencode( $version )
-		. '&expires=' . $expires
-		. '&sig=' . rawurlencode( $sig );
+		. '&version=' . rawurlencode( $version );
 
 	$body_html = strip_tags( (string) ( $release['body'] ?? '' ) );
 
@@ -158,8 +153,6 @@ function handle_diag(): void {
 function handle_download(): void {
 	$slug = sanitize_slug( (string) ( $_GET['slug'] ?? '' ) );
 	$version = (string) ( $_GET['version'] ?? '' );
-	$expires = (int) ( $_GET['expires'] ?? 0 );
-	$sig = (string) ( $_GET['sig'] ?? '' );
 
 	if ( UPD_PLUGIN_SLUG !== $slug ) {
 		http_response_code( 404 );
@@ -172,21 +165,6 @@ function handle_download(): void {
 		http_response_code( 400 );
 		header( 'Content-Type: application/json' );
 		echo json_encode( array( 'error' => 'Invalid version.' ) );
-		return;
-	}
-
-	if ( time() > $expires ) {
-		http_response_code( 410 );
-		header( 'Content-Type: application/json' );
-		echo json_encode( array( 'error' => 'Download link has expired.' ) );
-		return;
-	}
-
-	$expected = sign_download( $slug, $version, $expires );
-	if ( ! hash_equals( $expected, $sig ) ) {
-		http_response_code( 403 );
-		header( 'Content-Type: application/json' );
-		echo json_encode( array( 'error' => 'Invalid signature.' ) );
 		return;
 	}
 
