@@ -87,10 +87,14 @@ function handle_info(): void {
 		return;
 	}
 
-	$download_url = current_url_base()
-		. '?action=download'
-		. '&slug=' . rawurlencode( $slug )
-		. '&version=' . rawurlencode( $version );
+	$download_url = sprintf(
+		'https://github.com/%s/%s/releases/download/%s/%s-%s.zip',
+		rawurlencode( UPD_GITHUB_OWNER ),
+		rawurlencode( UPD_GITHUB_REPO ),
+		rawurlencode( $tag ),
+		rawurlencode( $slug ),
+		rawurlencode( $version )
+	);
 
 	$body_html = strip_tags( (string) ( $release['body'] ?? '' ) );
 
