@@ -87,14 +87,12 @@ function handle_info(): void {
 		return;
 	}
 
-	$download_url = sprintf(
-		'https://github.com/%s/%s/releases/download/%s/%s-%s.zip',
-		rawurlencode( UPD_GITHUB_OWNER ),
-		rawurlencode( UPD_GITHUB_REPO ),
-		rawurlencode( $tag ),
-		rawurlencode( $slug ),
-		rawurlencode( $version )
-	);
+	$download_url = get_release_asset_url( $tag, $slug );
+	if ( ! $download_url ) {
+		http_response_code( 503 );
+		echo json_encode( array( 'error' => 'Could not resolve a release package URL.' ) );
+		return;
+	}
 
 	$body_html = strip_tags( (string) ( $release['body'] ?? '' ) );
 
