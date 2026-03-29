@@ -231,10 +231,13 @@ function handle_download(): void {
 }
 
 function get_latest_release( ?string &$error = null ): ?array {
-	if ( is_file( UPD_CACHE_FILE ) && ( time() - filemtime( UPD_CACHE_FILE ) ) < UPD_CACHE_TTL ) {
+	if ( is_file( UPD_CACHE_FILE ) ) {
+		$cache_age = time() - (int) filemtime( UPD_CACHE_FILE );
+		if ( $cache_age >= 0 && $cache_age < UPD_CACHE_TTL ) {
 		$cached = json_decode( (string) file_get_contents( UPD_CACHE_FILE ), true );
 		if ( is_array( $cached ) && ! empty( $cached['tag_name'] ) ) {
 			return $cached;
+		}
 		}
 	}
 
