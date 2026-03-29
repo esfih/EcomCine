@@ -200,34 +200,10 @@ function handle_download(): void {
 	}
 
 	$filename = $slug . '-v' . $version . '.zip';
-	header( 'Content-Type: application/zip' );
-	header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
-	header( 'X-Content-Type-Options: nosniff' );
 	header( 'Cache-Control: no-store' );
-
-	$ch = curl_init();
-	curl_setopt_array(
-		$ch,
-		array(
-			CURLOPT_URL => $asset_url,
-			CURLOPT_RETURNTRANSFER => false,
-			CURLOPT_FOLLOWLOCATION => true,
-			CURLOPT_MAXREDIRS => 5,
-			CURLOPT_TIMEOUT => 120,
-			CURLOPT_HTTPHEADER => github_download_headers(),
-			CURLOPT_WRITEFUNCTION => static function ( $ch, $data ): int {
-				echo $data;
-				return strlen( $data );
-			},
-		)
-	);
-	curl_exec( $ch );
-
-	if ( curl_errno( $ch ) ) {
-		error_log( 'EcomCine update server cURL error: ' . curl_error( $ch ) );
-	}
-
-	curl_close( $ch );
+	header( 'X-Accel-Buffering: no' );
+	header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+	header( 'Location: ' . $asset_url, true, 302 );
 }
 
 function get_latest_release( ?string &$error = null ): ?array {
@@ -321,7 +297,7 @@ function get_release_asset_url( string $tag, string $slug ): ?string {
 	}
 
 	return sprintf(
-		'https://api.github.com/repos/%s/%s/zipball/%s',
+		'https://github.com/%s/%s/archive/refs/tags/%s.zip',
 		rawurlencode( UPD_GITHUB_OWNER ),
 		rawurlencode( UPD_GITHUB_REPO ),
 		rawurlencode( $tag )
