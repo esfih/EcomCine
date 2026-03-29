@@ -180,10 +180,41 @@ function handle_download(): void {
 	}
 
 	$filename = $slug . '-v' . $version . '.zip';
-	header( 'Cache-Control: no-store' );
-	header( 'X-Accel-Buffering: no' );
+	$http_code = 0;
+	$content_type = '';
+	$curl_error = '';
+	$binary = http_get_binary( $asset_url, $http_code, $content_type, $curl_error );
+
+	if ( null === $binary ) {
+		http_response_code( 502 );
+		header( 'Content-Type: application/json' );
+		echo json_encode(
+			array(
+				'error' => 'Failed to fetch package binary.',
+				'detail' => sprintf( 'HTTP %d%s', (int) $http_code, '' !== $curl_error ? '; cURL: ' . $curl_error : '' ),
+			)
+		);
+		return;
+	}
+
+	if ( strlen( $binary ) < 4 || 0 !== strpos( $binary, "PK\x03\x04" ) ) {
+		http_response_code( 502 );
+		header( 'Content-Type: application/json' );
+		echo json_encode(
+			array(
+				'error' => 'Resolved package is not a ZIP archive.',
+				'content_type' => $content_type,
+			)
+		);
+		return;
+	}
+
+	header( 'Content-Type: application/zip' );
 	header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
-	header( 'Location: ' . $asset_url, true, 302 );
+	header( 'Content-Length: ' . strlen( $binary ) );
+	header( 'Cache-Control: no-store' );
+	header( 'X-Content-Type-Options: nosniff' );
+	echo $binary;
 }
 
 function get_latest_release( ?string &$error = null ): ?array {
@@ -311,6 +342,32 @@ function github_get_with_meta( string $url ): array {
 		'code'  => (int) $code,
 		'error' => '' !== $err ? $err : null,
 	);
+}
+
+function http_get_binary( string $url, int &$http_code = 0, string &$content_type = '', string &$curl_error = '' ): ?string {
+	$ch = curl_init();
+	curl_setopt_array(
+		$ch,
+		array(
+			CURLOPT_URL => $url,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_FOLLOWLOCATION => true,
+			CURLOPT_MAXREDIRS => 5,
+			CURLOPT_TIMEOUT => 120,
+			CURLOPT_HTTPHEADER => github_download_headers(),
+		)
+	);
+	$body = curl_exec( $ch );
+	$http_code = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+	$content_type = (string) curl_getinfo( $ch, CURLINFO_CONTENT_TYPE );
+	$curl_error = (string) curl_error( $ch );
+	curl_close( $ch );
+
+	if ( false === $body || 200 !== $http_code ) {
+		return null;
+	}
+
+	return (string) $body;
 }
 
 function github_api_headers(): array {
