@@ -4,6 +4,7 @@
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
  * Version: 0.1.0
  * Author: EcomCine
+ * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
  * Requires PHP: 8.1
  */
@@ -15,12 +16,15 @@ define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
 
+require_once ECOMCINE_DIR . 'includes/core/class-plugin-capability.php';
+require_once ECOMCINE_DIR . 'includes/core/class-plugin-updater.php';
 require_once ECOMCINE_DIR . 'includes/core/contracts/interface-theme-adapter.php';
 require_once ECOMCINE_DIR . 'includes/core/contracts/interface-commerce-adapter.php';
 require_once ECOMCINE_DIR . 'includes/core/adapters/class-theme-adapter-dokan-astra.php';
 require_once ECOMCINE_DIR . 'includes/core/adapters/class-theme-adapter-wp-baseline.php';
 require_once ECOMCINE_DIR . 'includes/core/adapters/class-commerce-adapter-woodokan.php';
 require_once ECOMCINE_DIR . 'includes/core/adapters/class-commerce-adapter-wp-baseline.php';
+require_once ECOMCINE_DIR . 'includes/core/adapters/class-commerce-adapter-fluentcart.php';
 require_once ECOMCINE_DIR . 'includes/core/runtime/class-runtime-adapters.php';
 require_once ECOMCINE_DIR . 'includes/admin/class-admin-settings.php';
 require_once ECOMCINE_DIR . 'includes/licensing/class-offer-catalog.php';
@@ -29,6 +33,7 @@ require_once ECOMCINE_DIR . 'includes/compat/vendor-utilities.php';
 
 EcomCine_Admin_Settings::init();
 EcomCine_Licensing::init();
+EcomCine_Plugin_Updater::init();
 
 /**
  * Helper for diagnostics/tests to inspect selected abstraction adapters.
@@ -38,10 +43,12 @@ function ecomcine_get_runtime_adapter_snapshot() {
 }
 
 /**
- * Helper for diagnostics/tests to inspect current admin settings.
+ * Helper for diagnostics/tests to inspect current admin settings and plugin capabilities.
  */
 function ecomcine_get_settings_snapshot() {
-	return EcomCine_Admin_Settings::get_settings();
+	$settings = EcomCine_Admin_Settings::get_settings();
+	$settings['plugin_capabilities'] = EcomCine_Plugin_Capability::snapshot();
+	return $settings;
 }
 
 /**

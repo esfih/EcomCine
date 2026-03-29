@@ -66,6 +66,50 @@ case "$COMMAND_ID" in
     ./scripts/wp.sh wp db import db/seed.sql
     ;;
 
+  qa.playwright.install)
+    bash ./scripts/playwright-selftest.sh install "$@"
+    ;;
+
+  qa.playwright.test.smoke)
+    bash ./scripts/playwright-selftest.sh smoke "$@"
+    ;;
+
+  qa.playwright.test.interactions)
+    bash ./scripts/playwright-selftest.sh interactions "$@"
+    ;;
+
+  qa.playwright.test.debug)
+    bash ./scripts/playwright-selftest.sh debug "$@"
+    ;;
+
+  qa.playwright.test.headed)
+    bash ./scripts/playwright-selftest.sh headed "$@"
+    ;;
+
+  qa.playwright.report)
+    bash ./scripts/playwright-selftest.sh report "$@"
+    ;;
+
+  wp.debug.log.tail)
+    if [[ $# -gt 0 ]]; then
+      ./scripts/wp.sh log "$1"
+    else
+      ./scripts/wp.sh log
+    fi
+    ;;
+
+  wp.debug.php.info)
+    ./scripts/wp.sh wp --info
+    ;;
+
+  debug.snapshot.collect)
+    if [[ $# -gt 0 ]]; then
+      bash ./scripts/collect-debug-snapshot.sh "$1"
+    else
+      bash ./scripts/collect-debug-snapshot.sh
+    fi
+    ;;
+
   db.seed.import.fluentcart_cp)
     ./scripts/licensing/import-fluentcart-control-plane-seed.sh "$@"
     ;;
@@ -90,6 +134,42 @@ case "$COMMAND_ID" in
     ./scripts/build-ecomcine-release.sh
     ;;
 
+  updates.package.clean)
+    bash ./scripts/package-updates-ecomcine-clean.sh
+    ;;
+
+  git.stage.paths)
+    if [[ $# -lt 1 ]]; then
+      echo "ERROR: git.stage.paths requires one or more file paths" >&2
+      exit 2
+    fi
+    git add -- "$@"
+    ;;
+
+  git.commit.create)
+    if [[ $# -lt 1 ]]; then
+      echo "ERROR: git.commit.create requires <commit_message>" >&2
+      exit 2
+    fi
+    git commit -m "$1"
+    ;;
+
+  github.release.create)
+    if [[ $# -lt 3 ]]; then
+      echo "ERROR: github.release.create requires <tag> <title> <notes> [asset_paths...]" >&2
+      exit 2
+    fi
+    TAG="$1"
+    TITLE="$2"
+    NOTES="$3"
+    shift 3
+    if [[ $# -gt 0 ]]; then
+      gh release create "$TAG" "$@" --title "$TITLE" --notes "$NOTES"
+    else
+      gh release create "$TAG" --title "$TITLE" --notes "$NOTES"
+    fi
+    ;;
+
   git.status)
     git status --short
     ;;
@@ -104,6 +184,157 @@ case "$COMMAND_ID" in
       exit 2
     fi
     ./scripts/validate-remediation-commit-msg.sh "$1"
+    ;;
+
+  host.tool.install)
+    if [[ $# -lt 1 ]]; then
+      echo "ERROR: host.tool.install requires <tool>" >&2
+      echo "Allowed tools: ripgrep jq yq php-cli" >&2
+      exit 2
+    fi
+    bash ./scripts/install-host-tool.sh "$1"
+    ;;
+
+  node.path.detect)
+    command -v node || command -v nodejs || echo "Node not found"
+    ;;
+
+  ollama.path.detect)
+    command -v ollama || echo "Ollama not found"
+    ;;
+
+  ollama.service.start)
+    mkdir -p logs && nohup ollama serve >> logs/ollama-server.log 2>&1 &
+    ;;
+
+  ollama.service.stop)
+    pkill -f 'ollama serve' || true
+    pkill -f '/ollama' || true
+    ;;
+
+  ollama.service.log.tail)
+    mkdir -p logs && touch logs/ollama-server.log && tail -n 80 logs/ollama-server.log
+    ;;
+
+  ollama.windows.probe)
+    HOST="$(awk '/nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null || true)"
+    echo "WSL->Windows host: ${HOST:-unknown}"
+    echo '--- probe localhost ---'
+    curl -sS -m 3 http://127.0.0.1:11434/api/version || echo 'down'
+    echo
+    echo '--- probe windows-host-ip ---'
+    if [[ -n "${HOST}" ]]; then
+      curl -sS -m 3 "http://${HOST}:11434/api/version" || echo 'down'
+    else
+      echo 'down'
+    fi
+    ;;
+
+  ollama.windows.probe.full)
+    set -e
+    C1="127.0.0.1"
+    C2="$(awk '/nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null || true)"
+    C3="$(ip route 2>/dev/null | awk '/default/ {print $3; exit}')"
+    C4="$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1; exit}')"
+    echo "Candidates: $C1 ${C2:-} ${C3:-} ${C4:-}"
+    for H in "$C1" "$C2" "$C3" "$C4"; do
+      [[ -z "$H" ]] && continue
+      echo "--- probe $H ---"
+      curl -sS -m 3 "http://$H:11434/api/version" || echo down
+      echo
+    done
+    ;;
+
+  ollama.windows.query.tags)
+    set -e
+    C2="$(awk '/nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null || true)"
+    C3="$(ip route 2>/dev/null | awk '/default/ {print $3; exit}')"
+    C4="$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1; exit}')"
+    for H in 127.0.0.1 "$C2" "$C3" "$C4"; do
+      [[ -z "$H" ]] && continue
+      if curl -fsS -m 3 "http://$H:11434/api/version" >/dev/null; then
+        echo "Using host: $H"
+        curl -fsS -m 8 "http://$H:11434/api/tags"
+        exit 0
+      fi
+    done
+    echo "No reachable Windows Ollama host from WSL" >&2
+    exit 7
+    ;;
+
+  ollama.windows.query.generate)
+    set -e
+    MODEL="${1:-qwen3.5:9b-slim-256k}"
+    PROMPT="${2:-Reply with OK}"
+    C2="$(awk '/nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null || true)"
+    C3="$(ip route 2>/dev/null | awk '/default/ {print $3; exit}')"
+    C4="$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1; exit}')"
+    for H in 127.0.0.1 "$C2" "$C3" "$C4"; do
+      [[ -z "$H" ]] && continue
+      if curl -fsS -m 3 "http://$H:11434/api/version" >/dev/null; then
+        echo "Using host: $H"
+        curl -fsS -m 30 "http://$H:11434/api/generate" \
+          -H 'Content-Type: application/json' \
+          -d "{\"model\":\"${MODEL}\",\"prompt\":\"${PROMPT}\",\"stream\":false,\"options\":{\"num_predict\":32}}"
+        exit 0
+      fi
+    done
+    echo "No reachable Windows Ollama host from WSL" >&2
+    exit 7
+    ;;
+
+  ollama.proxy.manager.start)
+    NODE_BIN="$(command -v node || command -v nodejs || true)"
+    if [[ -z "$NODE_BIN" ]]; then
+      echo "ERROR: Node runtime not found (expected 'node' or 'nodejs')." >&2
+      exit 4
+    fi
+    mkdir -p logs && nohup "$NODE_BIN" tools/ollama-proxy-manager.js >> logs/ollama-proxy-manager.log 2>&1 &
+    ;;
+
+  ollama.proxy.manager.stop)
+    pkill -f 'tools/ollama-proxy-manager.js' || true
+    pkill -f 'tools/ollama-nothink-proxy.js' || true
+    ;;
+
+  ollama.proxy.status)
+    C2="$(awk '/nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null || true)"
+    C3="$(ip route 2>/dev/null | awk '/default/ {print $3; exit}')"
+    C4="$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1; exit}')"
+    echo '--- Ollama localhost ---'
+    curl -sf http://127.0.0.1:11434/api/version || echo 'down'
+    echo
+    for H in "$C2" "$C3" "$C4"; do
+      [[ -z "$H" ]] && continue
+      echo "--- Ollama $H ---"
+      curl -sf "http://$H:11434/api/version" || echo 'down'
+      echo
+    done
+    echo '--- Proxy ---'
+    curl -sf http://127.0.0.1:11435/proxy/status || echo 'down'
+    ;;
+
+  ollama.proxy.mode.nothink)
+    curl -sf -X POST http://127.0.0.1:11435/proxy/mode -H 'Content-Type: application/json' -d '{"mode":"nothink"}'
+    ;;
+
+  ollama.proxy.mode.passthrough)
+    curl -sf -X POST http://127.0.0.1:11435/proxy/mode -H 'Content-Type: application/json' -d '{"mode":"passthrough"}'
+    ;;
+
+  ollama.proxy.log.manager.tail)
+    mkdir -p logs && touch logs/ollama-proxy-manager.log && tail -n 80 logs/ollama-proxy-manager.log
+    ;;
+
+  ollama.proxy.log.proxy.tail)
+    mkdir -p logs && touch logs/ollama-nothink-proxy.log && tail -n 80 logs/ollama-nothink-proxy.log
+    ;;
+
+  ollama.proxy.smoke)
+    MODEL="${1:-qwen3.5:9b}"
+    curl -sf http://127.0.0.1:11435/v1/chat/completions \
+      -H 'Content-Type: application/json' \
+      -d "{\"model\":\"${MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with OK\"}],\"stream\":false}"
     ;;
 
   *)
