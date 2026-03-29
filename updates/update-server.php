@@ -295,17 +295,20 @@ function get_release_asset_url( string $tag, string $slug ): ?string {
 		if ( ! str_ends_with( $name, '.zip' ) ) {
 			continue;
 		}
-		$asset_api_url = (string) ( $asset['url'] ?? '' );
-		if ( '' === $asset_api_url ) {
+		$asset_download_url = (string) ( $asset['browser_download_url'] ?? '' );
+		if ( '' === $asset_download_url ) {
+			$asset_download_url = (string) ( $asset['url'] ?? '' );
+		}
+		if ( '' === $asset_download_url ) {
 			continue;
 		}
 
 		if ( false !== strpos( $name, strtolower( $slug ) ) ) {
-			$preferred = $asset_api_url;
+			$preferred = $asset_download_url;
 			break;
 		}
 		if ( null === $fallback ) {
-			$fallback = $asset_api_url;
+			$fallback = $asset_download_url;
 		}
 	}
 
