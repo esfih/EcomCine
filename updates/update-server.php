@@ -18,7 +18,14 @@ if ( ! is_file( $config_file ) ) {
 
 $cfg = require $config_file;
 
-define( 'UPD_GITHUB_TOKEN', (string) ( $cfg['github_token'] ?? '' ) );
+$env_token = getenv( 'ECOMCINE_GITHUB_TOKEN' );
+if ( ! is_string( $env_token ) || '' === trim( $env_token ) ) {
+	$env_token = getenv( 'GITHUB_TOKEN' );
+}
+$cfg_token = (string) ( $cfg['github_token'] ?? '' );
+$resolved_token = ( is_string( $env_token ) && '' !== trim( $env_token ) ) ? trim( $env_token ) : $cfg_token;
+
+define( 'UPD_GITHUB_TOKEN', $resolved_token );
 define( 'UPD_GITHUB_OWNER', (string) ( $cfg['github_owner'] ?? '' ) );
 define( 'UPD_GITHUB_REPO', (string) ( $cfg['github_repo'] ?? '' ) );
 define( 'UPD_PLUGIN_SLUG', (string) ( $cfg['plugin_slug'] ?? 'ecomcine' ) );
@@ -34,6 +41,9 @@ $action = (string) ( $_GET['action'] ?? 'info' );
 switch ( $action ) {
 	case 'info':
 		handle_info();
+		break;
+	case 'diag':
+		handle_diag();
 		break;
 	case 'download':
 		handle_download();
@@ -57,10 +67,15 @@ function handle_info(): void {
 		return;
 	}
 
-	$release = get_latest_release();
+	$error = '';
+	$release = get_latest_release( $error );
 	if ( ! $release ) {
 		http_response_code( 503 );
-		echo json_encode( array( 'error' => 'Could not fetch release data.' ) );
+		$payload = array( 'error' => 'Could not fetch release data.' );
+		if ( should_debug() && '' !== $error ) {
+			$payload['detail'] = $error;
+		}
+		echo json_encode( $payload );
 		return;
 	}
 
@@ -100,6 +115,40 @@ function handle_info(): void {
 			'sections'      => array(
 				'description' => (string) ( get_cfg( 'description', 'Unified EcomCine plugin updates.' ) ),
 				'changelog'   => nl2br( htmlspecialchars( $body_html ) ),
+			),
+		),
+		JSON_UNESCAPED_SLASHES
+	);
+}
+
+function handle_diag(): void {
+	header( 'Content-Type: application/json' );
+	header( 'Cache-Control: no-store' );
+
+	$url = sprintf(
+		'https://api.github.com/repos/%s/%s/releases/latest',
+		rawurlencode( UPD_GITHUB_OWNER ),
+		rawurlencode( UPD_GITHUB_REPO )
+	);
+	$probe = github_get_with_meta( $url );
+	$decoded = null;
+	if ( $probe['ok'] && is_string( $probe['body'] ) ) {
+		$decoded = json_decode( $probe['body'], true );
+	}
+
+	echo json_encode(
+		array(
+			'service'          => 'ecomcine-update-server',
+			'plugin_slug'      => UPD_PLUGIN_SLUG,
+			'github_owner'     => UPD_GITHUB_OWNER,
+			'github_repo'      => UPD_GITHUB_REPO,
+			'token_configured' => '' !== trim( UPD_GITHUB_TOKEN ),
+			'curl_available'   => function_exists( 'curl_init' ),
+			'github_probe'     => array(
+				'ok'           => $probe['ok'],
+				'http_code'    => $probe['code'],
+				'curl_error'   => $probe['error'],
+				'has_tag_name' => is_array( $decoded ) && ! empty( $decoded['tag_name'] ),
 			),
 		),
 		JSON_UNESCAPED_SLASHES
@@ -181,7 +230,7 @@ function handle_download(): void {
 	curl_close( $ch );
 }
 
-function get_latest_release(): ?array {
+function get_latest_release( ?string &$error = null ): ?array {
 	if ( is_file( UPD_CACHE_FILE ) && ( time() - filemtime( UPD_CACHE_FILE ) ) < UPD_CACHE_TTL ) {
 		$cached = json_decode( (string) file_get_contents( UPD_CACHE_FILE ), true );
 		if ( is_array( $cached ) && ! empty( $cached['tag_name'] ) ) {
@@ -194,13 +243,19 @@ function get_latest_release(): ?array {
 		rawurlencode( UPD_GITHUB_OWNER ),
 		rawurlencode( UPD_GITHUB_REPO )
 	);
-	$body = github_get( $url );
-	if ( ! $body ) {
+	$probe = github_get_with_meta( $url );
+	if ( ! $probe['ok'] || ! is_string( $probe['body'] ) ) {
+		$error = sprintf(
+			'GitHub releases/latest failed (HTTP %d%s)',
+			(int) $probe['code'],
+			$probe['error'] ? '; cURL: ' . $probe['error'] : ''
+		);
 		return null;
 	}
 
-	$release = json_decode( $body, true );
+	$release = json_decode( $probe['body'], true );
 	if ( ! is_array( $release ) || empty( $release['tag_name'] ) ) {
+		$error = 'GitHub response did not contain a valid tag_name.';
 		return null;
 	}
 
@@ -268,6 +323,11 @@ function get_release_asset_url( string $tag, string $slug ): ?string {
 }
 
 function github_get( string $url ): ?string {
+	$probe = github_get_with_meta( $url );
+	return ( $probe['ok'] && is_string( $probe['body'] ) ) ? (string) $probe['body'] : null;
+}
+
+function github_get_with_meta( string $url ): array {
 	$ch = curl_init();
 	curl_setopt_array(
 		$ch,
@@ -280,9 +340,15 @@ function github_get( string $url ): ?string {
 	);
 	$body = curl_exec( $ch );
 	$code = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+	$err = curl_error( $ch );
 	curl_close( $ch );
 
-	return ( false !== $body && 200 === (int) $code ) ? (string) $body : null;
+	return array(
+		'ok'    => ( false !== $body && 200 === (int) $code ),
+		'body'  => false !== $body ? (string) $body : null,
+		'code'  => (int) $code,
+		'error' => '' !== $err ? $err : null,
+	);
 }
 
 function github_api_headers(): array {
@@ -348,4 +414,8 @@ function get_cfg( string $key, string $fallback ): string {
 		return (string) $cfg[ $key ];
 	}
 	return $fallback;
+}
+
+function should_debug(): bool {
+	return isset( $_GET['debug'] ) && '1' === (string) $_GET['debug'];
 }

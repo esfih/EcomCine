@@ -17,6 +17,9 @@ class EcomCine_Plugin_Updater {
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'inject_update' ) );
 		add_filter( 'plugins_api', array( __CLASS__, 'plugins_api' ), 20, 3 );
 		add_action( 'upgrader_process_complete', array( __CLASS__, 'purge_cache_after_upgrade' ), 10, 2 );
+		add_filter( 'plugin_row_meta', array( __CLASS__, 'add_plugin_row_meta' ), 10, 4 );
+		add_action( 'admin_post_ecomcine_check_update', array( __CLASS__, 'manual_check_update' ) );
+		add_action( 'admin_notices', array( __CLASS__, 'maybe_show_update_checked_notice' ) );
 	}
 
 	/**
@@ -132,6 +135,73 @@ class EcomCine_Plugin_Updater {
 		}
 
 		return $return;
+	}
+
+	/**
+	 * Add a permanent "Check Update" link to the plugin row meta.
+	 *
+	 * @param array  $plugin_meta Existing plugin meta links.
+	 * @param string $plugin_file Plugin file path.
+	 * @param array  $plugin_data Plugin header data.
+	 * @param string $status      Plugin list status.
+	 * @return array
+	 */
+	public static function add_plugin_row_meta( $plugin_meta, $plugin_file, $plugin_data, $status ) {
+		unset( $plugin_data, $status );
+
+		if ( plugin_basename( ECOMCINE_FILE ) !== $plugin_file ) {
+			return $plugin_meta;
+		}
+
+		$url = wp_nonce_url(
+			admin_url( 'admin-post.php?action=ecomcine_check_update' ),
+			'ecomcine_check_update'
+		);
+
+		$plugin_meta[] = sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( $url ),
+			esc_html__( 'Check Update', 'ecomcine' )
+		);
+
+		return $plugin_meta;
+	}
+
+	/**
+	 * Handle manual update checks from plugin row action.
+	 */
+	public static function manual_check_update() {
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			wp_die( esc_html__( 'You are not allowed to check plugin updates.', 'ecomcine' ) );
+		}
+
+		check_admin_referer( 'ecomcine_check_update' );
+
+		delete_site_transient( self::CACHE_KEY );
+		delete_site_transient( 'update_plugins' );
+		wp_update_plugins();
+
+		$redirect = wp_get_referer();
+		if ( ! is_string( $redirect ) || '' === $redirect ) {
+			$redirect = admin_url( 'plugins.php' );
+		}
+
+		$redirect = add_query_arg( 'ecomcine_update_checked', '1', $redirect );
+		wp_safe_redirect( $redirect );
+		exit;
+	}
+
+	/**
+	 * Display confirmation after a manual update check.
+	 */
+	public static function maybe_show_update_checked_notice() {
+		if ( ! is_admin() || ! isset( $_GET['ecomcine_update_checked'] ) ) {
+			return;
+		}
+
+		echo '<div class="notice notice-success is-dismissible"><p>'
+			. esc_html__( 'EcomCine update check completed.', 'ecomcine' )
+			. '</p></div>';
 	}
 
 	/**
