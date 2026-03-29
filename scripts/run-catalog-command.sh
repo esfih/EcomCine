@@ -138,6 +138,10 @@ case "$COMMAND_ID" in
     bash ./scripts/package-updates-ecomcine-clean.sh
     ;;
 
+  updates.verify.package)
+    bash ./scripts/verify-updater-package.sh "$@"
+    ;;
+
   git.stage.paths)
     if [[ $# -lt 1 ]]; then
       echo "ERROR: git.stage.paths requires one or more file paths" >&2
@@ -168,6 +172,36 @@ case "$COMMAND_ID" in
     else
       gh release create "$TAG" --title "$TITLE" --notes "$NOTES"
     fi
+    ;;
+
+  github.release.upload)
+    if [[ $# -lt 2 ]]; then
+      echo "ERROR: github.release.upload requires <tag> <asset_paths...>" >&2
+      exit 2
+    fi
+    TAG="$1"
+    shift
+    gh release upload "$TAG" "$@" --clobber
+    ;;
+
+  gh.auth.status)
+    gh auth status
+    ;;
+
+  gh.auth.login.web)
+    gh auth login --hostname github.com --git-protocol https --web
+    ;;
+
+  gh.auth.setup-git)
+    gh auth setup-git
+    ;;
+
+  gh.repo.set-default)
+    if [[ $# -lt 1 ]]; then
+      echo "ERROR: gh.repo.set-default requires <owner/repo>" >&2
+      exit 2
+    fi
+    gh repo set-default "$1"
     ;;
 
   git.status)

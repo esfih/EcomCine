@@ -266,6 +266,15 @@ Each command contract defines:
 - failure_class: `tooling`
 - remediation_type: `source-fix`
 
+`id`: `updates.verify.package`
+- goal: Validate update endpoint payload + package URL + ZIP signature before production rollout
+- command: `./scripts/verify-updater-package.sh [endpoint] [slug]`
+- args: optional `endpoint` (default `https://updates.ecomcine.com/update-server.php`) and `slug` (default `ecomcine`)
+- success: exit `0`; output ends with `PASS: updater info + package URL + ZIP signature are valid`
+- failure: non-zero; inspect HTTP status, JSON parse, or ZIP magic diagnostics in output
+- failure_class: `contract`
+- remediation_type: `source-fix`
+
 `id`: `git.stage.paths`
 - goal: Stage an explicit set of files safely without staging unrelated changes
 - command: `git add -- <path1> [path2 ...]`
@@ -290,6 +299,51 @@ Each command contract defines:
 - args: `tag`, `title`, `notes` required; optional asset paths
 - success: exit `0`
 - failure: non-zero; stop and resolve auth/tag/repository issues
+- failure_class: `auth`
+- remediation_type: `source-fix`
+
+`id`: `github.release.upload`
+- goal: Upload or replace release assets on an existing GitHub release tag
+- command: `gh release upload <tag> <assets...> --clobber`
+- args: `tag` and one or more asset paths required
+- success: exit `0`
+- failure: non-zero; stop and resolve auth/tag/asset-path issues
+- failure_class: `auth`
+- remediation_type: `source-fix`
+
+`id`: `gh.auth.status`
+- goal: Check current GitHub CLI authentication status for this shell user
+- command: `gh auth status`
+- args: none
+- success: exit `0`
+- failure: non-zero; authenticate via `gh.auth.login.web`
+- failure_class: `auth`
+- remediation_type: `source-fix`
+
+`id`: `gh.auth.login.web`
+- goal: Authenticate GitHub CLI with browser/device flow for persistent session
+- command: `gh auth login --hostname github.com --git-protocol https --web --skip-ssh-key`
+- args: none
+- success: exit `0`
+- failure: non-zero; retry and verify browser/device confirmation
+- failure_class: `auth`
+- remediation_type: `source-fix`
+
+`id`: `gh.auth.setup-git`
+- goal: Configure GitHub CLI as git credential helper integration for this user
+- command: `gh auth setup-git`
+- args: none
+- success: exit `0`
+- failure: non-zero; resolve local git/gh config permissions
+- failure_class: `tooling`
+- remediation_type: `source-fix`
+
+`id`: `gh.repo.set-default`
+- goal: Set default GitHub repository for gh CLI commands in current directory
+- command: `gh repo set-default <owner/repo>`
+- args: `owner/repo` required
+- success: exit `0`
+- failure: non-zero; resolve repo name/access issues
 - failure_class: `auth`
 - remediation_type: `source-fix`
 

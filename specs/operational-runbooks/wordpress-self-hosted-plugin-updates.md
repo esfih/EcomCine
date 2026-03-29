@@ -1,69 +1,135 @@
-# WordPress Self-Hosted Plugin Updates (Reusable Pattern)
+# WordPress Self-Hosted Plugin Updates (Canonical Pattern)
 
-## Scope
+## Purpose
 
-Use this pattern for private/commercial plugins that should update inside WordPress admin without exposing GitHub credentials to end users.
+Provide a repeatable, production-safe method for shipping plugin updates in WP Admin for private/commercial plugins without exposing source-control credentials to plugin end users.
 
-Important policy note for this repository:
-- Do not edit foundation subtree files directly.
-- Keep canonical project guidance in specs and operational runbooks, then upstream to foundation via its own source workflow.
+## Repository Policy
 
-## Architecture
+- Do not edit `foundation/` subtree files directly from this repository.
+- Store canonical guidance in `specs/operational-runbooks/`.
+- Upstream accepted patterns to the foundation source repository as a separate sync action.
 
-1. Update server endpoint (for example updates.example.com/update-server.php) exposes:
-- action=info: returns JSON metadata (latest version, requirements, changelog, signed package URL)
-- action=download: validates signed URL and streams release ZIP from private release storage
+## Proven Architecture
 
-2. WordPress plugin integrates updater client:
-- hook pre_set_site_transient_update_plugins to inject available update
-- hook plugins_api to provide plugin details modal data
-- cache info responses with site transient
+1. Plugin updater client inside the plugin:
+- Hooks `pre_set_site_transient_update_plugins` to inject update metadata.
+- Hooks `plugins_api` to provide "View details" payload.
+- Provides an explicit "Check Update" plugin row action to force refresh.
 
-3. Security model:
-- API/GitHub token stored only on update server
-- short-lived signed download URLs
-- no secrets embedded in distributed plugin ZIP
+2. Update server endpoint:
+- `action=info`: returns version metadata and package URL.
+- `action=download`: serves the package bytes as a real ZIP stream and validates ZIP magic.
+- `action=diag`: returns safe environment and GitHub probe diagnostics.
 
-## Server Contract (JSON)
+3. Release source:
+- GitHub Releases is authoritative release metadata.
+- Update server resolves the actual release asset URL from the GitHub release API.
 
-The action=info response should include at least:
-- version
-- download_url
-- requires
-- requires_php
-- tested
-- sections.changelog
+## Canonical Response Contract (`action=info`)
 
-Optional but recommended:
-- name
-- slug
-- homepage
-- author
-- last_updated
-- icons / banners
+Required fields:
+- `version`
+- `download_url`
+- `requires`
+- `requires_php`
+- `tested`
+- `sections.changelog`
 
-## Deployment Steps
+Recommended fields:
+- `name`, `slug`, `author`, `homepage`, `last_updated`, `changelog_url`
 
-1. Build release ZIP where top-level folder matches plugin slug exactly.
-2. Publish release artifact to private source (for example GitHub Releases).
-3. Build clean updater deployment bundle (EcomCine repo):
-- ./scripts/run-catalog-command.sh updates.package.clean
-4. Deploy update-server.php and config.php to updates host.
-5. Put real secrets only in server-side config.php.
-6. Verify endpoint:
-- GET /update-server.php?action=info&slug=<plugin-slug>
-7. In WordPress admin, open Dashboard > Updates and check for updates.
+## Asset Naming Rule (Critical)
 
-## EcomCine Defaults
+Do not assume package filename patterns in server code.
 
-- Plugin slug: ecomcine
-- Endpoint base: https://updates.ecomcine.com/update-server.php
-- Info URL: https://updates.ecomcine.com/update-server.php?action=info&slug=ecomcine
+Always resolve the package URL from release assets (`browser_download_url`) instead of constructing path strings manually.
 
-## Operational Checklist
+Reason:
+- Release assets may include path-like names from upload source (`dist/...`) or renamed labels.
+- Hardcoded URLs can produce `404 Not Found` and failed WP updates.
 
-- Confirm new plugin version is greater than installed version.
-- Confirm update ZIP folder name is ecomcine/.
-- Confirm action=download signed URL is reachable by WordPress host.
-- Confirm upgrader can write wp-content/plugins.
-- Confirm plugin details modal loads changelog and metadata.
+## Security and Credentials
+
+- Keep GitHub token only on update host runtime/config.
+- Never commit real token values.
+- Preferred token resolution order on server:
+	1. `ECOMCINE_GITHUB_TOKEN`
+	2. `GITHUB_TOKEN`
+	3. `config.php` fallback
+
+## Release and Deploy Workflow (EcomCine)
+
+1. Build plugin artifact:
+- `./scripts/run-catalog-command.sh release.build.ecomcine`
+
+2. Publish release assets to target tag:
+- `./scripts/run-catalog-command.sh github.release.upload <tag> dist/ecomcine-<version>.zip dist/ecomcine-<version>.manifest.json`
+
+3. Build updater deployment bundle:
+- `./scripts/run-catalog-command.sh updates.package.clean`
+
+4. Deploy update server files:
+- Upload `deploy/updates-ecomcine-clean/update-server.php`
+- Upload `deploy/updates-ecomcine-clean/config.php` (host-only real secrets)
+
+5. Clear server cache once:
+- Remove `updates.domain.com/cache/latest-release.json`
+
+## Validation Gates (Mandatory)
+
+Before production rollout:
+
+1. Endpoint correctness:
+- `https://updates.ecomcine.com/update-server.php?action=diag&slug=ecomcine`
+- `https://updates.ecomcine.com/update-server.php?action=info&slug=ecomcine&debug=1`
+
+2. Package integrity check:
+- `./scripts/run-catalog-command.sh updates.verify.package`
+
+3. WP Admin behavior:
+- Plugin row shows `Check Update`.
+- Update appears when installed version is lower than `info.version`.
+- Update installs without manual ZIP upload.
+
+## Failure Matrix (Observed and Resolved)
+
+1. Symptom: `Could not fetch release data (HTTP 401)`
+- Root cause: invalid/missing/revoked GitHub token on updates host.
+- Source-fix: set valid token on host runtime/config; verify with `action=diag`.
+
+2. Symptom: `Download failed. Not Found`
+- Root cause: hardcoded package URL did not match actual release asset name.
+- Source-fix: resolve `download_url` from release assets API, not string interpolation.
+
+3. Symptom: `PCLZIP_ERR_BAD_FORMAT`
+- Root cause: updater downloaded non-ZIP content (HTML/error page/redirect mismatch).
+- Source-fix: validate payload magic bytes and serve verified ZIP bytes.
+
+4. Symptom: `The package could not be installed`
+- Root cause: generic upgrader failure after invalid package retrieval.
+- Source-fix: verify package URL reachable, payload ZIP signature valid, and plugin ZIP structure valid.
+
+5. Symptom: update check says successful but no update appears
+- Root cause: latest release version equals installed version.
+- Source-fix: publish higher semantic version and force update check.
+
+## Reusable Assets in This Repository
+
+- Updater server implementation:
+	- `updates.domain.com/update-server.php`
+	- `updates.domain.com/config.php`
+- Plugin updater client:
+	- `ecomcine/includes/core/class-plugin-updater.php`
+- Packaging scripts:
+	- `scripts/build-ecomcine-release.sh`
+	- `scripts/package-updates-ecomcine-clean.sh`
+	- `scripts/verify-updater-package.sh`
+
+## Porting Checklist for Another Plugin Project
+
+1. Replace slug and endpoint constants in plugin updater client.
+2. Update release build script to output `<slug>-<version>.zip`.
+3. Configure update server owner/repo/slug and token on host.
+4. Publish first release and verify `action=info` reports the correct higher version.
+5. Run `updates.verify.package` and complete WP Admin install validation.
