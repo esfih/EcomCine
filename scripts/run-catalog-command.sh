@@ -142,6 +142,10 @@ case "$COMMAND_ID" in
     bash ./scripts/verify-updater-package.sh "$@"
     ;;
 
+  updates.cache.clear)
+    bash ./scripts/clear-updater-cache.sh "$@"
+    ;;
+
   git.stage.paths)
     if [[ $# -lt 1 ]]; then
       echo "ERROR: git.stage.paths requires one or more file paths" >&2

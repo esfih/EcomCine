@@ -58,6 +58,13 @@ Reason:
 	2. `GITHUB_TOKEN`
 	3. `config.php` fallback
 
+## Cache Policy (Canonical)
+
+- Default: cache disabled (`cache_ttl = 0`) to avoid stale-release drift during active release cycles.
+- Optional: enable cache only when needed for API quota control by setting `cache_ttl > 0`.
+- Debug mode (`debug=1`) bypasses cache reads.
+- Update server exposes secure `action=clear_cache` endpoint (requires keyed auth).
+
 ## Release and Deploy Workflow (EcomCine)
 
 1. Build plugin artifact:
@@ -74,7 +81,13 @@ Reason:
 - Upload `deploy/updates-ecomcine-clean/config.php` (host-only real secrets)
 
 5. Clear server cache once:
-- Remove `updates.domain.com/cache/latest-release.json`
+- Preferred automation:
+	- `./scripts/run-catalog-command.sh updates.cache.clear`
+- Optional remote clear:
+	- `./scripts/run-catalog-command.sh updates.cache.clear https://updates.ecomcine.com/update-server.php <clear_cache_key>`
+	- where `clear_cache_key = hash_hmac('sha256', 'clear_cache', download_secret)`
+- Manual fallback:
+	- remove `updates.domain.com/cache/latest-release.json`
 
 ## Validation Gates (Mandatory)
 
@@ -110,6 +123,10 @@ Before production rollout:
 - Root cause: generic upgrader failure after invalid package retrieval.
 - Source-fix: verify package URL reachable, payload ZIP signature valid, and plugin ZIP structure valid.
 
+6. Symptom: endpoint reports old version immediately after release publish
+- Root cause: stale update-server cache file persisted.
+- Source-fix: keep cache disabled by default (`cache_ttl = 0`) or clear via `updates.cache.clear`.
+
 5. Symptom: update check says successful but no update appears
 - Root cause: latest release version equals installed version.
 - Source-fix: publish higher semantic version and force update check.
@@ -125,6 +142,7 @@ Before production rollout:
 	- `scripts/build-ecomcine-release.sh`
 	- `scripts/package-updates-ecomcine-clean.sh`
 	- `scripts/verify-updater-package.sh`
+	- `scripts/clear-updater-cache.sh`
 
 ## Porting Checklist for Another Plugin Project
 

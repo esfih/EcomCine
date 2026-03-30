@@ -12,7 +12,7 @@ return [
     'plugin_slug'     => 'ecomcine',
     'release_tag_prefix' => 'v',
     'download_secret' => 'replace-with-long-random-secret',
-    'cache_ttl'       => 900,
+    'cache_ttl'       => 0,
     'name'            => 'EcomCine',
     'author'          => 'EcomCine',
     'homepage'        => 'https://ecomcine.com',

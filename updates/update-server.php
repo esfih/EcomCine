@@ -30,7 +30,7 @@ define( 'UPD_GITHUB_OWNER', (string) ( $cfg['github_owner'] ?? '' ) );
 define( 'UPD_GITHUB_REPO', (string) ( $cfg['github_repo'] ?? '' ) );
 define( 'UPD_PLUGIN_SLUG', (string) ( $cfg['plugin_slug'] ?? 'ecomcine' ) );
 define( 'UPD_DOWNLOAD_SECRET', (string) ( $cfg['download_secret'] ?? '' ) );
-define( 'UPD_CACHE_TTL', (int) ( $cfg['cache_ttl'] ?? 900 ) );
+define( 'UPD_CACHE_TTL', (int) ( $cfg['cache_ttl'] ?? 0 ) );
 define( 'UPD_RELEASE_TAG_PREFIX', (string) ( $cfg['release_tag_prefix'] ?? 'v' ) );
 define( 'UPD_CACHE_FILE', __DIR__ . '/cache/latest-release.json' );
 
@@ -47,6 +47,9 @@ switch ( $action ) {
 		break;
 	case 'download':
 		handle_download();
+		break;
+	case 'clear_cache':
+		handle_clear_cache();
 		break;
 	default:
 		http_response_code( 400 );
@@ -140,6 +143,9 @@ function handle_diag(): void {
 			'github_owner'     => UPD_GITHUB_OWNER,
 			'github_repo'      => UPD_GITHUB_REPO,
 			'token_configured' => '' !== trim( UPD_GITHUB_TOKEN ),
+			'cache_enabled'    => should_use_cache(),
+			'cache_ttl'        => (int) UPD_CACHE_TTL,
+			'cache_file_exists'=> is_file( UPD_CACHE_FILE ),
 			'curl_available'   => function_exists( 'curl_init' ),
 			'github_probe'     => array(
 				'ok'           => $probe['ok'],
@@ -147,6 +153,40 @@ function handle_diag(): void {
 				'curl_error'   => $probe['error'],
 				'has_tag_name' => is_array( $decoded ) && ! empty( $decoded['tag_name'] ),
 			),
+		),
+		JSON_UNESCAPED_SLASHES
+	);
+}
+
+function handle_clear_cache(): void {
+	header( 'Content-Type: application/json' );
+	header( 'Cache-Control: no-store' );
+
+	if ( '' === trim( UPD_DOWNLOAD_SECRET ) ) {
+		http_response_code( 503 );
+		echo json_encode( array( 'error' => 'Download secret is not configured.' ) );
+		return;
+	}
+
+	$key = (string) ( $_REQUEST['key'] ?? '' );
+	$expected = hash_hmac( 'sha256', 'clear_cache', UPD_DOWNLOAD_SECRET );
+	if ( '' === $key || ! hash_equals( $expected, $key ) ) {
+		http_response_code( 403 );
+		echo json_encode( array( 'error' => 'Invalid cache clear key.' ) );
+		return;
+	}
+
+	$removed = false;
+	if ( is_file( UPD_CACHE_FILE ) ) {
+		$removed = @unlink( UPD_CACHE_FILE );
+	}
+
+	echo json_encode(
+		array(
+			'cache_cleared' => (bool) $removed,
+			'cache_file'    => UPD_CACHE_FILE,
+			'cache_enabled' => should_use_cache(),
+			'cache_ttl'     => (int) UPD_CACHE_TTL,
 		),
 		JSON_UNESCAPED_SLASHES
 	);
@@ -218,7 +258,7 @@ function handle_download(): void {
 }
 
 function get_latest_release( ?string &$error = null ): ?array {
-	if ( is_file( UPD_CACHE_FILE ) ) {
+	if ( should_use_cache() && ! should_debug() && is_file( UPD_CACHE_FILE ) ) {
 		$cache_age = time() - (int) filemtime( UPD_CACHE_FILE );
 		if ( $cache_age >= 0 && $cache_age < UPD_CACHE_TTL ) {
 		$cached = json_decode( (string) file_get_contents( UPD_CACHE_FILE ), true );
@@ -249,11 +289,13 @@ function get_latest_release( ?string &$error = null ): ?array {
 		return null;
 	}
 
-	$cache_dir = dirname( UPD_CACHE_FILE );
-	if ( ! is_dir( $cache_dir ) ) {
-		@mkdir( $cache_dir, 0755, true );
+	if ( should_use_cache() ) {
+		$cache_dir = dirname( UPD_CACHE_FILE );
+		if ( ! is_dir( $cache_dir ) ) {
+			@mkdir( $cache_dir, 0755, true );
+		}
+		file_put_contents( UPD_CACHE_FILE, json_encode( $release ), LOCK_EX );
 	}
-	file_put_contents( UPD_CACHE_FILE, json_encode( $release ), LOCK_EX );
 
 	return $release;
 }
@@ -437,4 +479,8 @@ function get_cfg( string $key, string $fallback ): string {
 
 function should_debug(): bool {
 	return isset( $_GET['debug'] ) && '1' === (string) $_GET['debug'];
+}
+
+function should_use_cache(): bool {
+	return (int) UPD_CACHE_TTL > 0;
 }

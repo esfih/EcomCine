@@ -275,6 +275,15 @@ Each command contract defines:
 - failure_class: `contract`
 - remediation_type: `source-fix`
 
+`id`: `updates.cache.clear`
+- goal: Clear updater cache files locally and optionally clear remote update-server cache via secure endpoint key
+- command: `./scripts/clear-updater-cache.sh [endpoint] [clear_cache_key]`
+- args: no args clears local cache files; providing endpoint+key also calls remote `action=clear_cache`
+- success: exit `0`; reports local removal count and remote JSON response when used
+- failure: non-zero; inspect usage error, endpoint auth/key mismatch, or transport issue
+- failure_class: `tooling`
+- remediation_type: `source-fix`
+
 `id`: `git.stage.paths`
 - goal: Stage an explicit set of files safely without staging unrelated changes
 - command: `git add -- <path1> [path2 ...]`
