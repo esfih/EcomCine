@@ -1,0 +1,53 @@
+/**
+ * Theme Name:  EcomCine Base Theme
+ * Theme URI:   https://ecomcine.com
+ * Author:      EcomCine
+ * Author URI:  https://ecomcine.com
+ * Description: Minimal document-wrapper theme for EcomCine. All business logic,
+ *              Dokan template overrides, vendor attributes, and page templates live
+ *              in the EcomCine plugin. This theme provides only the required HTML
+ *              document skeleton (header.php / footer.php) so that plugin-owned
+ *              templates work correctly on any hosting environment.
+ * Version:     1.0.0
+ * Requires at least: 6.3
+ * Requires PHP: 8.0
+ * License:     GPL-2.0-or-later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: ecomcine-base
+ * Tags:        custom, ecomcine, minimal
+ */
+
+/* =============================================================
+   BASE TYPOGRAPHY
+   Replaces Astra customizer inline CSS that injected these rules
+   into <head>. Without Astra active, browsers default to serif.
+   ============================================================= */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ecomcine-text-color, #F5F5F5);
+    background-color: var(--ecomcine-surface-color, #111111);
+}
+
+a {
+    color: var(--ecomcine-accent-color, #D4AF37);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
