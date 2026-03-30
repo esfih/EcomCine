@@ -564,7 +564,7 @@ class TM_Media_Player_Assets {
 		wp_enqueue_style(
 			'tm-player-css',
 			TM_MEDIA_PLAYER_URL . 'assets/css/player.css',
-			array( 'astra-child-theme-css', 'responsive-config-css' ),
+			array( 'tm-store-ui-responsive', 'tm-store-ui-css' ),
 			self::CSS_VERSION
 		);
 	}
