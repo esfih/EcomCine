@@ -73,6 +73,18 @@ Reason:
 2. Publish release assets to target tag:
 - `./scripts/run-catalog-command.sh github.release.upload <tag> dist/ecomcine-<version>.zip dist/ecomcine-<version>.manifest.json`
 
+2.1. Enforce canonical release asset names (required):
+- Upload alias names that do not include build-path prefixes.
+- Canonical names must be exactly:
+	- `ecomcine-<version>.zip`
+	- `ecomcine-<version>.manifest.json`
+- Command pattern:
+	- `./scripts/run-catalog-command.sh github.release.upload <tag> dist/ecomcine-<version>.zip#ecomcine-<version>.zip dist/ecomcine-<version>.manifest.json#ecomcine-<version>.manifest.json`
+
+2.2. Direct URL smoke test (required):
+- Verify direct asset URL returns HTTP 200 before rollout:
+	- `https://github.com/esfih/EcomCine/releases/download/<tag>/ecomcine-<version>.zip`
+
 3. Build updater deployment bundle:
 - `./scripts/run-catalog-command.sh updates.package.clean`
 
@@ -123,11 +135,11 @@ Before production rollout:
 - Root cause: generic upgrader failure after invalid package retrieval.
 - Source-fix: verify package URL reachable, payload ZIP signature valid, and plugin ZIP structure valid.
 
-6. Symptom: endpoint reports old version immediately after release publish
+5. Symptom: endpoint reports old version immediately after release publish
 - Root cause: stale update-server cache file persisted.
 - Source-fix: keep cache disabled by default (`cache_ttl = 0`) or clear via `updates.cache.clear`.
 
-5. Symptom: update check says successful but no update appears
+6. Symptom: update check says successful but no update appears
 - Root cause: latest release version equals installed version.
 - Source-fix: publish higher semantic version and force update check.
 
