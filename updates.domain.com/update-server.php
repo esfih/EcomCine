@@ -317,6 +317,9 @@ function get_release_asset_url( string $tag, string $slug ): ?string {
 		return null;
 	}
 
+	$version = normalize_release_version( $tag );
+	$canonical_name = '' !== $version ? strtolower( $slug . '-' . $version . '.zip' ) : '';
+
 	$preferred = null;
 	$fallback = null;
 	foreach ( $release['assets'] ?? array() as $asset ) {
@@ -330,6 +333,10 @@ function get_release_asset_url( string $tag, string $slug ): ?string {
 		}
 		if ( '' === $asset_download_url ) {
 			continue;
+		}
+
+		if ( '' !== $canonical_name && $name === $canonical_name ) {
+			return $asset_download_url;
 		}
 
 		if ( false !== strpos( $name, strtolower( $slug ) ) ) {

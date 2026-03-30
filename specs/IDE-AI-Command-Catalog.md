@@ -257,6 +257,24 @@ Each command contract defines:
 - failure_class: `tooling`
 - remediation_type: `source-fix`
 
+`id`: `release.upload.ecomcine.canonical`
+- goal: Upload EcomCine release assets using canonical filenames to prevent broken direct release URLs
+- command: `./scripts/release-upload-canonical-assets.sh <tag> <version> [slug]`
+- args: required `tag` and `version`; optional `slug` default `ecomcine`
+- success: exit `0`; output contains `[release-upload] PASS`
+- failure: non-zero; resolve missing artifacts or GitHub release access/upload issues
+- failure_class: `contract`
+- remediation_type: `source-fix`
+
+`id`: `release.verify.canonical.assets`
+- goal: Verify canonical release asset names exist and direct canonical zip URL returns HTTP 2xx
+- command: `./scripts/verify-release-canonical-assets.sh <tag> <version> [slug]`
+- args: required `tag` and `version`; optional `slug` default `ecomcine`
+- success: exit `0`; output contains `[release-verify] PASS`
+- failure: non-zero; resolve missing canonical assets or non-2xx direct download URL
+- failure_class: `contract`
+- remediation_type: `source-fix`
+
 `id`: `updates.package.clean`
 - goal: Build clean self-hosted updater deployment bundle without Windows ADS/Zone artifacts
 - command: `./scripts/package-updates-ecomcine-clean.sh`

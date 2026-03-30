@@ -73,6 +73,9 @@ Reason:
 2. Publish release assets to target tag:
 - `./scripts/run-catalog-command.sh github.release.upload <tag> dist/ecomcine-<version>.zip dist/ecomcine-<version>.manifest.json`
 
+2.a Canonical upload gate (script-level, required):
+- `./scripts/run-catalog-command.sh release.upload.ecomcine.canonical <tag> <version> ecomcine`
+
 2.1. Enforce canonical release asset names (required):
 - Upload alias names that do not include build-path prefixes.
 - Canonical names must be exactly:
@@ -84,6 +87,9 @@ Reason:
 2.2. Direct URL smoke test (required):
 - Verify direct asset URL returns HTTP 200 before rollout:
 	- `https://github.com/esfih/EcomCine/releases/download/<tag>/ecomcine-<version>.zip`
+
+2.3 Canonical asset verification gate (tool-level, required):
+- `./scripts/run-catalog-command.sh release.verify.canonical.assets <tag> <version> ecomcine`
 
 3. Build updater deployment bundle:
 - `./scripts/run-catalog-command.sh updates.package.clean`

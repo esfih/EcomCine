@@ -134,6 +134,22 @@ case "$COMMAND_ID" in
     ./scripts/build-ecomcine-release.sh
     ;;
 
+  release.upload.ecomcine.canonical)
+    if [[ $# -lt 2 ]]; then
+      echo "ERROR: release.upload.ecomcine.canonical requires <tag> <version> [slug]" >&2
+      exit 2
+    fi
+    bash ./scripts/release-upload-canonical-assets.sh "$@"
+    ;;
+
+  release.verify.canonical.assets)
+    if [[ $# -lt 2 ]]; then
+      echo "ERROR: release.verify.canonical.assets requires <tag> <version> [slug]" >&2
+      exit 2
+    fi
+    bash ./scripts/verify-release-canonical-assets.sh "$@"
+    ;;
+
   updates.package.clean)
     bash ./scripts/package-updates-ecomcine-clean.sh
     ;;
