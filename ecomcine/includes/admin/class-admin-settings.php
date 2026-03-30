@@ -194,8 +194,9 @@ class EcomCine_Admin_Settings {
 	/**
 	 * Admin action: install (if needed) and activate the bundled EcomCine Base Theme.
 	 *
-	 * The theme files ship inside the plugin at bundled-theme/ and are copied
-	 * to the WP themes directory on first use. No external network request needed.
+	 * The theme files ship inside the plugin at bundled-theme/ and are always
+	 * synced to the WP themes directory on each button click, so plugin updates
+	 * also update the installed theme files. No external network request needed.
 	 */
 	public static function handle_install_activate_theme() {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -204,25 +205,7 @@ class EcomCine_Admin_Settings {
 
 		check_admin_referer( 'ecomcine_bootstrap_theme' );
 
-		$theme_slug = 'ecomcine-base';
-
-		// Already installed — just activate.
-		$existing = wp_get_theme( $theme_slug );
-		if ( $existing->exists() ) {
-			switch_theme( $theme_slug );
-			wp_safe_redirect( add_query_arg(
-				array(
-					'page'                => 'ecomcine-settings',
-					'tab'                 => 'settings',
-					'ecomcine_theme_done' => 1,
-					'ecomcine_theme_slug' => $theme_slug,
-				),
-				admin_url( 'admin.php' )
-			) );
-			exit;
-		}
-
-		// Install from bundled copy shipped with the plugin.
+		$theme_slug  = 'ecomcine-base';
 		$bundled_src = rtrim( ECOMCINE_DIR, '/\\' ) . DIRECTORY_SEPARATOR . 'bundled-theme';
 		$themes_root = get_theme_root();
 		$dest_dir    = trailingslashit( $themes_root ) . $theme_slug;
@@ -234,7 +217,9 @@ class EcomCine_Admin_Settings {
 		} elseif ( ! wp_mkdir_p( $dest_dir ) ) {
 			$error_code = 'dest_mkdir';
 		} else {
-			$copy_ok = true;
+			// Always sync all bundled files to the installed theme directory so that
+			// plugin updates (new templates, revised CSS) are applied on each click.
+			$copy_ok  = true;
 			$iterator = new DirectoryIterator( $bundled_src );
 			foreach ( $iterator as $file_info ) {
 				if ( $file_info->isDot() || $file_info->isDir() ) {
@@ -252,14 +237,14 @@ class EcomCine_Admin_Settings {
 			}
 
 			if ( $copy_ok ) {
-				// Clear WP theme caches so the newly copied theme is discovered.
+				// Clear WP theme caches so any newly added template files are discovered.
 				if ( function_exists( 'wp_clean_themes_cache' ) ) {
 					wp_clean_themes_cache();
 				}
 				delete_transient( 'theme_roots' );
 
-				$newly = wp_get_theme( $theme_slug );
-				if ( ! $newly->exists() ) {
+				$installed = wp_get_theme( $theme_slug );
+				if ( ! $installed->exists() ) {
 					$error_code = 'verify_fail';
 				} else {
 					switch_theme( $theme_slug );
@@ -387,7 +372,6 @@ class EcomCine_Admin_Settings {
 			wp_update_user( array(
 				'ID'           => (int) $user_id,
 				'display_name' => sanitize_text_field( (string) $profile['display_name'] ),
-				'description'  => $bio,
 				'user_url'     => '',
 			) );
 
@@ -395,8 +379,14 @@ class EcomCine_Admin_Settings {
 			$store_name = sanitize_text_field( (string) $profile['store_name'] );
 			$city       = sanitize_text_field( (string) $profile['city'] );
 
+			// Store biography in the Dokan profile settings array (primary source for
+			// TMP_Compat_Media_Source_Provider::get_biography() via dokan_get_store_info()).
+			// Also store as standalone user meta as a fallback.
+			update_user_meta( (int) $user_id, 'vendor_biography', $bio );
+
 			update_user_meta( (int) $user_id, 'dokan_profile_settings', array(
 				'store_name'              => $store_name,
+				'vendor_biography'        => $bio,
 				'social'                  => array( 'fb' => '', 'twitter' => '', 'linkedin' => '', 'youtube' => '' ),
 				'payment'                 => array(),
 				'phone'                   => '',
