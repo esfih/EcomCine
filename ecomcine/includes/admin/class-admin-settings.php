@@ -14,8 +14,251 @@ class EcomCine_Admin_Settings {
 	public static function init() {
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
-		add_filter( 'body_class', array( __CLASS__, 'apply_layout_body_class' ), 30 );
 		add_action( 'wp_head', array( __CLASS__, 'render_style_tokens_css' ), 30 );
+		add_action( 'init', array( __CLASS__, 'register_bootstrap_shortcodes' ) );
+		add_action( 'admin_post_ecomcine_create_bootstrap_pages', array( __CLASS__, 'handle_create_bootstrap_pages' ) );
+		add_action( 'admin_post_ecomcine_install_activate_theme', array( __CLASS__, 'handle_install_activate_theme' ) );
+	}
+
+	/**
+	 * Register helper shortcodes used by auto-generated onboarding pages.
+	 */
+	public static function register_bootstrap_shortcodes() {
+		if ( ! shortcode_exists( 'ecomcine_categories' ) ) {
+			add_shortcode( 'ecomcine_categories', array( __CLASS__, 'shortcode_categories' ) );
+		}
+
+		if ( ! shortcode_exists( 'ecomcine_locations' ) ) {
+			add_shortcode( 'ecomcine_locations', array( __CLASS__, 'shortcode_locations' ) );
+		}
+	}
+
+	/**
+	 * Render basic categories list for onboarding pages.
+	 */
+	public static function shortcode_categories() {
+		$taxonomy = taxonomy_exists( 'product_cat' ) ? 'product_cat' : ( taxonomy_exists( 'category' ) ? 'category' : '' );
+		if ( '' === $taxonomy ) {
+			return '<p>No category taxonomy is available yet.</p>';
+		}
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 30,
+			)
+		);
+
+		if ( is_wp_error( $terms ) || empty( $terms ) ) {
+			return '<p>No categories found yet.</p>';
+		}
+
+		$html = '<ul class="ecomcine-term-list ecomcine-term-list--categories">';
+		foreach ( $terms as $term ) {
+			$link = get_term_link( $term );
+			if ( is_wp_error( $link ) ) {
+				continue;
+			}
+			$html .= '<li><a href="' . esc_url( $link ) . '">' . esc_html( $term->name ) . '</a></li>';
+		}
+		$html .= '</ul>';
+
+		return $html;
+	}
+
+	/**
+	 * Render basic locations list for onboarding pages.
+	 */
+	public static function shortcode_locations() {
+		$candidate_taxonomies = array( 'location', 'product_location', 'pa_location' );
+		$taxonomy = '';
+		foreach ( $candidate_taxonomies as $candidate ) {
+			if ( taxonomy_exists( $candidate ) ) {
+				$taxonomy = $candidate;
+				break;
+			}
+		}
+
+		if ( '' === $taxonomy ) {
+			return '<p>No location taxonomy is available yet.</p>';
+		}
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'number'     => 30,
+			)
+		);
+
+		if ( is_wp_error( $terms ) || empty( $terms ) ) {
+			return '<p>No locations found yet.</p>';
+		}
+
+		$html = '<ul class="ecomcine-term-list ecomcine-term-list--locations">';
+		foreach ( $terms as $term ) {
+			$link = get_term_link( $term );
+			if ( is_wp_error( $link ) ) {
+				continue;
+			}
+			$html .= '<li><a href="' . esc_url( $link ) . '">' . esc_html( $term->name ) . '</a></li>';
+		}
+		$html .= '</ul>';
+
+		return $html;
+	}
+
+	/**
+	 * Admin action: create default onboarding pages.
+	 */
+	public static function handle_create_bootstrap_pages() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to perform this action.', 'ecomcine' ) );
+		}
+
+		check_admin_referer( 'ecomcine_bootstrap_pages' );
+
+		$pages = array(
+			array(
+				'title'     => 'Showcase',
+				'slug'      => 'showcase',
+				'shortcode' => '[tm_talent_showcase]',
+			),
+			array(
+				'title'     => 'Talents',
+				'slug'      => 'talents',
+				'shortcode' => '[tm_talent_player]',
+			),
+			array(
+				'title'     => 'Categories',
+				'slug'      => 'categories',
+				'shortcode' => '[ecomcine_categories]',
+			),
+			array(
+				'title'     => 'Locations',
+				'slug'      => 'locations',
+				'shortcode' => '[ecomcine_locations]',
+			),
+		);
+
+		$created = 0;
+		$updated = 0;
+		foreach ( $pages as $page ) {
+			$post = get_page_by_path( $page['slug'], OBJECT, 'page' );
+			if ( $post ) {
+				$content = is_string( $post->post_content ) ? $post->post_content : '';
+				if ( false === strpos( $content, $page['shortcode'] ) ) {
+					wp_update_post(
+						array(
+							'ID'           => (int) $post->ID,
+							'post_content' => trim( $content . "\n\n" . $page['shortcode'] ),
+						)
+					);
+					$updated++;
+				}
+				continue;
+			}
+
+			$new_id = wp_insert_post(
+				array(
+					'post_title'   => $page['title'],
+					'post_name'    => $page['slug'],
+					'post_type'    => 'page',
+					'post_status'  => 'publish',
+					'post_content' => $page['shortcode'],
+				)
+			);
+
+			if ( ! is_wp_error( $new_id ) && $new_id > 0 ) {
+				$created++;
+			}
+		}
+
+		$redirect = add_query_arg(
+			array(
+				'page'                => 'ecomcine-settings',
+				'tab'                 => 'settings',
+				'ecomcine_pages_done' => 1,
+				'ecomcine_created'    => $created,
+				'ecomcine_updated'    => $updated,
+			),
+			admin_url( 'admin.php' )
+		);
+
+		wp_safe_redirect( $redirect );
+		exit;
+	}
+
+	/**
+	 * Admin action: install (if needed) and activate preferred theme.
+	 */
+	public static function handle_install_activate_theme() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to perform this action.', 'ecomcine' ) );
+		}
+
+		check_admin_referer( 'ecomcine_bootstrap_theme' );
+
+		$target_slugs = array( 'tm-theme', 'astra-child', 'astra' );
+		foreach ( $target_slugs as $slug ) {
+			$theme = wp_get_theme( $slug );
+			if ( $theme->exists() ) {
+				switch_theme( $slug );
+				$redirect = add_query_arg(
+					array(
+						'page'                 => 'ecomcine-settings',
+						'tab'                  => 'settings',
+						'ecomcine_theme_done'  => 1,
+						'ecomcine_theme_slug'  => $slug,
+					),
+					admin_url( 'admin.php' )
+				);
+				wp_safe_redirect( $redirect );
+				exit;
+			}
+		}
+
+		if ( ! function_exists( 'themes_api' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/theme-install.php';
+		}
+		if ( ! class_exists( 'Theme_Upgrader' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+		}
+
+		$api = themes_api(
+			'theme_information',
+			array(
+				'slug'   => 'astra',
+				'fields' => array( 'sections' => false ),
+			)
+		);
+
+		$error_code = '';
+		if ( is_wp_error( $api ) || empty( $api->download_link ) ) {
+			$error_code = 'astra_api';
+		} else {
+			$upgrader = new Theme_Upgrader();
+			$result = $upgrader->install( (string) $api->download_link );
+			if ( is_wp_error( $result ) || ! $result ) {
+				$error_code = 'astra_install';
+			} else {
+				switch_theme( 'astra' );
+			}
+		}
+
+		$args = array(
+			'page'                 => 'ecomcine-settings',
+			'tab'                  => 'settings',
+			'ecomcine_theme_done'  => 1,
+			'ecomcine_theme_slug'  => wp_get_theme()->get_stylesheet(),
+		);
+		if ( '' !== $error_code ) {
+			$args['ecomcine_theme_error'] = $error_code;
+		}
+
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
+		exit;
 	}
 
 	/**
@@ -23,8 +266,7 @@ class EcomCine_Admin_Settings {
 	 */
 	public static function defaults() {
 		return array(
-			'runtime_mode' => 'preferred_stack',
-			'layout_preset' => 'cinematic',
+			'runtime_mode' => 'wp_woo_dokan_booking',
 			'features' => array(
 				'media_player'  => true,
 				'account_panel' => true,
@@ -87,15 +329,64 @@ class EcomCine_Admin_Settings {
 	 */
 	public static function get_runtime_mode() {
 		$settings = self::get_settings();
-		return isset( $settings['runtime_mode'] ) ? (string) $settings['runtime_mode'] : 'preferred_stack';
+		return isset( $settings['runtime_mode'] ) ? (string) $settings['runtime_mode'] : 'wp_woo_dokan_booking';
 	}
 
 	/**
-	 * Get current layout preset.
+	 * Canonical set of valid mode slugs.
 	 */
-	public static function get_layout_preset() {
-		$settings = self::get_settings();
-		return isset( $settings['layout_preset'] ) ? (string) $settings['layout_preset'] : 'cinematic';
+	public static function allowed_modes(): array {
+		return array(
+			'wp_cpt',
+			'wp_woo',
+			'wp_woo_booking',
+			'wp_woo_dokan',
+			'wp_woo_dokan_booking',
+			'wp_fluentcart',
+		);
+	}
+
+	/**
+	 * Return the plugin capabilities required for a given mode.
+	 * Keys match EcomCine_Plugin_Capability::snapshot() keys.
+	 *
+	 * @param string $mode
+	 * @return string[]
+	 */
+	public static function mode_prerequisites( string $mode ): array {
+		switch ( $mode ) {
+			case 'wp_woo':
+				return array( 'woocommerce' );
+			case 'wp_woo_booking':
+				return array( 'woocommerce', 'wc_bookings' );
+			case 'wp_woo_dokan':
+				return array( 'woocommerce', 'dokan' );
+			case 'wp_woo_dokan_booking':
+				return array( 'woocommerce', 'dokan', 'wc_bookings' );
+			case 'wp_fluentcart':
+				return array( 'fluentcart' );
+			default: // wp_cpt
+				return array();
+		}
+	}
+
+	/**
+	 * Return true when all prerequisites for a mode are currently satisfied.
+	 *
+	 * @param string $mode
+	 * @return bool
+	 */
+	public static function mode_prerequisites_met( string $mode ): bool {
+		if ( ! class_exists( 'EcomCine_Plugin_Capability', false ) ) {
+			return true; // can't check — allow
+		}
+		$caps = EcomCine_Plugin_Capability::snapshot();
+		foreach ( self::mode_prerequisites( $mode ) as $cap ) {
+			if ( empty( $caps[ $cap ]['present'] ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -168,16 +459,31 @@ class EcomCine_Admin_Settings {
 		$sanitized = $defaults;
 
 		$runtime_mode = isset( $input['runtime_mode'] ) ? sanitize_text_field( $input['runtime_mode'] ) : '';
-		$allowed_modes = array( 'preferred_stack', 'baseline_wp' );
-		$sanitized['runtime_mode'] = in_array( $runtime_mode, $allowed_modes, true )
-			? $runtime_mode
-			: $defaults['runtime_mode'];
 
-		$layout_preset = isset( $input['layout_preset'] ) ? sanitize_text_field( $input['layout_preset'] ) : '';
-		$allowed_presets = array( 'cinematic', 'clean', 'minimal' );
-		$sanitized['layout_preset'] = in_array( $layout_preset, $allowed_presets, true )
-			? $layout_preset
-			: $defaults['layout_preset'];
+		// Migrate legacy slugs from old two-option system.
+		if ( 'preferred_stack' === $runtime_mode ) {
+			$runtime_mode = 'wp_woo_dokan_booking';
+		} elseif ( 'baseline_wp' === $runtime_mode ) {
+			$runtime_mode = 'wp_cpt';
+		}
+
+		if ( ! in_array( $runtime_mode, self::allowed_modes(), true ) ) {
+			$runtime_mode = $defaults['runtime_mode'];
+		}
+
+		// Reject if prerequisites are not met; keep existing saved mode instead.
+		if ( ! self::mode_prerequisites_met( $runtime_mode ) ) {
+			$previous = self::get_runtime_mode();
+			$runtime_mode = in_array( $previous, self::allowed_modes(), true ) ? $previous : $defaults['runtime_mode'];
+			add_settings_error(
+				self::OPTION_KEY,
+				'runtime_mode_prereqs',
+				__( 'Runtime mode not saved: one or more required plugins for the selected mode are not active. Activate the missing plugins first.', 'ecomcine' ),
+				'error'
+			);
+		}
+
+		$sanitized['runtime_mode'] = $runtime_mode;
 
 		$feature_keys = array_keys( $defaults['features'] );
 		foreach ( $feature_keys as $feature_key ) {
@@ -201,20 +507,6 @@ class EcomCine_Admin_Settings {
 	}
 
 	/**
-	 * Apply admin-managed layout class on frontend body.
-	 */
-	public static function apply_layout_body_class( $classes ) {
-		if ( is_admin() ) {
-			return $classes;
-		}
-
-		$preset = sanitize_html_class( self::get_layout_preset(), 'cinematic' );
-		$classes[] = 'ecomcine-layout-' . $preset;
-
-		return $classes;
-	}
-
-	/**
 	 * Print style token CSS variables for frontend consumption.
 	 */
 	public static function render_style_tokens_css() {
@@ -231,108 +523,309 @@ class EcomCine_Admin_Settings {
 	}
 
 	/**
-	 * Render admin settings page.
+	 * Render a read-only "Plugin Requirements" panel above the settings form.
+	 * Shows which third-party plugins are active and what each is required by.
+	 */
+	public static function render_plugin_capabilities_section(): void {
+		if ( ! class_exists( 'EcomCine_Plugin_Capability', false ) ) {
+			return;
+		}
+
+		$caps   = EcomCine_Plugin_Capability::snapshot();
+		$labels = array(
+			'woocommerce'    => 'WooCommerce',
+			'wc_bookings'    => 'WooCommerce Bookings',
+			'dokan'          => 'Dokan Lite',
+			'dokan_pro'      => 'Dokan Pro',
+			'fluentcart'     => 'FluentCart',
+			'fluentcart_pro' => 'FluentCart Pro',
+		);
+		?>
+		<h2>Plugin Requirements</h2>
+		<p>Read-only status of plugins that EcomCine features depend on. Install or activate missing plugins to unlock the corresponding features.</p>
+		<table class="widefat striped" style="max-width:700px;margin-bottom:24px;">
+			<thead>
+				<tr>
+					<th>Plugin</th>
+					<th>Required by</th>
+					<th>Status</th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ( $caps as $key => $info ) : ?>
+					<tr>
+						<td><?php echo esc_html( $labels[ $key ] ?? $key ); ?></td>
+						<td><code><?php echo esc_html( $info['required_by'] ); ?></code></td>
+						<td>
+							<?php if ( $info['present'] ) : ?>
+								<span style="color:#00a32a;font-weight:600;">&#10003; Active</span>
+							<?php else : ?>
+								<span style="color:#d63638;">&#10007; Not detected</span>
+							<?php endif; ?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+		<?php
+	}
+
+	/**
+	 * Render admin settings page (tabbed: Settings | Licensing).
 	 */
 	public static function render_settings_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
-		$settings = self::get_settings();
-		$features = $settings['features'];
-		$tokens = $settings['style_tokens'];
-		$labels = $settings['labels'];
+		$active_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings';
+		$settings   = self::get_settings();
+		$features   = $settings['features'];
+		$tokens     = $settings['style_tokens'];
+		$labels     = $settings['labels'];
+		$created_pages = isset( $_GET['ecomcine_created'] ) ? absint( $_GET['ecomcine_created'] ) : 0;
+		$updated_pages = isset( $_GET['ecomcine_updated'] ) ? absint( $_GET['ecomcine_updated'] ) : 0;
+		$theme_slug = isset( $_GET['ecomcine_theme_slug'] ) ? sanitize_key( wp_unslash( $_GET['ecomcine_theme_slug'] ) ) : '';
+		$theme_error = isset( $_GET['ecomcine_theme_error'] ) ? sanitize_key( wp_unslash( $_GET['ecomcine_theme_error'] ) ) : '';
 		?>
 		<div class="wrap">
-			<h1>EcomCine Settings</h1>
-			<p>Phase 3 admin controls for runtime mode, layout presets, labels, feature toggles, and style tokens.</p>
-			<form method="post" action="options.php">
-				<?php settings_fields( 'ecomcine_settings_group' ); ?>
+			<h1>EcomCine</h1>
 
-				<h2>Runtime Presets</h2>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><label for="ecomcine-runtime-mode">Stack Preset</label></th>
-						<td>
-							<select id="ecomcine-runtime-mode" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[runtime_mode]">
-								<option value="preferred_stack" <?php selected( $settings['runtime_mode'], 'preferred_stack' ); ?>>Preferred stack (Astra + Dokan + Woo)</option>
-								<option value="baseline_wp" <?php selected( $settings['runtime_mode'], 'baseline_wp' ); ?>>Baseline WordPress mode</option>
-							</select>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="ecomcine-layout-preset">Layout Preset</label></th>
-						<td>
-							<select id="ecomcine-layout-preset" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[layout_preset]">
-								<option value="cinematic" <?php selected( $settings['layout_preset'], 'cinematic' ); ?>>Cinematic</option>
-								<option value="clean" <?php selected( $settings['layout_preset'], 'clean' ); ?>>Clean</option>
-								<option value="minimal" <?php selected( $settings['layout_preset'], 'minimal' ); ?>>Minimal</option>
-							</select>
-						</td>
-					</tr>
-				</table>
+			<?php if ( isset( $_GET['ecomcine_pages_done'] ) ) : ?>
+				<div class="notice notice-success is-dismissible"><p>
+					<?php echo esc_html( sprintf( 'Bootstrap pages processed. Created: %d, Updated: %d.', $created_pages, $updated_pages ) ); ?>
+				</p></div>
+			<?php endif; ?>
 
-				<h2>Labels</h2>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><label for="ecomcine-talent-label">Talent Label</label></th>
-						<td>
-							<input id="ecomcine-talent-label" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[labels][talent_label]" value="<?php echo esc_attr( $labels['talent_label'] ); ?>" class="regular-text" />
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="ecomcine-location-label">Location Label</label></th>
-						<td>
-							<input id="ecomcine-location-label" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[labels][location_label]" value="<?php echo esc_attr( $labels['location_label'] ); ?>" class="regular-text" />
-						</td>
-					</tr>
-				</table>
+			<?php if ( isset( $_GET['ecomcine_theme_done'] ) && '' === $theme_error ) : ?>
+				<div class="notice notice-success is-dismissible"><p>
+					<?php echo esc_html( sprintf( 'Theme activated: %s', $theme_slug ) ); ?>
+				</p></div>
+			<?php elseif ( isset( $_GET['ecomcine_theme_done'] ) ) : ?>
+				<div class="notice notice-error is-dismissible"><p>
+					<?php echo esc_html( sprintf( 'Theme setup could not complete (%s). Please install/activate theme manually.', $theme_error ) ); ?>
+				</p></div>
+			<?php endif; ?>
 
-				<h2>Feature Toggles</h2>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row">Modules</th>
-						<td>
-							<label>
-								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[features][media_player]" value="1" <?php checked( ! empty( $features['media_player'] ) ); ?> />
-								Media player
-							</label><br />
-							<label>
-								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[features][account_panel]" value="1" <?php checked( ! empty( $features['account_panel'] ) ); ?> />
-								Account panel
-							</label><br />
-							<label>
-								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[features][booking_modal]" value="1" <?php checked( ! empty( $features['booking_modal'] ) ); ?> />
-								Booking modal
-							</label>
-						</td>
-					</tr>
-				</table>
+			<nav class="nav-tab-wrapper" style="margin-bottom:0;">
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=settings' ) ); ?>"
+				   class="nav-tab <?php echo 'settings' === $active_tab ? 'nav-tab-active' : ''; ?>">Settings</a>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=licensing' ) ); ?>"
+				   class="nav-tab <?php echo 'licensing' === $active_tab ? 'nav-tab-active' : ''; ?>">Licensing</a>
+			</nav>
 
-				<h2>Style Tokens</h2>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><label for="ecomcine-accent-color">Accent Color</label></th>
-						<td>
-							<input id="ecomcine-accent-color" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[style_tokens][accent_color]" value="<?php echo esc_attr( $tokens['accent_color'] ); ?>" class="regular-text" />
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="ecomcine-surface-color">Surface Color</label></th>
-						<td>
-							<input id="ecomcine-surface-color" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[style_tokens][surface_color]" value="<?php echo esc_attr( $tokens['surface_color'] ); ?>" class="regular-text" />
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="ecomcine-text-color">Text Color</label></th>
-						<td>
-							<input id="ecomcine-text-color" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[style_tokens][text_color]" value="<?php echo esc_attr( $tokens['text_color'] ); ?>" class="regular-text" />
-						</td>
-					</tr>
-				</table>
+			<?php if ( 'licensing' === $active_tab ) : ?>
 
-				<?php submit_button( 'Save EcomCine Settings' ); ?>
-			</form>
+				<?php if ( class_exists( 'EcomCine_Licensing', false ) ) : ?>
+					<?php EcomCine_Licensing::render_tab_content(); ?>
+				<?php else : ?>
+					<p style="margin-top:16px;">Licensing module not loaded.</p>
+				<?php endif; ?>
+
+			<?php else : ?>
+
+				<style>
+				.ecomcine-settings-grid {
+					display: grid;
+					grid-template-columns: 1fr 1fr;
+					gap: 20px;
+					max-width: 1060px;
+					margin-top: 20px;
+				}
+				.ecomcine-settings-card {
+					background: #fff;
+					border: 1px solid #ccd0d4;
+					border-radius: 3px;
+					padding: 16px 20px 12px;
+					box-shadow: 0 1px 1px rgba(0,0,0,.04);
+				}
+				.ecomcine-settings-card h2 {
+					margin-top: 0;
+					padding-bottom: 8px;
+					border-bottom: 1px solid #eee;
+					font-size: 14px;
+					font-weight: 600;
+				}
+				.ecomcine-settings-card .form-table {
+					margin: 0;
+				}
+				.ecomcine-settings-card .form-table th {
+					width: 130px;
+					padding-left: 0;
+					font-weight: 500;
+				}
+				.ecomcine-settings-card .form-table td {
+					padding-right: 0;
+				}
+				.ecomcine-settings-full {
+					grid-column: 1 / -1;
+				}
+				.ecomcine-bootstrap-actions {
+					background: #fff;
+					border: 1px solid #ccd0d4;
+					border-radius: 3px;
+					padding: 16px 20px 12px;
+					box-shadow: 0 1px 1px rgba(0,0,0,.04);
+					margin: 0 0 20px;
+					max-width: 1060px;
+				}
+				.ecomcine-bootstrap-actions h2 {
+					margin-top: 0;
+					padding-bottom: 8px;
+					border-bottom: 1px solid #eee;
+					font-size: 14px;
+					font-weight: 600;
+				}
+				@media ( max-width: 782px ) {
+					.ecomcine-settings-grid { grid-template-columns: 1fr; }
+				}
+				</style>
+
+				<?php self::render_plugin_capabilities_section(); ?>
+
+				<div class="ecomcine-bootstrap-actions">
+					<h2>Site Bootstrap</h2>
+					<p>Create baseline pages and activate a supported theme for fresh WordPress installs.</p>
+					<p>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block; margin-right:10px;">
+							<?php wp_nonce_field( 'ecomcine_bootstrap_pages' ); ?>
+							<input type="hidden" name="action" value="ecomcine_create_bootstrap_pages" />
+							<?php submit_button( 'Create Pages', 'secondary', 'submit', false, array( 'onclick' => "return confirm('Create/patch Showcase, Talents, Categories, and Locations pages with their shortcodes?');" ) ); ?>
+						</form>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;">
+							<?php wp_nonce_field( 'ecomcine_bootstrap_theme' ); ?>
+							<input type="hidden" name="action" value="ecomcine_install_activate_theme" />
+							<?php submit_button( 'Install + Activate Theme', 'secondary', 'submit', false, array( 'onclick' => "return confirm('Install (if needed) and activate the recommended theme now?');" ) ); ?>
+						</form>
+					</p>
+					<p class="description">Pages: Showcase [tm_talent_showcase], Talents [tm_talent_player], Categories [ecomcine_categories], Locations [ecomcine_locations].</p>
+				</div>
+
+				<form method="post" action="options.php">
+					<?php settings_fields( 'ecomcine_settings_group' ); ?>
+
+					<div class="ecomcine-settings-grid">
+
+						<div class="ecomcine-settings-card">
+							<h2>Runtime Preset</h2>
+							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row"><label for="ecomcine-runtime-mode">Stack</label></th>
+									<td>
+										<?php
+										$mode_options = array(
+											'wp_cpt'               => 'WordPress CPT (Blog / Directory mode)',
+											'wp_woo'               => 'WP + WooCommerce (Single Store mode)',
+											'wp_woo_booking'       => 'WP + Woo + Booking (Single Store booking mode)',
+											'wp_woo_dokan'         => 'WP + Woo + Dokan (Marketplace Mode)',
+											'wp_woo_dokan_booking' => 'WP + Woo + Dokan + Booking (Marketplace Mode)',
+										);
+										?>
+										<select id="ecomcine-runtime-mode" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[runtime_mode]">
+											<?php foreach ( $mode_options as $slug => $mode_label ) : ?>
+												<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $settings['runtime_mode'], $slug ); ?>>
+													<?php echo esc_html( $mode_label ); ?>
+												</option>
+											<?php endforeach; ?>
+										</select>
+										<?php
+										if ( class_exists( 'EcomCine_Plugin_Capability', false ) ) {
+											$missing      = array();
+											$caps         = EcomCine_Plugin_Capability::snapshot();
+											$prereq_labels = array(
+												'woocommerce' => 'WooCommerce',
+												'wc_bookings' => 'WooCommerce Bookings',
+												'dokan'       => 'Dokan Lite',											'fluentcart'  => 'FluentCart',											);
+											foreach ( self::mode_prerequisites( $settings['runtime_mode'] ) as $cap ) {
+												if ( empty( $caps[ $cap ]['present'] ) ) {
+													$missing[] = $prereq_labels[ $cap ] ?? $cap;
+												}
+											}
+											if ( ! empty( $missing ) ) {
+												echo '<p class="description" style="color:#d63638;">Missing: ' . esc_html( implode( ', ', $missing ) ) . '</p>';
+											} else {
+												echo '<p class="description" style="color:#00a32a;">All prerequisites active.</p>';
+											}
+										}
+										?>
+									</td>
+								</tr>
+							</table>
+						</div>
+
+						<div class="ecomcine-settings-card">
+							<h2>Feature Toggles</h2>
+							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row">Modules</th>
+									<td>
+										<label>
+											<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[features][media_player]" value="1" <?php checked( ! empty( $features['media_player'] ) ); ?> />
+											Media player
+										</label><br />
+										<label>
+											<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[features][account_panel]" value="1" <?php checked( ! empty( $features['account_panel'] ) ); ?> />
+											Account panel
+										</label><br />
+										<label>
+											<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[features][booking_modal]" value="1" <?php checked( ! empty( $features['booking_modal'] ) ); ?> />
+											Booking modal
+										</label>
+									</td>
+								</tr>
+							</table>
+						</div>
+
+						<div class="ecomcine-settings-card">
+							<h2>Labels</h2>
+							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row"><label for="ecomcine-talent-label">Talent Label</label></th>
+									<td>
+										<input id="ecomcine-talent-label" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[labels][talent_label]" value="<?php echo esc_attr( $labels['talent_label'] ); ?>" class="regular-text" />
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><label for="ecomcine-location-label">Location Label</label></th>
+									<td>
+										<input id="ecomcine-location-label" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[labels][location_label]" value="<?php echo esc_attr( $labels['location_label'] ); ?>" class="regular-text" />
+									</td>
+								</tr>
+							</table>
+						</div>
+
+						<div class="ecomcine-settings-card">
+							<h2>Style Tokens</h2>
+							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row"><label for="ecomcine-accent-color">Accent Color</label></th>
+									<td>
+										<input id="ecomcine-accent-color" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[style_tokens][accent_color]" value="<?php echo esc_attr( $tokens['accent_color'] ); ?>" class="regular-text" />
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><label for="ecomcine-surface-color">Surface Color</label></th>
+									<td>
+										<input id="ecomcine-surface-color" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[style_tokens][surface_color]" value="<?php echo esc_attr( $tokens['surface_color'] ); ?>" class="regular-text" />
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><label for="ecomcine-text-color">Text Color</label></th>
+									<td>
+										<input id="ecomcine-text-color" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[style_tokens][text_color]" value="<?php echo esc_attr( $tokens['text_color'] ); ?>" class="regular-text" />
+									</td>
+								</tr>
+							</table>
+						</div>
+
+						<div class="ecomcine-settings-full">
+							<?php submit_button( 'Save EcomCine Settings' ); ?>
+						</div>
+
+					</div><!-- .ecomcine-settings-grid -->
+				</form>
+
+			<?php endif; ?>
 		</div>
 		<?php
 	}
