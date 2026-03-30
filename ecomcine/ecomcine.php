@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.2
+ * Version: 0.1.3
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,25 +11,104 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.2' );
+define( 'ECOMCINE_VERSION', '0.1.3' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
 
-require_once ECOMCINE_DIR . 'includes/core/class-plugin-capability.php';
-require_once ECOMCINE_DIR . 'includes/core/class-plugin-updater.php';
-require_once ECOMCINE_DIR . 'includes/core/contracts/interface-theme-adapter.php';
-require_once ECOMCINE_DIR . 'includes/core/contracts/interface-commerce-adapter.php';
-require_once ECOMCINE_DIR . 'includes/core/adapters/class-theme-adapter-dokan-astra.php';
-require_once ECOMCINE_DIR . 'includes/core/adapters/class-theme-adapter-wp-baseline.php';
-require_once ECOMCINE_DIR . 'includes/core/adapters/class-commerce-adapter-woodokan.php';
-require_once ECOMCINE_DIR . 'includes/core/adapters/class-commerce-adapter-wp-baseline.php';
-require_once ECOMCINE_DIR . 'includes/core/adapters/class-commerce-adapter-fluentcart.php';
-require_once ECOMCINE_DIR . 'includes/core/runtime/class-runtime-adapters.php';
-require_once ECOMCINE_DIR . 'includes/admin/class-admin-settings.php';
-require_once ECOMCINE_DIR . 'includes/licensing/class-offer-catalog.php';
-require_once ECOMCINE_DIR . 'includes/licensing/class-licensing.php';
-require_once ECOMCINE_DIR . 'includes/compat/vendor-utilities.php';
+/**
+ * Keep bootstrap resilient: never crash the whole site when requirements are unmet.
+ *
+ * @param string[] $errors
+ */
+function ecomcine_register_bootstrap_notice( array $errors ) {
+	if ( empty( $errors ) ) {
+		return;
+	}
+
+	if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+		error_log( '[EcomCine bootstrap] ' . implode( ' | ', $errors ) );
+	}
+
+	add_action(
+		'admin_notices',
+		static function () use ( $errors ) {
+			if ( ! current_user_can( 'activate_plugins' ) ) {
+				return;
+			}
+
+			echo '<div class="notice notice-error"><p><strong>EcomCine:</strong> '
+				. esc_html__( 'Plugin bootstrap failed. Review the items below.', 'ecomcine' )
+				. '</p><ul style="margin-left:18px;list-style:disc;">';
+			foreach ( $errors as $error ) {
+				echo '<li>' . esc_html( (string) $error ) . '</li>';
+			}
+			echo '</ul></div>';
+		}
+	);
+}
+
+/**
+ * Include a required PHP file only when it exists.
+ *
+ * @param string   $relative_path
+ * @param string[] $errors
+ * @return bool
+ */
+function ecomcine_require_file( $relative_path, array &$errors ) {
+	$path = ECOMCINE_DIR . ltrim( (string) $relative_path, '/' );
+	if ( ! is_file( $path ) ) {
+		$errors[] = sprintf( 'Missing required file: %s', $relative_path );
+		return false;
+	}
+
+	require_once $path;
+	return true;
+}
+
+$ecomcine_bootstrap_errors = array();
+
+if ( version_compare( PHP_VERSION, '8.1', '<' ) ) {
+	$ecomcine_bootstrap_errors[] = sprintf( 'PHP 8.1 or newer is required. Current: %s', PHP_VERSION );
+	ecomcine_register_bootstrap_notice( $ecomcine_bootstrap_errors );
+	return;
+}
+
+$required_files = array(
+	'includes/core/class-plugin-capability.php',
+	'includes/core/class-plugin-updater.php',
+	'includes/core/contracts/interface-theme-adapter.php',
+	'includes/core/contracts/interface-commerce-adapter.php',
+	'includes/core/adapters/class-theme-adapter-dokan-astra.php',
+	'includes/core/adapters/class-theme-adapter-wp-baseline.php',
+	'includes/core/adapters/class-commerce-adapter-woodokan.php',
+	'includes/core/adapters/class-commerce-adapter-wp-baseline.php',
+	'includes/core/adapters/class-commerce-adapter-fluentcart.php',
+	'includes/core/runtime/class-runtime-adapters.php',
+	'includes/admin/class-admin-settings.php',
+	'includes/licensing/class-offer-catalog.php',
+	'includes/licensing/class-licensing.php',
+	'includes/compat/vendor-utilities.php',
+);
+
+foreach ( $required_files as $required_file ) {
+	ecomcine_require_file( $required_file, $ecomcine_bootstrap_errors );
+}
+
+if ( ! class_exists( 'EcomCine_Admin_Settings', false ) ) {
+	$ecomcine_bootstrap_errors[] = 'Missing class: EcomCine_Admin_Settings';
+}
+if ( ! class_exists( 'EcomCine_Licensing', false ) ) {
+	$ecomcine_bootstrap_errors[] = 'Missing class: EcomCine_Licensing';
+}
+if ( ! class_exists( 'EcomCine_Plugin_Updater', false ) ) {
+	$ecomcine_bootstrap_errors[] = 'Missing class: EcomCine_Plugin_Updater';
+}
+
+if ( ! empty( $ecomcine_bootstrap_errors ) ) {
+	ecomcine_register_bootstrap_notice( $ecomcine_bootstrap_errors );
+	return;
+}
 
 EcomCine_Admin_Settings::init();
 EcomCine_Licensing::init();
