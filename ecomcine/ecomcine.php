@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.5
+ * Version: 0.1.6
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.5' );
+define( 'ECOMCINE_VERSION', '0.1.6' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -209,4 +209,11 @@ ecomcine_load_legacy_module(
 	class_exists( 'TM_Vendor_Booking_Modal', false )
 		|| ecomcine_is_plugin_slug_active( 'tm-vendor-booking-modal' )
 		|| ! ecomcine_feature_enabled( 'booking_modal' )
+);
+
+// 4) Store UI module (cinematic vendor store template overrides, attribute panels, social metrics).
+ecomcine_load_legacy_module(
+	'modules/tm-store-ui/tm-store-ui.php',
+	defined( 'TM_STORE_UI_VERSION' )
+		|| ecomcine_is_plugin_slug_active( 'tm-store-ui' )
 );

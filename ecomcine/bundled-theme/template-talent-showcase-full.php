@@ -40,6 +40,7 @@ if ( ! empty( $vendor_ids ) ) {
 	} );
 }
 
+$GLOBALS['ecomcine_suppress_site_header'] = true;
 get_header();
 ?>
 

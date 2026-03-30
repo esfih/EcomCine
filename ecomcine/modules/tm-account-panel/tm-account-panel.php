@@ -2,34 +2,65 @@
 /**
  * Plugin Name: TM Account Panel
  * Description: Adds a right-side Account tab that opens a login/register modal.
- * Version: 1.0.0
- * Author: TM
+ * Version:     1.1.0
+ * Author:      TM
+ * Requires PHP: 8.2
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+define( 'TAP_DIR', plugin_dir_path( __FILE__ ) );
+
+// ---------------------------------------------------------------------------
+// Adapter layer (Phase 3 — Account Panel Adapters).
+// Contracts.
+require_once TAP_DIR . 'includes/contracts/interface-page-context-resolver.php';
+require_once TAP_DIR . 'includes/contracts/interface-login-handler.php';
+require_once TAP_DIR . 'includes/contracts/interface-onboarding-provider.php';
+require_once TAP_DIR . 'includes/contracts/interface-account-data-provider.php';
+// Compatibility adapters.
+require_once TAP_DIR . 'includes/adapters/compatibility/class-compat-page-context-resolver.php';
+require_once TAP_DIR . 'includes/adapters/compatibility/class-compat-login-handler.php';
+require_once TAP_DIR . 'includes/adapters/compatibility/class-compat-onboarding-provider.php';
+require_once TAP_DIR . 'includes/adapters/compatibility/class-compat-account-data-provider.php';
+// Default-WP CPTs.
+require_once TAP_DIR . 'includes/adapters/default-wp/class-wp-invitation-cpt.php';
+require_once TAP_DIR . 'includes/adapters/default-wp/class-wp-order-cpt.php';
+require_once TAP_DIR . 'includes/adapters/default-wp/class-wp-booking-cpt.php';
+// Default-WP adapters.
+require_once TAP_DIR . 'includes/adapters/default-wp/class-wp-page-context-resolver.php';
+require_once TAP_DIR . 'includes/adapters/default-wp/class-wp-login-handler.php';
+require_once TAP_DIR . 'includes/adapters/default-wp/class-wp-onboarding-provider.php';
+require_once TAP_DIR . 'includes/adapters/default-wp/class-wp-account-data-provider.php';
+// Registry.
+require_once TAP_DIR . 'includes/adapters/class-adapter-registry.php';
+// Parity check (loaded on-demand — not invoked at runtime).
+require_once TAP_DIR . 'includes/parity/class-parity-check.php';
+// ---------------------------------------------------------------------------
+
+// Register CPTs before WordPress init completes.
+add_action( 'init', [ 'TAP_WP_Invitation_CPT', 'register_post_type' ], 5 );
+add_action( 'init', [ 'TAP_WP_Order_CPT',      'register_post_type' ], 5 );
+add_action( 'init', [ 'TAP_WP_Booking_CPT',    'register_post_type' ], 5 );
+
 function tm_account_panel_is_store_page() {
-	if ( function_exists( 'tm_is_showcase_page' ) && tm_is_showcase_page() ) {
-		return true;
+	return TAP_Adapter_Registry::get_context_resolver()->is_eligible_page();
+}
+
+function tm_account_panel_svg_icon( $name, $class = '', $title = '' ) {
+	if ( class_exists( 'TM_Icons' ) ) {
+		return TM_Icons::svg( $name, $class, $title );
 	}
 
-	if ( function_exists( 'dokan_is_store_page' ) ) {
-		if ( dokan_is_store_page() ) {
-			return true;
-		}
+	$fallback_class = trim( 'tm-icon tm-icon-fallback' . ( $class ? ' ' . $class : '' ) );
+	$attrs = 'class="' . esc_attr( $fallback_class ) . '" aria-hidden="true"';
+	if ( $title ) {
+		$attrs = 'class="' . esc_attr( $fallback_class ) . '" role="img" aria-label="' . esc_attr( $title ) . '"';
 	}
 
-	if ( function_exists( 'dokan_is_store_listing' ) && dokan_is_store_listing() ) {
-		return true;
-	}
-
-	if ( function_exists( 'is_page_template' ) && is_page_template( 'page-platform.php' ) ) {
-		return true;
-	}
-
-	return false;
+	return '<span ' . $attrs . '>•</span>';
 }
 
 add_action( 'wp_enqueue_scripts', function() {
@@ -225,31 +256,45 @@ add_action( 'wp_footer', function() {
 		$logout_redirect = add_query_arg( 'tm_account_panel', '1', $logout_redirect );
 		$logout_url = wp_logout_url( $logout_redirect );
 
-		if ( function_exists( 'dokan_get_seller_earnings' ) && function_exists( 'dokan_get_current_user_id' ) ) {
-			$balance_amount = dokan_get_seller_earnings( dokan_get_current_user_id() );
-			$account_header_meta = '<div class="tm-account-header-meta">'
-				. '<span class="tm-account-balance">'
-				. '<span class="tm-account-balance-label">Balance</span>'
-				. '<span class="tm-account-balance-amount">' . wp_kses_post( $balance_amount ) . '</span>'
-				. '</span>'
-				. '<span class="tm-account-kpi">'
+		if ( class_exists( 'EcomCine_Runtime_Adapters', false ) ) {
+			$commerce          = EcomCine_Runtime_Adapters::commerce();
+			$current_vendor_id = get_current_user_id();
+			$balance_html      = $commerce->get_vendor_balance_html( $current_vendor_id );
+			$mrr_raw           = $commerce->get_vendor_mrr( $current_vendor_id );
+			$arr_raw           = $commerce->get_vendor_arr( $current_vendor_id );
+			$fmt_mrr           = $commerce->format_price( $mrr_raw );
+			$fmt_arr           = $commerce->format_price( $arr_raw );
+
+			$kpi_parts = '';
+			if ( '' !== $balance_html ) {
+				$kpi_parts .= '<span class="tm-account-balance">'
+					. '<span class="tm-account-balance-label">Balance</span>'
+					. '<span class="tm-account-balance-amount">' . wp_kses_post( $balance_html ) . '</span>'
+					. '</span>';
+			}
+			$kpi_parts .= '<span class="tm-account-kpi">'
 				. '<span class="tm-account-kpi-label">MRR:</span>'
-				. '<span class="tm-account-kpi-amount">$190</span>'
-				. '</span>'
-				. '<span class="tm-account-kpi">'
+				. '<span class="tm-account-kpi-amount">' . wp_kses_post( $fmt_mrr ) . '</span>'
+				. '</span>';
+			$kpi_parts .= '<span class="tm-account-kpi">'
 				. '<span class="tm-account-kpi-label">ARR:</span>'
-				. '<span class="tm-account-kpi-amount">$2,500</span>'
-				. '</span>'
-				. '</div>';
+				. '<span class="tm-account-kpi-amount">' . wp_kses_post( $fmt_arr ) . '</span>'
+				. '</span>';
+
+			if ( $kpi_parts ) {
+				$account_header_meta = '<div class="tm-account-header-meta">' . $kpi_parts . '</div>';
+			}
 		}
 
-		$account_header_actions = '<a class="tm-account-logout" href="' . esc_url( $logout_url ) . '" aria-label="Log out" title="Log out"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></a>';
-		$orders_table_markup = tm_account_panel_get_vendor_orders_table();
+		$account_header_actions = '<a class="tm-account-logout" href="' . esc_url( $logout_url ) . '" aria-label="Log out" title="Log out">' . tm_account_panel_svg_icon( 'sign-out-alt' ) . '</a>';
+		$orders_vendor_id    = get_current_user_id();
+		$orders_table_markup = class_exists( 'EcomCine_Runtime_Adapters', false )
+			? EcomCine_Runtime_Adapters::commerce()->get_orders_table_html( $orders_vendor_id )
+			: tm_account_panel_get_vendor_orders_table_legacy();
 
 		$account_body .= '<div class="tm-account-manage">';
 		$account_body .= '<div class="tm-account-manage-tabs" role="tablist" aria-label="Account sections">';
 		$account_body .= '<button class="tm-account-manage-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="tm-account-panel-orders" data-tab="orders">Orders</button>';
-		$account_body .= '<button class="tm-account-manage-tab" type="button" role="tab" aria-selected="false" aria-controls="tm-account-panel-ip-assets" data-tab="ip-assets">IP Monetization</button>';
 		$account_body .= '</div>';
 		$account_body .= '<div class="tm-account-manage-panels">';
 		$account_body .= '<section id="tm-account-panel-orders" class="tm-account-manage-panel is-active" role="tabpanel">';
@@ -258,96 +303,6 @@ add_action( 'wp_footer', function() {
 		$account_body .= '<div class="tm-account-orders-list">' . $orders_table_markup . '</div>';
 		$account_body .= '<div class="tm-account-orders-detail" aria-hidden="true"></div>';
 		$account_body .= '</div>';
-		$account_body .= '</div>';
-		$account_body .= '</section>';
-		$account_body .= '<section id="tm-account-panel-bookings" class="tm-account-manage-panel" role="tabpanel" aria-hidden="true">';
-		$account_body .= '<div class="tm-account-section tm-account-section--booking-products">';
-		$account_body .= '<div class="tm-account-section-header">';
-		$account_body .= '<h4>Booking products</h4>';
-		$account_body .= '<span class="tm-account-section-note">Standard templates</span>';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-booking-grid">';
-		$account_body .= '<div class="tm-account-booking-card">';
-		$account_body .= '<h5>Half-Day</h5>';
-		$account_body .= '<div class="tm-account-field">';
-		$account_body .= '<label>Price</label>';
-		$account_body .= '<input type="text" placeholder="$0" />';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-field">';
-		$account_body .= '<label>Availability</label>';
-		$account_body .= '<input type="text" placeholder="Set availability" />';
-		$account_body .= '</div>';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-booking-card">';
-		$account_body .= '<h5>Full Day</h5>';
-		$account_body .= '<div class="tm-account-field">';
-		$account_body .= '<label>Price</label>';
-		$account_body .= '<input type="text" placeholder="$0" />';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-field">';
-		$account_body .= '<label>Availability</label>';
-		$account_body .= '<input type="text" placeholder="Set availability" />';
-		$account_body .= '</div>';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-booking-card">';
-		$account_body .= '<h5>Full Week</h5>';
-		$account_body .= '<div class="tm-account-field">';
-		$account_body .= '<label>Price</label>';
-		$account_body .= '<input type="text" placeholder="$0" />';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-field">';
-		$account_body .= '<label>Availability</label>';
-		$account_body .= '<input type="text" placeholder="Set availability" />';
-		$account_body .= '</div>';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-booking-card">';
-		$account_body .= '<h5>Full Month</h5>';
-		$account_body .= '<div class="tm-account-field">';
-		$account_body .= '<label>Price</label>';
-		$account_body .= '<input type="text" placeholder="$0" />';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-field">';
-		$account_body .= '<label>Availability</label>';
-		$account_body .= '<input type="text" placeholder="Set availability" />';
-		$account_body .= '</div>';
-		$account_body .= '</div>';
-		$account_body .= '</div>';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-section tm-account-section--bookings-table">';
-		$account_body .= '<div class="tm-account-section-header">';
-		$account_body .= '<h4>Bookings</h4>';
-		$account_body .= '<span class="tm-account-section-note">Click a booking to view details</span>';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-table-wrap">';
-		$account_body .= '<table class="tm-account-table">';
-		$account_body .= '<thead><tr><th>Booking</th><th>Date</th><th>Status</th><th>Total</th></tr></thead>';
-		$account_body .= '<tbody>';
-		$account_body .= '<tr><td colspan="4" class="tm-account-empty">No bookings yet.</td></tr>';
-		$account_body .= '</tbody>';
-		$account_body .= '</table>';
-		$account_body .= '</div>';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-section tm-account-section--booking-detail" aria-hidden="true">';
-		$account_body .= '<div class="tm-account-section-header tm-account-section-header--detail">';
-		$account_body .= '<h4>Booking details</h4>';
-		$account_body .= '<div class="tm-account-detail-actions">';
-		$account_body .= '<button class="tm-account-action-btn is-ghost" type="button">Refuse</button>';
-		$account_body .= '<button class="tm-account-action-btn" type="button">Accept</button>';
-		$account_body .= '</div>';
-		$account_body .= '</div>';
-		$account_body .= '<div class="tm-account-detail-grid">';
-		$account_body .= '<div class="tm-account-detail-item"><span class="tm-account-detail-label">Talent</span><span class="tm-account-detail-value">-</span></div>';
-		$account_body .= '<div class="tm-account-detail-item"><span class="tm-account-detail-label">Hiring party</span><span class="tm-account-detail-value">-</span></div>';
-		$account_body .= '<div class="tm-account-detail-item"><span class="tm-account-detail-label">Booked time</span><span class="tm-account-detail-value">-</span></div>';
-		$account_body .= '<div class="tm-account-detail-item"><span class="tm-account-detail-label">Transaction</span><span class="tm-account-detail-value">-</span></div>';
-		$account_body .= '<div class="tm-account-detail-item tm-account-detail-item--wide"><span class="tm-account-detail-label">Notes</span><span class="tm-account-detail-value">-</span></div>';
-		$account_body .= '</div>';
-		$account_body .= '</div>';
-		$account_body .= '</section>';
-		$account_body .= '<section id="tm-account-panel-ip-assets" class="tm-account-manage-panel" role="tabpanel" aria-hidden="true">';
-		$account_body .= '<div class="tm-account-section">';
-		$account_body .= '<h4>IP Monetization</h4>';
-		$account_body .= '<p class="tm-account-muted">Coming soon: manage licensing and distribution of your intellectual property created or uploaded through our platform. This includes media assets, branded merchandising, and content created with your real self or your avatar. Monetization options will include one-time licensing, monthly subscriptions, and pay-per-view.</p>';
 		$account_body .= '</div>';
 		$account_body .= '</section>';
 		$account_body .= '</div>';
@@ -396,7 +351,7 @@ add_action( 'wp_footer', function() {
 	?>
 	<?php if ( current_user_can( 'manage_options' ) ) : ?>
 		<div class="tm-account-tab tm-account-tab--admin" role="button" tabindex="0" aria-label="Add Talent" title="Add Talent">
-			<span class="tm-account-tab__icon"><i class="fas fa-user-plus" aria-hidden="true"></i></span>
+			<span class="tm-account-tab__icon"><?php echo tm_account_panel_svg_icon( 'user' ); ?></span>
 			<span class="tm-account-tab__label">Add Talent</span>
 		</div>
 	<?php endif; ?>
@@ -407,13 +362,13 @@ add_action( 'wp_footer', function() {
 		<div class="tm-account-dialog" role="document">
 			<div class="tm-account-header">
 				<div class="tm-account-header-left">
-					<h3 aria-label="Account"><i class="fas fa-user-circle" aria-hidden="true"></i></h3>
+					<h3 aria-label="Account"><?php echo tm_account_panel_svg_icon( 'user-circle' ); ?></h3>
 				</div>
 				<?php echo $account_header_meta; ?>
 				<div class="tm-account-header-actions">
 					<?php echo $account_header_actions; ?>
 					<button class="tm-account-close" type="button" aria-label="Close account">
-						<i class="fas fa-times" aria-hidden="true"></i>
+						<?php echo tm_account_panel_svg_icon( 'times' ); ?>
 					</button>
 				</div>
 			</div>
@@ -442,20 +397,27 @@ function tm_account_panel_order_details() {
 		wp_send_json_error( [ 'message' => 'invalid_order' ], 400 );
 	}
 
-	if ( function_exists( 'dokan_get_seller_id_by_order' ) ) {
-		$seller_id = (int) dokan_get_seller_id_by_order( $order_id );
-		if ( $seller_id && $seller_id !== (int) get_current_user_id() ) {
+	$current_user_id = get_current_user_id();
+	if ( class_exists( 'EcomCine_Runtime_Adapters', false ) ) {
+		if ( ! EcomCine_Runtime_Adapters::commerce()->can_view_order( $order_id, $current_user_id ) ) {
 			wp_send_json_error( [ 'message' => 'forbidden' ], 403 );
 		}
+		$html = EcomCine_Runtime_Adapters::commerce()->get_order_detail_html( $order_id );
+	} else {
+		// Legacy Dokan fallback.
+		if ( function_exists( 'dokan_get_seller_id_by_order' ) ) {
+			$seller_id = (int) dokan_get_seller_id_by_order( $order_id );
+			if ( $seller_id && $seller_id !== $current_user_id ) {
+				wp_send_json_error( [ 'message' => 'forbidden' ], 403 );
+			}
+		}
+		if ( ! current_user_can( 'dokan_view_order' ) ) {
+			wp_send_json_error( [ 'message' => 'forbidden' ], 403 );
+		}
+		ob_start();
+		dokan_get_template_part( 'orders/details', '', [ 'order_id' => $order_id ] );
+		$html = ob_get_clean();
 	}
-
-	if ( function_exists( 'current_user_can' ) && ! current_user_can( 'dokan_view_order' ) ) {
-		wp_send_json_error( [ 'message' => 'forbidden' ], 403 );
-	}
-
-	ob_start();
-	dokan_get_template_part( 'orders/details', '', [ 'order_id' => $order_id ] );
-	$html = ob_get_clean();
 
 	if ( ! $html ) {
 		wp_send_json_error( [ 'message' => 'empty' ], 500 );
@@ -464,7 +426,7 @@ function tm_account_panel_order_details() {
 	wp_send_json_success( [ 'html' => $html ] );
 }
 
-function tm_account_panel_get_vendor_orders_table() {
+function tm_account_panel_get_vendor_orders_table_legacy() {
 	if ( ! function_exists( 'dokan' ) || ! function_exists( 'dokan_get_current_user_id' ) ) {
 		return '<p class="tm-account-muted">Orders are unavailable.</p>';
 	}
@@ -530,7 +492,7 @@ function tm_account_panel_get_vendor_orders_table() {
 			$cell_body = $matches[2];
 			$link_start = $matches[3];
 			$href = $matches[4];
-			$view_button = '<a class="dokan-btn dokan-btn-default dokan-btn-sm tips tm-account-order-view" href="' . esc_url( $href ) . '" data-toggle="tooltip" data-placement="top" title="View" aria-label="View"><i class="far fa-eye"></i></a> ';
+			$view_button = '<a class="dokan-btn dokan-btn-default dokan-btn-sm tips tm-account-order-view" href="' . esc_url( $href ) . '" data-toggle="tooltip" data-placement="top" title="View" aria-label="View">' . tm_account_panel_svg_icon( 'eye' ) . '</a> ';
 			return $cell_start . $cell_body . $view_button . $link_start;
 		},
 		$markup

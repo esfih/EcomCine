@@ -7,6 +7,7 @@
 </head>
 <body <?php body_class(); ?>>
 <?php wp_body_open(); ?>
+<?php if ( empty( $GLOBALS['ecomcine_suppress_site_header'] ) ) : ?>
 <header class="ecomcine-site-header" role="banner">
 	<div class="ecomcine-site-header-inner">
 		<div class="ecomcine-site-header-logo">
@@ -31,3 +32,4 @@
 		</nav>
 	</div>
 </header>
+<?php endif; ?>

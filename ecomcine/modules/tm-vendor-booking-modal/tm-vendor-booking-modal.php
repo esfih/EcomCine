@@ -2,13 +2,44 @@
 /**
  * Plugin Name: TM Vendor Booking Modal
  * Description: Loads a featured booking product in a modal on vendor store pages.
- * Version: 1.0.0
+ * Version:     1.1.0
+ * Requires PHP: 8.2
  */
 
 defined( 'ABSPATH' ) || exit;
 
+define( 'TVBM_DIR', plugin_dir_path( __FILE__ ) );
+
+// ---------------------------------------------------------------------------
+// Adapter layer (Phase 3 — Booking Modal Adapters).
+// Contracts.
+require_once TVBM_DIR . 'includes/contracts/interface-offer-discovery.php';
+require_once TVBM_DIR . 'includes/contracts/interface-booking-form-renderer.php';
+require_once TVBM_DIR . 'includes/contracts/interface-checkout-handler.php';
+require_once TVBM_DIR . 'includes/contracts/interface-checkout-policy.php';
+// Compatibility adapters.
+require_once TVBM_DIR . 'includes/adapters/compatibility/class-compat-offer-discovery.php';
+require_once TVBM_DIR . 'includes/adapters/compatibility/class-compat-booking-form-renderer.php';
+require_once TVBM_DIR . 'includes/adapters/compatibility/class-compat-checkout-handler.php';
+require_once TVBM_DIR . 'includes/adapters/compatibility/class-compat-checkout-policy.php';
+// Default-WP CPT.
+require_once TVBM_DIR . 'includes/adapters/default-wp/class-wp-offer-cpt.php';
+// Default-WP adapters.
+require_once TVBM_DIR . 'includes/adapters/default-wp/class-wp-offer-discovery.php';
+require_once TVBM_DIR . 'includes/adapters/default-wp/class-wp-booking-form-renderer.php';
+require_once TVBM_DIR . 'includes/adapters/default-wp/class-wp-checkout-handler.php';
+require_once TVBM_DIR . 'includes/adapters/default-wp/class-wp-checkout-policy.php';
+// Registry.
+require_once TVBM_DIR . 'includes/adapters/class-adapter-registry.php';
+// Parity check (loaded on-demand — not invoked at runtime).
+require_once TVBM_DIR . 'includes/parity/class-parity-check.php';
+// ---------------------------------------------------------------------------
+
+// Register tm_offer CPT before WordPress init completes.
+add_action( 'init', [ 'TVBM_WP_Offer_CPT', 'register_post_type' ], 5 );
+
 class TM_Vendor_Booking_Modal {
-	const VERSION = '1.0.0';
+	const VERSION      = '1.1.0';
 	const NONCE_ACTION = 'tm_vendor_booking_modal';
 
 	public function __construct() {
@@ -30,59 +61,42 @@ class TM_Vendor_Booking_Modal {
 		add_action( 'woocommerce_checkout_create_order', array( $this, 'set_order_defaults' ), 10, 2 );
 	}
 
-	private function is_store_page() {
+	private function is_store_page(): bool {
+		// The showcase/home page is not a bookable store page — modal is not needed there.
 		if ( function_exists( 'tm_is_showcase_page' ) && tm_is_showcase_page() ) {
+			return false;
+		}
+		// Delegate to TAP page context resolver if available (loaded earlier in ecomcine).
+		if ( class_exists( 'TAP_Adapter_Registry', false ) ) {
+			return TAP_Adapter_Registry::get_context_resolver()->is_eligible_page();
+		}
+		// Inline fallback.
+		if ( function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
 			return true;
 		}
-
-		if ( function_exists( 'dokan_is_store_page' ) ) {
-			return dokan_is_store_page();
-		}
-
 		return is_author();
 	}
 
-	private function get_vendor_id() {
-		$vendor_id = absint( get_query_var( 'author' ) );
-		return $vendor_id;
+	private function get_vendor_id(): int {
+		return absint( get_query_var( 'author' ) );
 	}
 
-	private function get_half_day_booking_product_id( $vendor_id ) {
+	private function get_booking_product_id( $vendor_id ): int {
 		if ( ! $vendor_id ) {
 			return 0;
 		}
 
-		$args = array(
-			'post_type'      => 'product',
-			'post_status'    => 'publish',
-			'posts_per_page' => 1,
-			'author'         => $vendor_id,
-			'tax_query'      => array(
-				'relation' => 'AND',
-				array(
-					'taxonomy' => 'product_type',
-					'field'    => 'slug',
-					'terms'    => array( 'booking' ),
-				),
-				array(
-					'taxonomy' => 'product_cat',
-					'field'    => 'slug',
-					'terms'    => array( 'half-day' ),
-				),
-			),
-		);
-
-		$query = new WP_Query( $args );
-
-		if ( $query->have_posts() ) {
-			return (int) $query->posts[0]->ID;
-		}
-
-		return 0;
+		// Always use the compat (WC product_cat=booking) discovery here — this method
+		// is only called from the wc_bookings render path so WC Bookings is active.
+		// Using the adapter registry directly would be affected by TVBM_ADAPTER wp-config
+		// constants intended for the form/checkout handlers.
+		$discovery = new TVBM_Compat_Offer_Discovery();
+		$result    = $discovery->discover_booking_offer( (int) $vendor_id, 'booking' );
+		return $result['product_id'] ?? 0;
 	}
 
 	private function get_booking_product( $vendor_id ) {
-		$product_id = $this->get_half_day_booking_product_id( $vendor_id );
+		$product_id = $this->get_booking_product_id( $vendor_id );
 		if ( ! $product_id ) {
 			return null;
 		}
@@ -95,12 +109,73 @@ class TM_Vendor_Booking_Modal {
 		return $product;
 	}
 
-	public function enqueue_assets() {
-		if ( ! $this->is_store_page() ) {
-			return;
+	/**
+	 * Determine which render path to use for the booking form.
+	 *
+	 * @return string 'wc_bookings' | 'wp_native' | 'unavailable'
+	 */
+	private function get_render_path(): string {
+		// Feature disabled in admin settings → nothing to render.
+		if ( class_exists( 'EcomCine_Admin_Settings', false )
+			 && ! EcomCine_Admin_Settings::is_feature_enabled( 'booking_modal' ) ) {
+			return 'unavailable';
 		}
 
-		if ( ! class_exists( 'WooCommerce' ) || ! class_exists( 'WC_Booking_Form' ) ) {
+		// WP-CPT mode has no commerce stack — booking modal not applicable.
+		if ( class_exists( 'EcomCine_Admin_Settings', false )
+			 && 'wp_cpt' === EcomCine_Admin_Settings::get_runtime_mode() ) {
+			return 'unavailable';
+		}
+
+		// Use the centralised capability registry when available.
+		if ( class_exists( 'EcomCine_Plugin_Capability', false ) ) {
+			return EcomCine_Plugin_Capability::has_wc_bookings() ? 'wc_bookings' : 'wp_native';
+		}
+
+		// Standalone fallback: detect WC Bookings form class directly.
+		return class_exists( 'WC_Booking_Form' ) ? 'wc_bookings' : 'wp_native';
+	}
+
+	/**
+	 * Localise the booking modal script for the WP-native path.
+	 * Emits all required JS keys with empty/stub values for WC-only fields.
+	 */
+	private function localize_wp_native_assets( int $vendor_id ): void {
+		$result   = TVBM_Adapter_Registry::get_offer_discovery()->discover_booking_offer( $vendor_id, 'booking' );
+		$offer_id = $result['offer_id'] ?? 0;
+
+		wp_localize_script(
+			'tm-vendor-booking-modal',
+			'tmVendorBookingModal',
+			array(
+				'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
+				'nonce'             => wp_create_nonce( self::NONCE_ACTION ),
+				'vendorId'          => $vendor_id,
+				'productId'         => $offer_id,
+				'formAction'        => 'tm_vendor_booking_form',
+				'addToCartAction'   => 'tm_vendor_booking_add_to_cart',
+				'checkoutAction'    => 'tm_vendor_booking_checkout',
+				'addToCartUrl'      => '',
+				'bookingScriptSrc'  => '',
+				'checkoutScriptSrc' => '',
+				'stripeJsSrc'       => '',
+				'stripeUpeSrc'      => '',
+				'assets'            => array( 'scripts' => array(), 'styles' => array() ),
+				'strings'           => array(
+					'loadingForm'     => 'Loading booking form...',
+					'loadingCheckout' => 'Loading checkout...',
+					'missingProduct'  => 'No booking offer available for this vendor.',
+					'addToCartError'  => 'To complete your booking please contact us directly.',
+					'checkoutError'   => 'Online checkout is not available. Please contact us to arrange payment.',
+					'privacyText'     => 'Your data will be used to process your enquiry.',
+					'termsHtml'       => '',
+				),
+			)
+		);
+	}
+
+	public function enqueue_assets() {
+		if ( ! $this->is_store_page() ) {
 			return;
 		}
 
@@ -109,8 +184,10 @@ class TM_Vendor_Booking_Modal {
 			return;
 		}
 
-		$product = $this->get_booking_product( $vendor_id );
-		$product_id = $product ? $product->get_id() : 0;
+		$render_path = $this->get_render_path();
+		if ( 'unavailable' === $render_path ) {
+			return;
+		}
 
 		wp_enqueue_style(
 			'tm-vendor-booking-modal',
@@ -126,6 +203,20 @@ class TM_Vendor_Booking_Modal {
 			self::VERSION,
 			true
 		);
+
+		// WP-native path: minimal data — no WC Bookings assets needed.
+		if ( 'wp_native' === $render_path ) {
+			$this->localize_wp_native_assets( $vendor_id );
+			return;
+		}
+
+		// WC Bookings path: require full WC + WC Bookings stack.
+		if ( ! class_exists( 'WooCommerce' ) || ! class_exists( 'WC_Booking_Form' ) ) {
+			return;
+		}
+
+		$product    = $this->get_booking_product( $vendor_id );
+		$product_id = $product ? $product->get_id() : 0;
 
 		if ( $product ) {
 			$booking_form = new WC_Booking_Form( $product );
@@ -313,7 +404,7 @@ class TM_Vendor_Booking_Modal {
 				'strings'            => array(
 					'loadingForm'     => 'Loading booking form...',
 					'loadingCheckout' => 'Loading checkout...',
-					'missingProduct'  => 'No booking product found in the Half Day category.',
+					'missingProduct'  => 'No booking product available for this vendor.',
 					'addToCartError'  => 'Unable to add booking to cart. Please try again.',
 					'checkoutError'   => 'Unable to load checkout. Please try again.',
 					'privacyText'    => $privacy_text,
@@ -378,13 +469,43 @@ class TM_Vendor_Booking_Modal {
 			wp_send_json_error( array( 'message' => 'Missing vendor.' ), 400 );
 		}
 
+		// Get vendor display name (used by both paths).
+		$vendor      = get_userdata( $vendor_id );
+		$vendor_name = $vendor ? $vendor->display_name : '';
+
+		// ---------------------------------------------------------------
+		// WP-native path: delegate to the default-wp form renderer.
+		// ---------------------------------------------------------------
+		if ( 'wp_native' === $this->get_render_path() ) {
+			$result   = TVBM_Adapter_Registry::get_offer_discovery()->discover_booking_offer( $vendor_id, 'booking' );
+			$offer_id = $result['offer_id'] ?? 0;
+			if ( ! $offer_id ) {
+				wp_send_json_error( array( 'message' => 'No booking offer available for this vendor.' ), 404 );
+			}
+			$rendered = TVBM_Adapter_Registry::get_form_renderer()->render_booking_form( $offer_id );
+			if ( ! empty( $rendered['error'] ) ) {
+				wp_send_json_error( array( 'message' => esc_html( $rendered['error'] ) ), 422 );
+			}
+			wp_send_json_success(
+				array(
+					'html'       => $rendered['html'] ?? '',
+					'productId'  => $offer_id,
+					'productUrl' => '',
+					'vendorName' => $vendor_name,
+				)
+			);
+		}
+
+		// ---------------------------------------------------------------
+		// WC Bookings path: use WooCommerce booking add-to-cart action.
+		// ---------------------------------------------------------------
 		$product = $this->get_booking_product( $vendor_id );
 		if ( ! $product ) {
 			wp_send_json_error( array( 'message' => 'Missing booking product.' ), 404 );
 		}
 
 		$product_id = $product->get_id();
-		$post = get_post( $product_id );
+		$post       = get_post( $product_id );
 
 		if ( ! $post ) {
 			wp_send_json_error( array( 'message' => 'Missing product.' ), 404 );
@@ -404,10 +525,6 @@ class TM_Vendor_Booking_Modal {
 		$html = ob_get_clean();
 		wp_reset_postdata();
 
-		// Get vendor display name
-		$vendor = get_userdata( $vendor_id );
-		$vendor_name = $vendor ? $vendor->display_name : '';
-
 		wp_send_json_success(
 			array(
 				'html'       => $html,
@@ -423,8 +540,13 @@ class TM_Vendor_Booking_Modal {
 			wp_send_json_error( array( 'message' => 'Invalid request.' ), 403 );
 		}
 
-		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
-			wp_send_json_error( array( 'message' => 'Cart unavailable.' ), 400 );
+		if ( 'wp_native' === $this->get_render_path() || ! function_exists( 'WC' ) || ! WC()->cart ) {
+			wp_send_json_error(
+				array(
+					'message' => 'Online checkout is not available in this configuration. Please contact us directly to arrange your booking.',
+				),
+				503
+			);
 		}
 
 		$form_data = isset( $_POST['formData'] ) ? (string) wp_unslash( $_POST['formData'] ) : '';
@@ -470,6 +592,15 @@ class TM_Vendor_Booking_Modal {
 	public function ajax_booking_checkout() {
 		if ( ! check_ajax_referer( self::NONCE_ACTION, 'nonce', false ) ) {
 			wp_send_json_error( array( 'message' => 'Invalid request.' ), 403 );
+		}
+
+		if ( 'wp_native' === $this->get_render_path() ) {
+			wp_send_json_error(
+				array(
+					'message' => 'Online checkout is not available in this configuration. Please contact us directly to arrange your booking.',
+				),
+				503
+			);
 		}
 
 		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {

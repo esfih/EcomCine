@@ -15,8 +15,28 @@ if ( ! function_exists( 'tm_get_vendor_public_profile_url' ) ) {
 			return '';
 		}
 
-		$url = dokan_get_store_url( $vendor_id );
-		return $url ? $url : '';
+		$canonical_url = dokan_get_store_url( $vendor_id );
+		if ( empty( $canonical_url ) ) {
+			return '';
+		}
+
+		$current_url = '';
+		if ( ! is_admin() ) {
+			global $wp;
+			if ( isset( $wp ) && is_object( $wp ) && isset( $wp->request ) ) {
+				$current_url = home_url( '/' . ltrim( (string) $wp->request, '/' ) . '/' );
+			}
+		}
+
+		if ( $current_url ) {
+			$canonical_path = untrailingslashit( (string) wp_parse_url( $canonical_url, PHP_URL_PATH ) );
+			$current_path   = untrailingslashit( (string) wp_parse_url( $current_url, PHP_URL_PATH ) );
+			if ( $canonical_path && 0 === strpos( $current_path, $canonical_path ) ) {
+				return $current_url;
+			}
+		}
+
+		return $canonical_url;
 	}
 }
 
@@ -32,16 +52,21 @@ if ( ! function_exists( 'tm_load_qr_library' ) ) {
 		$autoload_paths = array(
 			get_stylesheet_directory() . '/vendor/autoload.php',
 			get_stylesheet_directory() . '/lib/php-qrcode/vendor/autoload.php',
+			get_template_directory() . '/vendor/autoload.php',
+			get_template_directory() . '/lib/php-qrcode/vendor/autoload.php',
+			defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/astra-child/vendor/autoload.php' : '',
+			defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/astra-child/lib/php-qrcode/vendor/autoload.php' : '',
 			defined( 'ECOMCINE_DIR' ) ? ECOMCINE_DIR . 'vendor/autoload.php' : '',
 		);
 
 		foreach ( $autoload_paths as $autoload ) {
-			if ( ! $autoload ) {
+			if ( ! $autoload || ! file_exists( $autoload ) ) {
 				continue;
 			}
-			if ( file_exists( $autoload ) ) {
-				require_once $autoload;
-				break;
+
+			require_once $autoload;
+			if ( class_exists( '\\chillerlan\\QRCode\\QRCode' ) ) {
+				return true;
 			}
 		}
 

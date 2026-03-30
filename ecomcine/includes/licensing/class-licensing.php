@@ -26,7 +26,6 @@ class EcomCine_Licensing {
 	 */
 	public static function init() {
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'render_admin_notice' ) );
 		add_action( 'admin_post_ecomcine_license_verify', array( __CLASS__, 'handle_verify' ) );
 		add_action( 'admin_post_ecomcine_license_clear', array( __CLASS__, 'handle_clear' ) );
@@ -138,18 +137,10 @@ class EcomCine_Licensing {
 	}
 
 	/**
-	 * Register licensing submenu under EcomCine.
+	 * No longer registers a submenu — licensing is a tab inside ecomcine-settings.
+	 * Kept as a noop for backward compatibility.
 	 */
-	public static function register_menu() {
-		add_submenu_page(
-			'ecomcine-settings',
-			'EcomCine Licensing',
-			'Licensing',
-			'manage_options',
-			'ecomcine-licensing',
-			array( __CLASS__, 'render_settings_page' )
-		);
-	}
+	public static function register_menu() {}
 
 	/**
 	 * Sanitize saved licensing fields.
@@ -178,10 +169,18 @@ class EcomCine_Licensing {
 		}
 		check_admin_referer( 'ecomcine_license_verify' );
 
+		// Save the submitted key before activating so sync_entitlement reads the fresh value.
+		if ( isset( $_POST['license_key'] ) ) {
+			$stored = self::get_settings();
+			$stored['license_key'] = sanitize_text_field( wp_unslash( (string) $_POST['license_key'] ) );
+			update_option( self::OPTION_KEY, $stored, false );
+		}
+
 		$ok = self::sync_entitlement( 'admin_verify' );
 		$redirect = add_query_arg(
 			array(
-				'page' => 'ecomcine-licensing',
+					'page'                    => 'ecomcine-settings',
+					'tab'                     => 'licensing',
 				'ecomcine_license_result' => $ok ? 'success' : 'error',
 			),
 			admin_url( 'admin.php' )
@@ -409,98 +408,107 @@ class EcomCine_Licensing {
 			return;
 		}
 
-		echo '<div class="notice notice-warning"><p>EcomCine license is inactive in strict mode. Enter your license key and verify under EcomCine > Licensing.</p></div>';
+		echo '<div class="notice notice-warning"><p>EcomCine license is inactive in strict mode. Enter your license key under <a href="' . esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=licensing' ) ) . '">EcomCine &rsaquo; Licensing</a>.</p></div>';
 	}
 
 	/**
-	 * Render licensing settings screen.
+	 * Render licensing settings screen (standalone page, wraps render_tab_content).
 	 */
 	public static function render_settings_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
+		echo '<div class="wrap"><h1>EcomCine Licensing</h1>';
+		self::render_tab_content();
+		echo '</div>';
+	}
 
-		$settings = self::get_settings();
-		$status = self::get_status();
-		$catalog = EcomCine_Offer_Catalog::get_catalog();
-		$result = isset( $_GET['ecomcine_license_result'] ) ? sanitize_key( (string) wp_unslash( $_GET['ecomcine_license_result'] ) ) : '';
-		if ( 'success' === $result ) {
-			echo '<div class="notice notice-success"><p>License verified and entitlement refreshed.</p></div>';
-		} elseif ( 'error' === $result ) {
-			echo '<div class="notice notice-error"><p>License verification failed. See Last Error below.</p></div>';
-		} elseif ( 'cleared' === $result ) {
-			echo '<div class="notice notice-info"><p>Stored activation/session state cleared.</p></div>';
+	/**
+	 * Render licensing content for embedding in the Settings page Licensing tab.
+	 * No <div class="wrap"> wrapper — called directly by EcomCine_Admin_Settings.
+	 */
+	public static function render_tab_content() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
 		}
+
+		$settings    = self::get_settings();
+		$status      = self::get_status();
+		$entitlement = self::get_cached_entitlement();
+		$result      = isset( $_GET['ecomcine_license_result'] ) ? sanitize_key( (string) wp_unslash( $_GET['ecomcine_license_result'] ) ) : '';
+
+		if ( 'success' === $result ) {
+			echo '<div class="notice notice-success is-dismissible"><p>License activated and entitlement verified.</p></div>';
+		} elseif ( 'error' === $result ) {
+			$last_error = (string) get_option( self::OPTION_LAST_ERROR, '' );
+			$msg = '' !== $last_error ? esc_html( $last_error ) : 'License activation failed. Please check your key and try again.';
+			echo '<div class="notice notice-error is-dismissible"><p>' . $msg . '</p></div>';
+		} elseif ( 'cleared' === $result ) {
+			echo '<div class="notice notice-info is-dismissible"><p>License deactivated.</p></div>';
+		}
+
+		// Activation count: use activation_policy from entitlement when available,
+		// otherwise count this site as 1 if an activation_id exists.
+		$policy          = isset( $entitlement['activation_policy'] ) && is_array( $entitlement['activation_policy'] ) ? $entitlement['activation_policy'] : array();
+		$active_count    = isset( $policy['current_activations'] ) ? (int) $policy['current_activations'] : ( '' !== (string) get_option( self::OPTION_ACTIVATION_ID, '' ) ? 1 : 0 );
+		$max_activations = isset( $status['max_site_activations'] ) ? (int) $status['max_site_activations'] : 1;
+
+		$is_activated = '' !== (string) get_option( self::OPTION_ACTIVATION_ID, '' );
 		?>
-		<div class="wrap">
-			<h1>EcomCine Licensing</h1>
-			<p>Enter your license key and validate against EcomCine billing control-plane.</p>
-			<table class="widefat striped" style="max-width: 780px; margin: 12px 0 24px 0;">
+		<table class="widefat striped" style="max-width: 560px; margin: 16px 0 24px;">
 				<tbody>
-					<tr><th style="width:220px;">License Status</th><td><?php echo ! empty( $status['active'] ) ? 'Active' : 'Inactive'; ?></td></tr>
-					<tr><th>Status Source</th><td><?php echo esc_html( isset( $status['source'] ) ? $status['source'] : 'unknown' ); ?></td></tr>
-					<tr><th>Enforcement</th><td><?php echo esc_html( isset( $status['enforcement'] ) ? $status['enforcement'] : 'soft' ); ?></td></tr>
-					<tr><th>Control Plane URL</th><td><code><?php echo esc_html( self::get_control_plane_base_url() ); ?></code></td></tr>
-					<tr><th>Activation ID</th><td><?php echo esc_html( isset( $status['activation_id'] ) ? (string) $status['activation_id'] : '' ); ?></td></tr>
-					<tr><th>Last Sync</th><td><?php echo esc_html( isset( $status['last_sync'] ) ? (string) $status['last_sync'] : '' ); ?></td></tr>
-					<tr><th>Last Error</th><td><?php echo esc_html( isset( $status['last_error'] ) ? (string) $status['last_error'] : '' ); ?></td></tr>
-					<tr><th>Resolved Offer</th><td><?php echo esc_html( isset( $status['offer_slug'] ) && '' !== $status['offer_slug'] ? $status['offer_slug'] : 'unknown' ); ?></td></tr>
-					<tr><th>Max Site Activations</th><td><?php echo esc_html( (string) ( isset( $status['max_site_activations'] ) ? (int) $status['max_site_activations'] : 1 ) ); ?></td></tr>
-				</tbody>
-			</table>
-			<h2>WMOS FluentCart Parity Offers</h2>
-			<p>Canonical 4-offer mapping mirrored from WebmasterOS billing metadata for freemium to agency tiers.</p>
-			<table class="widefat striped" style="max-width: 980px; margin: 12px 0 24px 0;">
-				<thead>
 					<tr>
-						<th>Plan</th>
-						<th>Product ID</th>
-						<th>Variation ID</th>
-						<th>Activation Limit</th>
-						<th>AI Mode</th>
-					</tr>
-				</thead>
-				<tbody>
-				<?php foreach ( $catalog as $row ) : ?>
-					<tr>
-						<td><?php echo esc_html( (string) ( $row['plan'] ?? '' ) ); ?></td>
-						<td><?php echo esc_html( (string) ( (int) ( $row['product_id'] ?? 0 ) ) ); ?></td>
-						<td><?php echo esc_html( (string) ( (int) ( $row['variation_id'] ?? 0 ) ) ); ?></td>
-						<td><?php echo esc_html( (string) ( (int) ( $row['max_site_activations'] ?? 1 ) ) ); ?></td>
-						<td><?php echo esc_html( (string) ( $row['allowances']['ai_mode'] ?? '' ) ); ?></td>
-					</tr>
-				<?php endforeach; ?>
-				</tbody>
-			</table>
-			<form method="post" action="options.php">
-				<?php settings_fields( 'ecomcine_license_group' ); ?>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><label for="ecomcine-license-key">License Key</label></th>
-						<td><input id="ecomcine-license-key" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[license_key]" value="<?php echo esc_attr( $settings['license_key'] ); ?>" class="regular-text" autocomplete="off" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="ecomcine-enforcement-mode">Enforcement Mode</label></th>
+						<th style="width: 200px;">License Status</th>
 						<td>
-							<select id="ecomcine-enforcement-mode" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enforcement_mode]">
-								<option value="soft" <?php selected( $settings['enforcement_mode'], 'soft' ); ?>>Soft (warn only)</option>
-								<option value="strict" <?php selected( $settings['enforcement_mode'], 'strict' ); ?>>Strict (enforce inactive state)</option>
-							</select>
+							<?php if ( ! empty( $status['active'] ) ) : ?>
+								<span style="color:#46b450; font-weight:600;">&#10003; Active</span>
+							<?php else : ?>
+								<span style="color:#dc3232;">&#10007; Inactive</span>
+							<?php endif; ?>
 						</td>
 					</tr>
-				</table>
-				<?php submit_button( 'Save Licensing Settings' ); ?>
-			</form>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:10px; display:inline-block; margin-right:10px;">
-				<?php wp_nonce_field( 'ecomcine_license_verify' ); ?>
-				<input type="hidden" name="action" value="ecomcine_license_verify" />
-				<?php submit_button( 'Verify / Validate License', 'primary', 'submit', false ); ?>
-			</form>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:10px; display:inline-block;">
-				<?php wp_nonce_field( 'ecomcine_license_clear' ); ?>
-				<input type="hidden" name="action" value="ecomcine_license_clear" />
-				<?php submit_button( 'Clear Activation State', 'secondary', 'submit', false ); ?>
-			</form>
+					<tr>
+						<th>Last Sync</th>
+						<td><?php echo esc_html( ! empty( $status['last_sync'] ) ? (string) $status['last_sync'] : '—' ); ?></td>
+					</tr>
+					<tr>
+						<th>Resolved Offer</th>
+						<td><?php echo esc_html( ! empty( $status['offer_slug'] ) ? (string) $status['offer_slug'] : '—' ); ?></td>
+					</tr>
+					<tr>
+						<th>Activation Count</th>
+						<td><?php echo esc_html( $active_count . ' / ' . $max_activations ); ?></td>
+					</tr>
+				</tbody>
+			</table>
+
+			<div style="margin-top: 16px;">
+				<?php if ( $is_activated ) : ?>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<?php wp_nonce_field( 'ecomcine_license_clear' ); ?>
+						<input type="hidden" name="action" value="ecomcine_license_clear" />
+						<?php submit_button( 'Deactivate License', 'secondary', 'submit', false ); ?>
+					</form>
+				<?php else : ?>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<?php wp_nonce_field( 'ecomcine_license_verify' ); ?>
+						<input type="hidden" name="action" value="ecomcine_license_verify" />
+						<table class="form-table" role="presentation" style="max-width: 560px;">
+							<tr>
+								<th scope="row"><label for="ecomcine-license-key">License Key</label></th>
+								<td>
+									<input id="ecomcine-license-key"
+										   type="password"
+										   name="license_key"
+										   value="<?php echo esc_attr( $settings['license_key'] ); ?>"
+										   class="regular-text"
+										   autocomplete="new-password" />
+								</td>
+							</tr>
+						</table>
+						<?php submit_button( 'Activate License', 'primary', 'submit', false ); ?>
+					</form>
+					<?php endif; ?>
 		</div>
 		<?php
 	}

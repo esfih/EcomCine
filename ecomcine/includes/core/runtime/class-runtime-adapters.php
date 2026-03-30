@@ -17,18 +17,17 @@ class EcomCine_Runtime_Adapters {
 			return self::$theme_adapter;
 		}
 
-		$runtime_mode = function_exists( 'ecomcine_get_settings_snapshot' )
+		$mode = class_exists( 'EcomCine_Admin_Settings', false )
 			? EcomCine_Admin_Settings::get_runtime_mode()
-			: 'preferred_stack';
-		if ( 'baseline_wp' === $runtime_mode ) {
-			self::$theme_adapter = new EcomCine_Theme_Adapter_WP_Baseline();
-			return self::$theme_adapter;
-		}
+			: 'wp_woo_dokan_booking';
 
-		if ( function_exists( 'dokan_is_store_page' ) && function_exists( 'dokan_is_store_listing' ) ) {
-			self::$theme_adapter = new EcomCine_Theme_Adapter_Dokan_Astra();
-		} else {
-			self::$theme_adapter = new EcomCine_Theme_Adapter_WP_Baseline();
+		switch ( $mode ) {
+			case 'wp_woo_dokan':
+			case 'wp_woo_dokan_booking':
+				self::$theme_adapter = new EcomCine_Theme_Adapter_Dokan_Astra();
+				break;
+			default: // wp_cpt, wp_woo, wp_woo_booking
+				self::$theme_adapter = new EcomCine_Theme_Adapter_WP_Baseline();
 		}
 
 		return self::$theme_adapter;
@@ -42,18 +41,20 @@ class EcomCine_Runtime_Adapters {
 			return self::$commerce_adapter;
 		}
 
-		$runtime_mode = function_exists( 'ecomcine_get_settings_snapshot' )
+		$mode = class_exists( 'EcomCine_Admin_Settings', false )
 			? EcomCine_Admin_Settings::get_runtime_mode()
-			: 'preferred_stack';
-		if ( 'baseline_wp' === $runtime_mode ) {
-			self::$commerce_adapter = new EcomCine_Commerce_Adapter_WP_Baseline();
-			return self::$commerce_adapter;
-		}
+			: 'wp_woo_dokan_booking';
 
-		if ( class_exists( 'WooCommerce' ) && function_exists( 'dokan_get_store_url' ) ) {
-			self::$commerce_adapter = new EcomCine_Commerce_Adapter_WooDokan();
-		} else {
-			self::$commerce_adapter = new EcomCine_Commerce_Adapter_WP_Baseline();
+		switch ( $mode ) {
+			case 'wp_woo_dokan':
+			case 'wp_woo_dokan_booking':
+				self::$commerce_adapter = new EcomCine_Commerce_Adapter_WooDokan();
+				break;
+			case 'wp_fluentcart':
+				self::$commerce_adapter = new EcomCine_Commerce_Adapter_FluentCart();
+				break;
+			default: // wp_cpt, wp_woo, wp_woo_booking
+				self::$commerce_adapter = new EcomCine_Commerce_Adapter_WP_Baseline();
 		}
 
 		return self::$commerce_adapter;
