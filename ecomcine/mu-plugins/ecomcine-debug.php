@@ -21,6 +21,21 @@
 defined( 'ABSPATH' ) || exit;
 
 // ──────────────────────────────────────────────────────────────
+// BOM guard — some shared-host server files (e.g. wp-config.php)
+// are saved with a UTF-8 BOM that leaks into every HTTP response,
+// including REST JSON.  Strip it at the output-buffer level so
+// all responses from this install are BOM-free.
+// ──────────────────────────────────────────────────────────────
+if ( ! ob_get_level() ) {
+	ob_start( function ( $buffer ) {
+		if ( substr( $buffer, 0, 3 ) === "\xef\xbb\xbf" ) {
+			return substr( $buffer, 3 );
+		}
+		return $buffer;
+	} );
+}
+
+// ──────────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────────
 

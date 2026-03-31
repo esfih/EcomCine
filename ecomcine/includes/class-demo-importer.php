@@ -181,6 +181,29 @@ class EcomCine_Demo_Importer {
 			}
 		}
 
+		// Sideload demo videos and write a playlist shortcode to vendor_biography.
+		$video_paths = (array) ( $media_refs['videos'] ?? [] );
+		if ( ! empty( $video_paths ) ) {
+			$video_ids = [];
+			foreach ( $video_paths as $i => $vid_rel ) {
+				$src = $demo_dir . '/' . ltrim( $vid_rel, '/' );
+				if ( ! file_exists( $src ) ) {
+					$result['log'][] = "Video not found for {$login} (video" . ( $i + 1 ) . "): {$src}";
+					continue;
+				}
+				$aid = self::sideload_media( $src, "{$slug}-video" . ( $i + 1 ), $user_id );
+				if ( $aid > 0 ) {
+					$video_ids[] = $aid;
+				} else {
+					$result['log'][] = "Failed to sideload video for {$login} (video" . ( $i + 1 ) . ").";
+				}
+			}
+			if ( ! empty( $video_ids ) ) {
+				$dps['vendor_biography'] = '[playlist type="video" ids="' . implode( ',', $video_ids ) . '"]';
+				$result['log'][] = "Set video playlist for {$login}: ids=" . implode( ',', $video_ids );
+			}
+		}
+
 		if ( ! empty( $dps ) ) {
 			update_user_meta( $user_id, 'dokan_profile_settings', $dps );
 		}
