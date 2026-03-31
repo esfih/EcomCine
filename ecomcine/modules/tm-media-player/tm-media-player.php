@@ -208,8 +208,19 @@ function tm_get_vendor_store_content_payload( $vendor_id ) {
 	}
 	try {
 		set_query_var( 'author', $vendor_id );
+		// locate_template() returns '' when the active theme has no dokan/ folder.
+		// include '' throws ValueError in PHP 8+, so fall back to the plugin-bundled copy.
+		$_tpl = locate_template( 'dokan/store-header.php' );
+		if ( ! $_tpl ) {
+			$_tpl = defined( 'TM_STORE_UI_DIR' )
+				? TM_STORE_UI_DIR . 'templates/dokan/store-header.php'
+				: ECOMCINE_DIR . 'modules/tm-store-ui/templates/dokan/store-header.php';
+		}
+		if ( ! file_exists( $_tpl ) ) {
+			return new WP_Error( 'template_missing', 'store-header.php not found', array( 'path' => $_tpl ) );
+		}
 		ob_start();
-		include locate_template( 'dokan/store-header.php' );
+		include $_tpl;
 		$html = ob_get_clean();
 		// Strip UTF-8 BOM (EF BB BF) that some template files prepend to output.
 		// Without this jQuery treats the response as a parse error and fires the AJAX
