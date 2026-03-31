@@ -848,12 +848,16 @@ a.dokan-clear-filters-link:hover {
 	list-style: none !important;
 	display: flex !important;
 	flex-wrap: wrap !important;
-	row-gap: 10px !important;
+	row-gap: 60px !important; /* 40px avatar overhang (translateY 50% of 80px) + 20px breathing room */
+	column-gap: 0 !important; /* columns are separated via li padding-left/right, not gap */
 }
 
-/* Fix Dokan cards - use box-sizing so 15px padding is included in width */
+/* Fix Dokan cards - use box-sizing so 15px padding is included in width.
+ * padding-left/right replaces Dokan's float-based gutters (15px each side = 30px gutter). */
 #dokan-seller-listing-wrap.grid-view ul.dokan-seller-wrap li {
 	box-sizing: border-box !important;
+	padding-left: 15px !important;
+	padding-right: 15px !important;
 }
 
 /* ── Store card grid: responsive column count ──────────────────────────────
@@ -940,15 +944,51 @@ a.dokan-clear-filters-link:hover {
 }
 
 /* store-content: dark gradient overlay at the bottom of the banner card.
- * position:absolute takes it out of flow so .store-wrapper height == .store-header height. */
+ * position:absolute takes it out of flow so .store-wrapper height == .store-header height.
+ * padding-bottom: 48px lifts the text above the avatar's visible region (avatar top edge is
+ * ~40px above the card bottom due to translateY(50%) on an 80px-tall store-footer). */
 #dokan-seller-listing-wrap.grid-view .store-content {
 	position: absolute !important;
 	bottom: 0 !important;
 	left: 0 !important;
 	right: 0 !important;
 	background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 55%, transparent 100%) !important;
-	padding: 30px 12px 14px 110px !important; /* left clearance for 86px avatar + 15px offset + gap */
+	padding: 12px 14px 48px 14px !important; /* bottom clears the avatar; left/right = normal card padding */
 	z-index: 5 !important;
+	text-align: left !important;
+	display: block !important;
+}
+
+/* .store-data-container fills the full width and stacks content left-to-right */
+#dokan-seller-listing-wrap.grid-view .store-content .store-data-container {
+	width: 100% !important;
+	text-align: left !important;
+}
+
+/* Force all text inside the overlay to be left-aligned */
+#dokan-seller-listing-wrap.grid-view .store-content .store-data,
+#dokan-seller-listing-wrap.grid-view .store-content .store-data h2,
+#dokan-seller-listing-wrap.grid-view .store-content .store-data h2 a,
+#dokan-seller-listing-wrap.grid-view .store-content .store-data p,
+#dokan-seller-listing-wrap.grid-view .store-content .store-categories-wrapper,
+#dokan-seller-listing-wrap.grid-view .store-content .location-wrapper {
+	text-align: left !important;
+	display: block !important;
+	width: 100% !important;
+}
+
+/* Vendor name h2 font size — matches the live reference */
+#dokan-seller-listing-wrap.grid-view .store-content .store-data h2 {
+	margin: 0 0 4px 0 !important;
+	font-size: 16px !important;
+	line-height: 1.2 !important;
+}
+
+/* Category and location text size */
+#dokan-seller-listing-wrap.grid-view .store-content .store-data p,
+#dokan-seller-listing-wrap.grid-view .store-content .store-data span {
+	font-size: 12px !important;
+	margin: 0 !important;
 }
 
 /* store-footer: pin the avatar to bottom-left, centred on the card's bottom edge */
@@ -4934,39 +4974,30 @@ pointer-events: none;
    25 px gap on each side between each arrow and the bar.
    ────────────────────────────────────────────────────────────────────────── */
 #tm-card-pager {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	align-items: stretch;
+	display: block;
 }
 
-/* Row 1: vendor grid */
+/* Row 1: vendor grid — full width, natural block flow */
 #tm-card-pager > #dokan-seller-listing-wrap {
-	order: 1;
 	width: 100%;
 }
 
-/* Row 2: 3-column grid centred under the vendor grid */
+/* Row 2: prev/next arrows and bar — no longer flex children, no order needed */
 #tm-card-pager > #tm-card-prev,
 #tm-card-pager > #tm-card-next {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-top: 20px;
+	display: none; /* arrows now live inside #tm-pager-bar */
 }
-#tm-card-pager > #tm-card-prev { order: 3; margin-right: 25px; }
-#tm-card-pager > #tm-pager-bar { order: 4; }
-#tm-card-pager > #tm-card-next { order: 5; margin-left:  25px; }
 
 /* ── Pager bar (Sort + Showcase, centred) ──────────────────────────────── */
 #tm-pager-bar {
-	margin-top: 20px;
+	/* 40px = avatar overhang (translateY 50% of 80px); 20px breathing room */
+	margin-top: 60px;
 	margin-bottom: 20px;
 	z-index: 20;
-	display: inline-flex;
+	display: flex;
+	justify-content: center;
 	align-items: center;
 	gap: 10px;
-	order: 4;
 }
 
 /* When arrows live INSIDE #tm-pager-bar (new JS structure),
@@ -5373,8 +5404,20 @@ body.tm-platform-page #tm-platform-content {
 	box-sizing: border-box;
 	background: #0a0a0a;
 	padding-top: var(--tm-header-height, 70px);
-	padding-bottom: 80px;
+	padding-bottom: 0;
 	overflow-y: auto;
+}
+
+/* FluentCart checkout modal: keep out of layout until opened by JS.
+   The plugin renders it on every page-load; display:none avoids any
+   height contribution before the cart flow is triggered. */
+.fct-checkout-modal-container {
+	display: none !important;
+}
+.fct-checkout-modal-container.is-open,
+.fct-checkout-modal-container.is-active,
+.fct-checkout-modal-container[data-open="true"] {
+	display: block !important;
 }
 
 body.tm-platform-page #page {
@@ -5549,6 +5592,21 @@ body.tm-showcase-page {
 /* Keep geo-address text colour consistent */
 #dokan-seller-listing-wrap .store-data .location-display .geo-address {
 	color: #C0C0C0 !important;
+}
+
+/* Country flag inside the card overlay: override the width/height HTML attrs
+ * to match the 12px text scale of the location pill (≈1.5× em = 18px). */
+#dokan-seller-listing-wrap .store-data .location-display .country-flag,
+#dokan-seller-listing-wrap .store-data .location-display .country-flag img {
+	width: 18px !important;
+	height: 18px !important;
+	min-width: 18px !important;
+	min-height: 18px !important;
+	max-width: 18px !important;
+	max-height: 18px !important;
+	flex-shrink: 0 !important;
+	display: inline-block !important;
+	vertical-align: middle !important;
 }
 
 /* ==========================================================================

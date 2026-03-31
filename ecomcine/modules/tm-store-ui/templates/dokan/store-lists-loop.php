@@ -165,10 +165,15 @@
             if ( $num_of_pages > 1 ) {
                 echo '<div class="pagination-container clearfix">';
 
+                // Rebuild $pagination_base safely: Dokan's default uses str_replace($post->ID, '%#%', url)
+                // which corrupts the port when $post->ID digits appear in the port number (e.g. ID=18, port=8180).
+                // Instead, build the base from the page-1 URL + a path-only page/%#%/ suffix.
+                $safe_base = trailingslashit( esc_url( get_pagenum_link( 1 ) ) ) . 'page/%#%/';
+
                 $pagination_args = [
                     'current'   => $paged,
                     'total'     => $num_of_pages,
-                    'base'      => $pagination_base,
+                    'base'      => $safe_base,
                     'type'      => 'array',
                     'prev_text' => __( '&larr; Previous', 'dokan-lite' ),
                     'next_text' => __( 'Next &rarr;', 'dokan-lite' ),
