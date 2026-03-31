@@ -213,6 +213,28 @@ class EcomCine_Demo_Importer {
 		update_user_meta( $user_id, 'dokan_enable_selling', 'yes' );
 		update_user_meta( $user_id, 'tm_l1_complete', '1' );
 
+		// Assign store_category taxonomy terms.
+		// The JSON stores term objects from the source site; look each up by slug
+		// on this installation so IDs from the source don't cause mismatches.
+		$category_objects = isset( $dps['categories'] ) ? (array) $dps['categories'] : [];
+		if ( ! empty( $category_objects ) ) {
+			$term_ids = [];
+			foreach ( $category_objects as $cat ) {
+				$slug = isset( $cat['slug'] ) ? sanitize_title( $cat['slug'] ) : '';
+				if ( empty( $slug ) || 'uncategorized' === $slug ) {
+					continue;
+				}
+				$term = get_term_by( 'slug', $slug, 'store_category' );
+				if ( $term && ! is_wp_error( $term ) ) {
+					$term_ids[] = (int) $term->term_id;
+				}
+			}
+			if ( ! empty( $term_ids ) ) {
+				wp_set_object_terms( $user_id, $term_ids, 'store_category' );
+				$result['log'][] = "Set store_category for {$login}: " . implode( ', ', $term_ids );
+			}
+		}
+
 		if ( $is_update ) {
 			return 'updated';
 		}

@@ -37,6 +37,10 @@ add_filter( 'body_class', function( $classes ) {
 	return $classes;
 } );
 
+// Suppress the bundled theme's site header on platform pages — the cinematic
+// header rendered by tm-media-player replaces it entirely.
+$GLOBALS['ecomcine_suppress_site_header'] = true;
+
 get_header();
 ?>
 
