@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.13
+ * Version: 0.1.14
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.13' );
+define( 'ECOMCINE_VERSION', '0.1.14' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -195,6 +195,38 @@ function ecomcine_load_legacy_module( $module_file, $already_loaded ) {
 	}
 }
 
+/**
+ * Deploy the bundled debug MU-plugin and create the flag file.
+ * Called from both the activation hook and the upgrade routine so it
+ * works whether the plugin is freshly installed OR updated over an
+ * existing active installation (WP does not call activation hooks on updates).
+ */
+function ecomcine_deploy_debug_infrastructure() {
+	// 1. Ensure log directory exists.
+	$log_dir = WP_CONTENT_DIR . '/logs';
+	if ( ! is_dir( $log_dir ) ) {
+		wp_mkdir_p( $log_dir );
+	}
+
+	// 2. Deploy MU-plugin.
+	$src    = ECOMCINE_DIR . 'mu-plugins/ecomcine-debug.php';
+	$mu_dir = WP_CONTENT_DIR . '/mu-plugins';
+	$dest   = $mu_dir . '/ecomcine-debug.php';
+	if ( file_exists( $src ) ) {
+		if ( ! is_dir( $mu_dir ) ) {
+			wp_mkdir_p( $mu_dir );
+		}
+		@copy( $src, $dest ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+	}
+
+	// 3. Create the flag file so logging is active immediately.
+	$flag = WP_CONTENT_DIR . '/ecomcine-debug.txt';
+	if ( ! file_exists( $flag ) ) {
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		file_put_contents( $flag, "EcomCine debug logging enabled.\nDelete this file to disable.\n" );
+	}
+}
+
 // ── Upgrade routines ─────────────────────────────────────────────────────────
 
 /**
@@ -206,6 +238,10 @@ add_action( 'init', function() {
 	if ( version_compare( $stored, ECOMCINE_VERSION, '>=' ) ) {
 		return;
 	}
+
+	// Always re-deploy debug infrastructure on every version bump so that
+	// plugin updates (which skip the activation hook) also provision the files.
+	ecomcine_deploy_debug_infrastructure();
 
 	// v0.1.13 — Backfill tm_l1_complete for all approved Dokan vendors.
 	if ( version_compare( $stored, '0.1.13', '<' ) && function_exists( 'dokan_get_sellers' ) ) {
@@ -275,24 +311,7 @@ ecomcine_load_legacy_module(
  *   wp eval "unlink( WP_CONTENT_DIR . '/ecomcine-debug.txt' );"
  */
 register_activation_hook( ECOMCINE_FILE, function() {
-	// ── 1. Deploy MU-plugin ───────────────────────────────────────────────
-	$src    = ECOMCINE_DIR . 'mu-plugins/ecomcine-debug.php';
-	$mu_dir = WP_CONTENT_DIR . '/mu-plugins';
-	$dest   = $mu_dir . '/ecomcine-debug.php';
-
-	if ( file_exists( $src ) ) {
-		if ( ! is_dir( $mu_dir ) ) {
-			wp_mkdir_p( $mu_dir );
-		}
-		@copy( $src, $dest ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-	}
-
-	// ── 2. Create the debug flag file ─────────────────────────────────────
-	$flag = WP_CONTENT_DIR . '/ecomcine-debug.txt';
-	if ( ! file_exists( $flag ) ) {
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		file_put_contents( $flag, "EcomCine debug logging enabled.\nDelete this file to disable.\n" );
-	}
+	ecomcine_deploy_debug_infrastructure();
 } );
 
 /**
