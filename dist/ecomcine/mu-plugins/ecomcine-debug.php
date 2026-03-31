@@ -103,7 +103,13 @@ if ( ec_debug_enabled() ) {
 
 	// Capture PHP warnings, notices, and deprecated calls.
 	set_error_handler( function( int $errno, string $errstr, string $errfile, int $errline ): bool {
-		// Only capture if error reporting would normally surface this.
+	// Suppress noise: hosting environments (e.g. LiteSpeed/N0C) pre-define WP_DEBUG
+	// constants before wp-config.php runs, generating harmless redefinition warnings.
+	if ( str_contains( $errstr, 'already defined' ) ) {
+		return false;
+	}
+
+	// Only capture if error reporting would normally surface this.
 		if ( ! ( error_reporting() & $errno ) ) {
 			return false; // Let PHP handle it.
 		}

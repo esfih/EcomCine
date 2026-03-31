@@ -220,6 +220,22 @@ function tm_get_vendor_store_content_payload( $vendor_id ) {
 	} catch ( Throwable $e ) {
 		while ( ob_get_level() ) { ob_end_clean(); }
 		error_log( '[TM Vendor REST] Exception for vendor_id=' . $vendor_id . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
+		if ( function_exists( 'ec_log' ) ) {
+			ec_log( 'vendor-rest', 'Exception in tm_get_vendor_store_content_payload', [
+				'vendor_id' => $vendor_id,
+				'error'     => $e->getMessage(),
+				'class'     => get_class( $e ),
+				'file'      => $e->getFile(),
+				'line'      => $e->getLine(),
+				'trace'     => array_slice(
+					array_map(
+						fn( $f ) => ( $f['file'] ?? '?' ) . ':' . ( $f['line'] ?? '?' ),
+						$e->getTrace()
+					),
+					0, 10
+				),
+			] );
+		}
 		$payload = array( 'message' => 'Failed to load vendor content.', 'vendor_id' => $vendor_id );
 		if ( function_exists( 'current_user_can' ) && current_user_can( 'manage_options' ) ) {
 			$payload['debug'] = array( 'error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine() );
