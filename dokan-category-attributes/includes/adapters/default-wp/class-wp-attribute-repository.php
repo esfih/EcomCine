@@ -39,14 +39,14 @@ class DCA_WP_Attribute_Repository implements DCA_Attribute_Repository {
 	/**
 	 * @inheritdoc
 	 */
-	public function get_attribute_sets( array $args = array() ) {
+	public function get_attribute_sets( array $args = array() ): array {
 		return $this->storage->get_sets( $args );
 	}
 
 	/**
 	 * @inheritdoc
 	 */
-	public function get_attribute_set( $set_id ) {
+	public function get_attribute_set( int $set_id ): ?object {
 		return $this->storage->get_set( (int) $set_id );
 	}
 
@@ -170,7 +170,7 @@ class DCA_WP_Attribute_Repository implements DCA_Attribute_Repository {
 	/**
 	 * @inheritdoc
 	 */
-	public function get_fields( $set_id, array $args = array() ) {
+	public function get_fields( int $set_id, array $args = array() ): array {
 		return $this->storage->get_fields_by_set( (int) $set_id, $args );
 	}
 
@@ -239,7 +239,7 @@ class DCA_WP_Attribute_Repository implements DCA_Attribute_Repository {
 	/**
 	 * @inheritdoc
 	 */
-	public function save_vendor_value( $vendor_id, $field_name, $value ) {
+	public function save_vendor_value( int $vendor_id, string $field_name, $value ): bool {
 		$result = update_user_meta( (int) $vendor_id, sanitize_key( $field_name ), $value );
 		return false !== $result;
 	}
@@ -250,7 +250,7 @@ class DCA_WP_Attribute_Repository implements DCA_Attribute_Repository {
 	 * Returns all fields from CPT sets whose categories intersect the
 	 * vendor's store categories.
 	 */
-	public function get_fields_for_vendor( $vendor_id ) {
+	public function get_fields_for_vendor( int $vendor_id ): array {
 		$vendor_categories = wp_get_object_terms(
 			(int) $vendor_id,
 			'store_category',

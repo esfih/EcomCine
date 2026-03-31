@@ -39,7 +39,7 @@ class DCA_WP_Filter_Provider implements DCA_Filter_Provider {
 	 *
 	 * @return array
 	 */
-	public function get_filter_schema() {
+		public function get_filter_schema(): array {
 		$attribute_sets = $this->storage->get_sets( array( 'status' => 'active' ) );
 		$schema         = array();
 
@@ -85,7 +85,7 @@ class DCA_WP_Filter_Provider implements DCA_Filter_Provider {
 	 * @param array $active_filters Associative array of field_name => value.
 	 * @return array
 	 */
-	public function apply_query_filters( array $query_args, array $active_filters ) {
+		public function apply_query_filters( array $query_args, array $active_filters ): array {
 		if ( empty( $active_filters ) ) {
 			return $query_args;
 		}

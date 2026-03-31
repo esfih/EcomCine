@@ -25,7 +25,7 @@ class DCA_Compat_Category_Resolver implements DCA_Vendor_Category_Resolver {
 	/**
 	 * @inheritdoc
 	 */
-	public function get_vendor_categories( $vendor_id ) {
+	public function get_vendor_categories( int $vendor_id ): array {
 		$terms = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );
 
 		if ( is_wp_error( $terms ) ) {

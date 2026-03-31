@@ -42,7 +42,7 @@ class DCA_Compat_Dashboard_Renderer implements DCA_Dashboard_Renderer {
 	/**
 	 * @inheritdoc
 	 */
-	public function render_fields( $vendor_id, array $store_settings = array() ) {
+	public function render_fields( int $vendor_id, array $store_settings = array() ): void {
 		$this->delegate->render_fields( $vendor_id, $store_settings );
 	}
 
@@ -60,7 +60,7 @@ class DCA_Compat_Dashboard_Renderer implements DCA_Dashboard_Renderer {
 	 * @param array $post_data Raw POST data (injected into $_POST for compat layer).
 	 * @return array{saved: string[], errors: string[]}
 	 */
-	public function save_submitted_values( $vendor_id, array $post_data ) {
+	public function save_submitted_values( int $vendor_id, array $post_data ): array {
 		// Back-fill $_POST so the legacy save_fields() can read from superglobal.
 		// This is a compatibility shim; the default WP adapter will accept $post_data directly.
 		$original_post = $_POST; // phpcs:ignore WordPress.Security.NonceVerification

@@ -41,6 +41,7 @@ services:
       - ./ecomcine:/var/www/html/wp-content/plugins/ecomcine
       - ./ecomcine-control-plane:/var/www/html/wp-content/plugins/ecomcine-control-plane
       - ./tm-media-player:/var/www/html/wp-content/plugins/tm-media-player
+      - ./tm-store-ui:/var/www/html/wp-content/plugins/tm-store-ui
       - ./tm-account-panel:/var/www/html/wp-content/plugins/tm-account-panel
       - ./tm-vendor-booking-modal:/var/www/html/wp-content/plugins/tm-vendor-booking-modal
       - ./dokan-category-attributes:/var/www/html/wp-content/plugins/dokan-category-attributes

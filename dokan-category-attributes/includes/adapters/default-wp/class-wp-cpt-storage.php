@@ -263,6 +263,8 @@ final class DCA_WP_CPT_Storage {
 		$obj->categories = $raw_cats ? ( json_decode( $raw_cats, true ) ?: array() ) : array();
 		$obj->priority   = (int) $post->menu_order;
 		$obj->status     = ( 'publish' === $post->post_status ) ? 'active' : $post->post_status;
+		$obj->created_at = $post->post_date;
+		$obj->updated_at = $post->post_modified;
 
 		return $obj;
 	}
@@ -474,6 +476,8 @@ final class DCA_WP_CPT_Storage {
 		if ( 0 === $obj->show_in_filters && '' === get_post_meta( $post->ID, '_dca_field_show_filters', true ) ) {
 			$obj->show_in_filters = 1;
 		}
+
+		$obj->created_at = $post->post_date;
 
 		return $obj;
 	}

@@ -51,7 +51,7 @@ class DCA_WP_Dashboard_Renderer implements DCA_Dashboard_Renderer {
 	 * @param int   $vendor_id
 	 * @param array $store_settings  Unused in Phase 2; reserved for Phase 3.
 	 */
-	public function render_fields( $vendor_id, array $store_settings = array() ) {
+	public function render_fields( int $vendor_id, array $store_settings = array() ): void {
 		$vendor_id = (int) $vendor_id;
 
 		$attribute_sets = $this->storage->get_sets( array( 'status' => 'active' ) );
@@ -128,7 +128,7 @@ class DCA_WP_Dashboard_Renderer implements DCA_Dashboard_Renderer {
 	 * @param array $post_data  Raw submitted values keyed by field_name.
 	 * @return array{saved: string[], errors: string[]}
 	 */
-	public function save_submitted_values( $vendor_id, array $post_data ) {
+	public function save_submitted_values( int $vendor_id, array $post_data ): array {
 		$vendor_id      = (int) $vendor_id;
 		$attribute_sets = $this->storage->get_sets( array( 'status' => 'active' ) );
 		$saved          = array();

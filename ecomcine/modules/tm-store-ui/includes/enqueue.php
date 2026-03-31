@@ -17,6 +17,15 @@ defined( 'ABSPATH' ) || exit;
  * CSS specificity is unchanged.
  */
 function tm_store_ui_enqueue_assets() {
+	// Guarantee 'ecomcine-base-css' is always registered as a dependency anchor.
+	// Themes that own this handle (e.g. ecomcine-base) register it themselves at
+	// priority 10; for every other theme we register a virtual/empty placeholder
+	// so the CSS dependency chain never silently collapses.
+	// Using src=false creates a no-output placeholder — no double-load risk.
+	if ( ! wp_style_is( 'ecomcine-base-css', 'registered' ) ) {
+		wp_register_style( 'ecomcine-base-css', false, array(), null );
+	}
+
 	// Responsive config CSS — provides CSS variables used by all other plugin styles.
 	wp_enqueue_style(
 		'tm-store-ui-responsive',

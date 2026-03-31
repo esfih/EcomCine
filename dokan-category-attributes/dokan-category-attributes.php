@@ -9,7 +9,7 @@
  * Text Domain: dokan-category-attributes
  * Domain Path: /languages
  * Requires at least: 5.8
- * Requires PHP: 7.4
+ * Requires PHP: 8.2
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -138,8 +138,12 @@ final class Dokan_Category_Attributes {
 	 * Initialize plugin
 	 */
 	public function init() {
-		// Check if Dokan is active
-		if ( ! class_exists( 'WeDevs_Dokan' ) ) {
+		// Check if Dokan is active — use EcomCine capability registry if available.
+		$has_dokan = class_exists( 'EcomCine_Plugin_Capability', false )
+			? EcomCine_Plugin_Capability::has_dokan()
+			: function_exists( 'dokan_get_store_url' );
+
+		if ( ! $has_dokan ) {
 			add_action( 'admin_notices', array( $this, 'dokan_missing_notice' ) );
 			return;
 		}

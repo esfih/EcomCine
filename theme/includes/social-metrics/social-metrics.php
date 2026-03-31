@@ -2949,10 +2949,10 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 	
 	<div id="social-section" class="talent-physical-attributes attribute-slide-section social-section">
 		<h3 class="section-title">
-			<i class="fas fa-chart-line section-title-icon"></i> Social Influence Metrics
+			<?php echo TM_Icons::svg( 'chart-line', 'section-title-icon' ); ?> Social Influence Metrics
 			<span class="help-icon-wrapper">
 				<button type="button" class="help-toggle-btn help-toggle-btn--social" aria-label="Show help" data-help-text="Statistics based on last 10 posts average. Growth metrics compare the latest period against the previous one (daily, then weekly, then monthly).">
-					<i class="fas fa-question-circle" aria-hidden="true"></i>
+					<?php echo TM_Icons::svg( 'question-circle' ); ?>
 				</button>
 			</span>
 		</h3>
@@ -2961,7 +2961,7 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 			<!-- Social Media URLs - Inline editing for Owner -->
 			<div class="social-urls-section">
 				<h4 class="social-urls-title">
-					<i class="fas fa-link social-urls-title-icon"></i> Your Social Media URLs
+					<?php echo TM_Icons::svg( 'link', 'social-urls-title-icon' ); ?> Your Social Media URLs
 					<span class="social-urls-note">(Click and edit, auto-saves)</span>
 				</h4>
 				<div class="social-urls-grid">
@@ -3099,7 +3099,7 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 						?>
 						<div class="social-url-field" data-field="<?php echo esc_attr( $field_name ); ?>" data-platform="<?php echo esc_attr( strtolower( $platform ) ); ?>" data-help="<?php echo esc_attr( $help_text ); ?>">
 							<label class="social-url-label">
-								<i class="fab <?php echo esc_attr( $icon_class ); ?> social-url-icon"></i>
+								<?php echo TM_Icons::svg( str_replace( 'fa-', '', $icon_class ), 'social-url-icon' ); ?>
 								<span class="social-url-name"><?php echo esc_html( $platform ); ?></span>
 								<?php if ( $status_text !== '' ) : ?>
 									<span class="social-url-status">(<?php echo esc_html( $status_text ); ?>)</span>
@@ -3131,12 +3131,12 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 			<!-- YouTube Metrics -->
 			<div class="social-metric-column" data-platform="youtube">
 				<div class="social-header">
-					<i class="fab fa-youtube social-header-icon"></i>
+					<?php echo TM_Icons::svg( 'youtube', 'social-header-icon' ); ?>
 					<div>
 						<h4 class="social-title">YouTube</h4>
 						<?php if ( $youtube_display_url ) : ?>
 							<a href="<?php echo esc_url( $youtube_display_url ); ?>" target="_blank" class="social-profile-link">
-								<i class="fas fa-external-link-alt social-profile-link-icon"></i> View Profile
+								<?php echo TM_Icons::svg( 'external-link-alt', 'social-profile-link-icon' ); ?> View Profile
 							</a>
 						<?php else : ?>
 							<span class="social-not-connected">Not connected</span>
@@ -3146,30 +3146,30 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 				<div class="social-stats">
 					<?php if ( $youtube_fetching ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Subscribers: <strong class="stat-value--gold">...</strong>
+							<?php echo TM_Icons::svg( 'users', 'stat-icon' ); ?> Subscribers: <strong class="stat-value--gold">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-chart-bar stat-icon"></i> Avg Views: <strong class="stat-value--rose">...</strong>
+							<?php echo TM_Icons::svg( 'chart-bar', 'stat-icon' ); ?> Avg Views: <strong class="stat-value--rose">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">...</strong>
+							<?php echo TM_Icons::svg( 'heart', 'stat-icon' ); ?> Avg Reactions: <strong class="stat-value--rose">...</strong>
 						</div>
 					<?php elseif ( $youtube_error ) : ?>
 						<div class="stat-item stat-item--muted">error</div>
 					<?php elseif ( $youtube_subscribers !== null || $youtube_avg_views !== null || $youtube_avg_reactions !== null ) : ?>
 						<?php if ( $youtube_subscribers !== null ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-users stat-icon"></i> Subscribers: <strong class="stat-value--gold"><?php echo $format_social_number( $youtube_subscribers ); ?></strong>
+								<?php echo TM_Icons::svg( 'users', 'stat-icon' ); ?> Subscribers: <strong class="stat-value--gold"><?php echo $format_social_number( $youtube_subscribers ); ?></strong>
 							</div>
 						<?php endif; ?>
 						<?php if ( $youtube_avg_views !== null ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-chart-bar stat-icon"></i> Avg Views: <strong class="stat-value--rose"><?php echo $format_social_number( $youtube_avg_views ); ?></strong>
+								<?php echo TM_Icons::svg( 'chart-bar', 'stat-icon' ); ?> Avg Views: <strong class="stat-value--rose"><?php echo $format_social_number( $youtube_avg_views ); ?></strong>
 							</div>
 						<?php endif; ?>
 						<?php if ( $youtube_avg_reactions !== null ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose"><?php echo $format_social_number( $youtube_avg_reactions ); ?></strong>
+								<?php echo TM_Icons::svg( 'heart', 'stat-icon' ); ?> Avg Reactions: <strong class="stat-value--rose"><?php echo $format_social_number( $youtube_avg_reactions ); ?></strong>
 							</div>
 						<?php endif; ?>
 					<?php else : ?>
@@ -3196,12 +3196,12 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 			<!-- Instagram Metrics -->
 			<div class="social-metric-column" data-platform="instagram">
 				<div class="social-header">
-					<i class="fab fa-instagram social-header-icon"></i>
+					<?php echo TM_Icons::svg( 'instagram', 'social-header-icon' ); ?>
 					<div>
 						<h4 class="social-title">Instagram</h4>
 						<?php if ( $instagram_display_url ) : ?>
 							<a href="<?php echo esc_url( $instagram_display_url ); ?>" target="_blank" class="social-profile-link">
-								<i class="fas fa-external-link-alt social-profile-link-icon"></i> View Profile
+								<?php echo TM_Icons::svg( 'external-link-alt', 'social-profile-link-icon' ); ?> View Profile
 							</a>
 						<?php else : ?>
 							<span class="social-not-connected">Not connected</span>
@@ -3211,25 +3211,25 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 				<div class="social-stats">
 					<?php if ( $instagram_fetching ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold">...</strong>
+							<?php echo TM_Icons::svg( 'users', 'stat-icon' ); ?> Followers: <strong class="stat-value--gold">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">...</strong>
+							<?php echo TM_Icons::svg( 'heart', 'stat-icon' ); ?> Avg Reactions: <strong class="stat-value--rose">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-comment-dots stat-icon"></i> Avg Comments: <strong class="stat-value--rose">...</strong>
+							<?php echo TM_Icons::svg( 'comment-dots', 'stat-icon' ); ?> Avg Comments: <strong class="stat-value--rose">...</strong>
 						</div>
 					<?php elseif ( $instagram_error ) : ?>
 						<div class="stat-item stat-item--muted">error</div>
 					<?php elseif ( $instagram_followers > 0 ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold"><?php echo $format_social_number( $instagram_followers ); ?></strong>
+							<?php echo TM_Icons::svg( 'users', 'stat-icon' ); ?> Followers: <strong class="stat-value--gold"><?php echo $format_social_number( $instagram_followers ); ?></strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose"><?php echo $format_social_number( $instagram_avg_reactions ); ?></strong>
+							<?php echo TM_Icons::svg( 'heart', 'stat-icon' ); ?> Avg Reactions: <strong class="stat-value--rose"><?php echo $format_social_number( $instagram_avg_reactions ); ?></strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-comment-dots stat-icon"></i> Avg Comments: <strong class="stat-value--rose"><?php echo $format_social_number( $instagram_avg_comments ); ?></strong>
+							<?php echo TM_Icons::svg( 'comment-dots', 'stat-icon' ); ?> Avg Comments: <strong class="stat-value--rose"><?php echo $format_social_number( $instagram_avg_comments ); ?></strong>
 						</div>
 					<?php else : ?>
 						<div class="stat-item stat-item--muted">
@@ -3248,12 +3248,12 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 			<!-- Facebook Metrics -->
 			<div class="social-metric-column" data-platform="facebook">
 				<div class="social-header">
-					<i class="fab fa-facebook-square social-header-icon"></i>
+					<?php echo TM_Icons::svg( 'facebook-square', 'social-header-icon' ); ?>
 					<div>
 						<h4 class="social-title">Facebook</h4>
 						<?php if ( $facebook_display_url ) : ?>
 							<a href="<?php echo esc_url( $facebook_display_url ); ?>" target="_blank" class="social-profile-link">
-								<i class="fas fa-external-link-alt social-profile-link-icon"></i> View Profile
+								<?php echo TM_Icons::svg( 'external-link-alt', 'social-profile-link-icon' ); ?> View Profile
 							</a>
 						<?php else : ?>
 							<span class="social-not-connected">Not connected</span>
@@ -3263,35 +3263,35 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 				<div class="social-stats">
 					<?php if ( $facebook_fetching ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold">...</strong>
+							<?php echo TM_Icons::svg( 'users', 'stat-icon' ); ?> Followers: <strong class="stat-value--gold">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-eye stat-icon"></i> Avg Views: <strong class="stat-value--rose">...</strong>
+							<?php echo TM_Icons::svg( 'eye', 'stat-icon' ); ?> Avg Views: <strong class="stat-value--rose">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-thumbs-up stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">...</strong>
+							<?php echo TM_Icons::svg( 'thumbs-up', 'stat-icon' ); ?> Avg Reactions: <strong class="stat-value--rose">...</strong>
 						</div>
 					<?php elseif ( $facebook_error ) : ?>
 						<div class="stat-item stat-item--muted">error</div>
 					<?php elseif ( $facebook_stats_hidden ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold">N/A</strong>
+							<?php echo TM_Icons::svg( 'users', 'stat-icon' ); ?> Followers: <strong class="stat-value--gold">N/A</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-eye stat-icon"></i> Avg Views: <strong class="stat-value--rose">N/A</strong>
+							<?php echo TM_Icons::svg( 'eye', 'stat-icon' ); ?> Avg Views: <strong class="stat-value--rose">N/A</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-thumbs-up stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">N/A</strong>
+							<?php echo TM_Icons::svg( 'thumbs-up', 'stat-icon' ); ?> Avg Reactions: <strong class="stat-value--rose">N/A</strong>
 						</div>
 					<?php elseif ( $facebook_followers > 0 ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold"><?php echo $format_social_number( $facebook_followers ); ?></strong>
+							<?php echo TM_Icons::svg( 'users', 'stat-icon' ); ?> Followers: <strong class="stat-value--gold"><?php echo $format_social_number( $facebook_followers ); ?></strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-eye stat-icon"></i> Avg Views: <strong class="stat-value--rose"><?php echo $format_social_number( $facebook_avg_views ); ?></strong>
+							<?php echo TM_Icons::svg( 'eye', 'stat-icon' ); ?> Avg Views: <strong class="stat-value--rose"><?php echo $format_social_number( $facebook_avg_views ); ?></strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-thumbs-up stat-icon"></i> Avg Reactions: <strong class="stat-value--rose"><?php echo $format_social_number( $facebook_avg_reactions ); ?></strong>
+							<?php echo TM_Icons::svg( 'thumbs-up', 'stat-icon' ); ?> Avg Reactions: <strong class="stat-value--rose"><?php echo $format_social_number( $facebook_avg_reactions ); ?></strong>
 						</div>
 					<?php else : ?>
 						<div class="stat-item stat-item--muted">
@@ -3317,12 +3317,12 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 			<!-- LinkedIn Metrics -->
 			<div class="social-metric-column" data-platform="linkedin">
 				<div class="social-header">
-					<i class="fab fa-linkedin social-header-icon"></i>
+					<?php echo TM_Icons::svg( 'linkedin', 'social-header-icon' ); ?>
 					<div>
 						<h4 class="social-title">LinkedIn</h4>
 						<?php if ( $linkedin_display_url ) : ?>
 							<a href="<?php echo esc_url( $linkedin_display_url ); ?>" target="_blank" class="social-profile-link">
-								<i class="fas fa-external-link-alt social-profile-link-icon"></i> View Profile
+								<?php echo TM_Icons::svg( 'external-link-alt', 'social-profile-link-icon' ); ?> View Profile
 							</a>
 						<?php else : ?>
 							<span class="social-not-connected">Not connected</span>
@@ -3332,30 +3332,30 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 				<div class="social-stats">
 					<?php if ( $linkedin_fetching ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold">...</strong>
+							<?php echo TM_Icons::svg( 'users', 'stat-icon' ); ?> Followers: <strong class="stat-value--gold">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">...</strong>
+							<?php echo TM_Icons::svg( 'heart', 'stat-icon' ); ?> Avg Reactions: <strong class="stat-value--rose">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-user-friends stat-icon"></i> Connections: <strong class="stat-value--rose">...</strong>
+							<?php echo TM_Icons::svg( 'user-friends', 'stat-icon' ); ?> Connections: <strong class="stat-value--rose">...</strong>
 						</div>
 					<?php elseif ( $linkedin_error ) : ?>
 						<div class="stat-item stat-item--muted">error</div>
 					<?php else : ?>
 						<?php if ( $linkedin_followers > 0 ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold">&nbsp;<?php echo $format_social_number( $linkedin_followers ); ?></strong>
+								<?php echo TM_Icons::svg( 'users', 'stat-icon' ); ?> Followers: <strong class="stat-value--gold">&nbsp;<?php echo $format_social_number( $linkedin_followers ); ?></strong>
 							</div>
 						<?php endif; ?>
 						<?php if ( isset( $linkedin_metrics['avg_reactions'] ) && $linkedin_metrics['avg_reactions'] !== null ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">&nbsp;<?php echo $format_social_number( (int) $linkedin_metrics['avg_reactions'] ); ?></strong>
+								<?php echo TM_Icons::svg( 'heart', 'stat-icon' ); ?> Avg Reactions: <strong class="stat-value--rose">&nbsp;<?php echo $format_social_number( (int) $linkedin_metrics['avg_reactions'] ); ?></strong>
 							</div>
 						<?php endif; ?>
 						<?php if ( isset( $linkedin_metrics['connections'] ) && $linkedin_metrics['connections'] ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-user-friends stat-icon"></i> Connections: <strong class="stat-value--rose">&nbsp;<?php echo $format_social_number( (int) $linkedin_metrics['connections'] ); ?></strong>
+								<?php echo TM_Icons::svg( 'user-friends', 'stat-icon' ); ?> Connections: <strong class="stat-value--rose">&nbsp;<?php echo $format_social_number( (int) $linkedin_metrics['connections'] ); ?></strong>
 							</div>
 						<?php endif; ?>
 						<?php if ( ! $linkedin_followers && ( ! isset( $linkedin_metrics['avg_reactions'] ) || $linkedin_metrics['avg_reactions'] === null ) ) : ?>
@@ -3384,7 +3384,7 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 			<div class="social-metric-column social-metric-column--growth">
 				<div class="social-header social-header--center">
 					<h4 class="social-title">
-						<i class="fas fa-chart-line section-title-icon"></i> <?php echo esc_html( $growth_payload['label'] ); ?>
+						<?php echo TM_Icons::svg( 'chart-line', 'section-title-icon' ); ?> <?php echo esc_html( $growth_payload['label'] ); ?>
 					</h4>
 				</div>
 				<div class="social-stats">
@@ -3416,14 +3416,14 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 						$formatted = ( $metric['pct'] > 0 ? '+' : '' ) . number_format( $metric['pct'], 1 ) . '%';
 						?>
 						<div class="stat-item stat-item--pill">
-							<i class="fas <?php echo esc_attr( $icon ); ?> stat-icon stat-icon--<?php echo esc_attr( $key ); ?>"></i> <?php echo esc_html( $label ); ?>: <strong class="stat-value--<?php echo esc_attr( $key ); ?> stat-value--growth"><?php echo esc_html( $formatted ); ?></strong>
+							<?php echo TM_Icons::svg( $icon, 'stat-icon stat-icon--' . $key ); ?> <?php echo esc_html( $label ); ?>: <strong class="stat-value--<?php echo esc_attr( $key ); ?> stat-value--growth"><?php echo esc_html( $formatted ); ?></strong>
 						</div>
 						<?php
 					}
 					if ( ! $rendered_growth ) :
 						?>
 						<div class="stat-item stat-item--pill stat-item--pill-muted">
-							<i class="fas fa-info-circle stat-icon stat-icon--info"></i> <?php echo esc_html( $growth_payload['message'] ); ?>
+							<?php echo TM_Icons::svg( 'info-circle', 'stat-icon stat-icon--info' ); ?> <?php echo esc_html( $growth_payload['message'] ); ?>
 						</div>
 						<?php
 					endif;

@@ -82,6 +82,18 @@ See `New-Migrate-WP-Local-Setup.md` → "EcomCine — Re-Setup on a New Computer
 - Do not improvise arbitrary shell commands for task execution.
 - If no catalog command exists for the task: stop, report the missing command ID, and ask the user to approve creating a new catalog entry before proceeding.
 - Exit code is canonical pass/fail signal; warning text alone must not be treated as failure.
+- Never run interactive package-manager installs (`apt install`, `npm install -g`, `pip install --user`) via the IDE AI integrated terminal path.
+- For host tooling installs, use catalog command `host.tool.install` and run it from an external WSL terminal session.
+- PreToolUse runtime enforcement for this rule is defined in `.github/hooks/block-interactive-package-installs.json`.
+- PreToolUse guardrail enforcement also denies Windows-mounted path usage and out-of-workspace file mutation attempts; operate only under the active WSL workspace root.
+
+### IDE AI Self-Test + Debug Policy (Mandatory)
+
+- Do not wait for user-provided browser console logs as a first step.
+- Use cataloged local tooling first: `qa.playwright.install`, `qa.playwright.test.smoke`, `qa.playwright.test.debug`, `debug.snapshot.collect`, `wp.debug.log.tail`, `wp.debug.php.info`.
+- Always include artifact paths (`tools/playwright/playwright-report`, `tools/playwright/test-results`, `logs/debug-snapshots`) in remediation updates.
+- Ask the user for manual browser evidence only if local reproduction is not possible after running the canonical workflow.
+- Canonical runbook: `specs/operational-runbooks/ide-ai-playwright-debug-workflow.md`.
 
 ---
 

@@ -4019,6 +4019,10 @@ body.tm-mobile-landscape .social-urls-grid {
 	margin-bottom: 0 !important;
 }
 
+/* Collapsed tab label and name are fully implemented in player.css.
+   No rules needed here — player.css owns .collapsed-tab-label and
+   .collapsed-tab-name with all required !important overrides. */
+
 /* CTA Buttons Wrapper - 2 Column Layout */
 .vendor-cta-buttons {
 	display: flex !important;
@@ -5209,6 +5213,17 @@ body.dokan-store .tm-header-menu > li {
 	max-width: 220px !important;
 }
 
+.tm-open-account-seller {
+	padding-top: 0 !important;
+	padding-bottom: 0 !important;
+	border: 0 !important;
+	border-top: 0 !important;
+	border-right: 0 !important;
+	border-bottom: 0 !important;
+	border-left: 0 !important;
+	outline: none !important;
+}
+
 .tm-header-account-pill--logged-in {
 	gap: 8px !important;
 	padding: 6px 10px !important;
@@ -5275,10 +5290,20 @@ body.dokan-store .tm-header-menu > li {
 	color: #000000;
 }
 
-/* Compensate for any residual spacing above the showcase content area.
-   Pulls the takeover div up so content starts flush with the custom header. */
-body.tm-showcase-page .tm-showcase-takeover {
-	margin-top: -30px !important;
+/* On the showcase page, escape document flow entirely (same approach as mobile).
+   This fills the viewport by coordinates, ignoring any Astra/WP padding above
+   the content — eliminating both the top offset and the matching bottom gap that
+   the old -30px margin hack created. */
+body.tm-showcase-page .dokan-profile-frame-wrapper {
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	bottom: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	overflow-x: visible !important;
+	overflow-y: hidden !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

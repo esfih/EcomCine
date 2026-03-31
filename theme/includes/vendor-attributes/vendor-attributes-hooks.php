@@ -187,7 +187,7 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 	?>
 	<div id="demographic-section" class="talent-physical-attributes vendor-demographic-section attribute-slide-section">
 		<h3 class="section-title">
-			<i class="fas fa-user-circle section-title-icon"></i> Demographic & Availability
+			<?php echo TM_Icons::svg( 'user-circle', 'section-title-icon' ); ?> Demographic & Availability
 			<?php if ( $is_owner ) : ?>
 				<span class="owner-edit-hint">(Click pencil to edit)</span>
 			<?php endif; ?>
@@ -350,7 +350,7 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 		?>
 		<div id="physical-section" class="talent-physical-attributes attribute-slide-section">
 			<h3 class="section-title">
-				<i class="fas fa-ruler section-title-icon"></i> Physical Attributes
+				<?php echo TM_Icons::svg( 'ruler', 'section-title-icon' ); ?> Physical Attributes
 				<?php if ( $is_owner ) : ?>
 					<span class="owner-edit-hint">(Click pencil to edit)</span>
 				<?php endif; ?>
@@ -397,7 +397,7 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 		?>
 		<div id="cameraman-section" class="talent-physical-attributes cameraman-equipment attribute-slide-section">
 			<h3 class="section-title">
-				<i class="fas fa-video section-title-icon"></i> Equipment & Skills
+				<?php echo TM_Icons::svg( 'video', 'section-title-icon' ); ?> Equipment & Skills
 				<?php if ( $is_owner ) : ?>
 					<span class="owner-edit-hint">(Click pencil to edit)</span>
 				<?php endif; ?>

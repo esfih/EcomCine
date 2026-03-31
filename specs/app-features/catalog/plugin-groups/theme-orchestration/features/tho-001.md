@@ -6,7 +6,7 @@ migration_risk: high
 migration_phase: 3
 adapter_status:
   compatibility: active
-  default_wp: not-started
+  default_wp: complete
 last_updated: 2026-03-27
 ---
 

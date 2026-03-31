@@ -1,0 +1,17 @@
+{
+  "name": "ecomcine-playwright-selftest",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Playwright self-test harness for EcomCine IDE AI workflows",
+  "scripts": {
+    "test:smoke": "playwright test --project=chromium --grep @smoke",
+    "test:interactions": "playwright test --project=chromium --grep @interactions",
+    "test:debug": "playwright test --project=chromium --trace on --workers=1",
+    "test:headed": "playwright test --project=chromium --headed --workers=1",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.54.2",
+    "@types/node": "^24.3.0"
+  }
+}

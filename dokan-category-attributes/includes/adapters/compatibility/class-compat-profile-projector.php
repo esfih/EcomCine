@@ -60,7 +60,7 @@ class DCA_Compat_Profile_Projector implements DCA_Profile_Projector {
 	 * @param int $vendor_id
 	 * @return array
 	 */
-	public function project_vendor_attributes( $vendor_id ) {
+	public function project_vendor_attributes( int $vendor_id ): array {
 		$vendor_categories = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );
 		if ( is_wp_error( $vendor_categories ) ) {
 			return array();

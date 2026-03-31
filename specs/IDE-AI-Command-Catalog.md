@@ -583,9 +583,19 @@ Guardrail:
 - command: `./scripts/playwright-selftest.sh install`
 - args: optional passthrough flags
 - success: exit `0`; `tools/playwright/node_modules` exists and Playwright Chromium browser is installed
-- failure: non-zero; resolve missing Node/npm runtime or npm install errors before proceeding
+- failure: non-zero; if Chromium browser is missing run `qa.playwright.browsers.install` from an external WSL terminal first; resolve missing Linux Node runtime before proceeding
 - failure_class: `tooling`
 - remediation_type: `source-fix`
+
+`id`: `qa.playwright.browsers.install`
+- goal: Install Playwright Chromium browser and Linux system dependencies at the system/user level so all workspaces can run IDE AI self-tests
+- command: `./scripts/install-playwright-system.sh`
+- args: none
+- success: exit `0`; output contains `DONE`; Chromium directory exists under `/root/.cache/ms-playwright/`
+- failure: non-zero; check apt availability, Node runtime path (node must resolve to a Linux binary), and disk space; exit `10` means the script was called from VS Code integrated terminal
+- failure_class: `infra`
+- remediation_type: `source-fix`
+- constraint: MUST be run from an external WSL2 terminal — NOT from VS Code integrated terminal; the script self-checks and exits `10` if called from VS Code
 
 `id`: `qa.playwright.test.smoke`
 - goal: Run deterministic smoke checks against local WordPress runtime and fail fast on hard JS/runtime regressions
@@ -643,6 +653,33 @@ Guardrail:
 - failure_class: `config`
 - remediation_type: `source-fix`
 
+`id`: `wp.debug.log.ecomcine`
+- goal: Tail the EcomCine structured debug log (ecomcine-debug.log) from the local container
+- command: `./scripts/wp.sh log:debug [lines]`
+- args: optional integer line count (default 100)
+- success: exit `0`; JSON log lines printed
+- failure: message "ecomcine-debug.log not found"; run `wp.debug.mu.install` first
+- failure_class: `config`
+- remediation_type: `source-fix`
+
+`id`: `wp.debug.mu.install`
+- goal: Deploy ecomcine-debug.php MU-plugin to the local WordPress Docker container and optionally enable it
+- command: `./scripts/install-debug-mu.sh [--enable]`
+- args: optional `--enable` flag to create the `ecomcine-debug.enabled` toggle file immediately
+- success: exit `0`; output confirms file copy and log directory creation
+- failure: non-zero; ensure Docker containers are running (`docker compose up -d`)
+- failure_class: `infra`
+- remediation_type: `source-fix`
+
+`id`: `wp.vendor.l1.backfill`
+- goal: Set tm_l1_complete=1 for all approved Dokan vendors that are missing the flag (idempotent)
+- command: `./scripts/wp.sh php scripts/set-vendor-l1-complete.php`
+- args: none
+- success: exit `0`; output ends with "Done. Updated: N | Already set: M"
+- failure: non-zero or "Dokan is not active"; verify Dokan plugin is active
+- failure_class: `data`
+- remediation_type: `source-fix`
+
 `id`: `wp.debug.php.info`
 - goal: Surface PHP/WP-CLI runtime diagnostics for container-level debugging
 - command: `./scripts/wp.sh wp --info`
@@ -659,6 +696,26 @@ Guardrail:
 - success: exit `0`; prints path under `logs/debug-snapshots/`
 - failure: non-zero; resolve script/runtime permissions or dependency issues
 - failure_class: `tooling`
+- remediation_type: `source-fix`
+
+### Demo Data
+
+`id`: `data.vendors.export.demo`
+- goal: Export 32 demo vendor profiles (user data + all relevant usermeta + media files) from localhost:8180 into `ecomcine/demo/` for plugin bundling
+- command: `./scripts/wp.sh php scripts/export-demo-vendors.php`
+- args: none
+- success: exit `0`; output contains `[demo-export] DONE`; `ecomcine/demo/vendor-data.json` exists and `ecomcine/demo/media/` is populated
+- failure: non-zero; inspect output for missing attachment paths or file-system permission errors
+- failure_class: `data`
+- remediation_type: `source-fix`
+
+`id`: `data.vendors.import.demo`
+- goal: Import bundled demo vendor data into current WordPress instance via EcomCine importer class
+- command: `./scripts/wp.sh wp eval 'EcomCine_Demo_Importer::run_cli();'`
+- args: none
+- success: exit `0`; output contains `[demo-import] DONE` with vendor count
+- failure: non-zero; check class autoload, plugin activation state, and demo JSON integrity
+- failure_class: `data`
 - remediation_type: `source-fix`
 
 ## Missing Command Procedure

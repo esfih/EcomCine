@@ -115,6 +115,33 @@ Preferred execution path:
 
 If a required task has no catalog entry, stop and create/approve a new catalog command contract first.
 
+### IDE Stability Notice (Mandatory)
+
+- Never run interactive package-manager installs (for example `apt install`, `npm install -g`, `pip install --user`) from the IDE AI integrated terminal flow.
+- Use catalog command `host.tool.install` via `./scripts/run-catalog-command.sh host.tool.install <tool>` from an external WSL terminal session.
+- This guardrail prevents VS Code renderer freezes caused by high-volume interactive terminal output.
+- Runtime enforcement is active via `.github/hooks/block-interactive-package-installs.json` (PreToolUse command guard).
+
+### IDE AI Self-Test + Debug (Mandatory)
+
+Before asking users for browser console screenshots/HTML exports, IDE AI must run local self-test/debug tools:
+
+```bash
+./scripts/run-catalog-command.sh infra.check
+./scripts/run-catalog-command.sh wp.health.check
+./scripts/run-catalog-command.sh qa.playwright.install
+./scripts/run-catalog-command.sh qa.playwright.test.smoke
+./scripts/run-catalog-command.sh qa.playwright.test.interactions
+./scripts/run-catalog-command.sh qa.playwright.test.debug
+./scripts/run-catalog-command.sh debug.snapshot.collect 200
+./scripts/run-catalog-command.sh wp.debug.log.tail 200
+./scripts/run-catalog-command.sh wp.debug.php.info
+```
+
+Canonical runbook: `specs/operational-runbooks/ide-ai-playwright-debug-workflow.md`.
+
+Interactions reuse guide (cross-project): `specs/operational-runbooks/playwright-interactions-reuse-guide.md`.
+
 ### Root-Cause Remediation Policy
 
 All fixes must follow the mandatory decision gate in `specs/AI-Root-Cause-Remediation-Policy.md`.
@@ -211,3 +238,7 @@ Run these checks before feature work or machine handoff:
 
 `check-local-dev-infra.sh` fails if the repo is running from a Windows-mounted path or if
 Docker bind mounts are still sourced from Windows paths.
+
+Agent runtime enforcement note:
+- `.github/hooks/block-interactive-package-installs.json` invokes `scripts/hook-pretool-command-guard.sh`.
+- The guard denies Windows-style path usage and out-of-workspace file mutation attempts for IDE AI tool calls.

@@ -572,7 +572,8 @@ body.dokan-store .ast-woocommerce-container {
 .profile-info-head {
 	display: flex !important;
 	flex-direction: column !important;
-	position: absolute !important;
+	box-sizing: border-box !important;
+	position: fixed !important;
 	left: 0 !important;
 	top: 50% !important;
 	transform: translateY(-50%) translateX(0) !important;
@@ -1517,6 +1518,13 @@ img.profile-img,
 	transform: scale(1.15) !important;
 }
 
+.tm-header-platforms__icons .social-icon-svg {
+	width: 20px !important;
+	height: 20px !important;
+	display: inline-block !important;
+	fill: currentColor !important;
+}
+
 /* Removed hero-platforms-strip - now using centered header placement */
 
 .hero-resolution-wrap {
@@ -2156,6 +2164,13 @@ body.dokan-store .tm-header-icon:focus-visible {
 
 body.dokan-store .tm-header-icon i {
 	font-size: 16px !important;
+}
+
+body.dokan-store .tm-header-icon .tm-header-icon-svg {
+	width: 16px !important;
+	height: 16px !important;
+	display: inline-block !important;
+	fill: currentColor !important;
 }
 
 body.dokan-store .tm-header-count {

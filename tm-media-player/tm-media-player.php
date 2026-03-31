@@ -4,6 +4,7 @@
  * Description: Standalone talent media player — playlist, A/B buffers, REST API, showcase shortcodes, and all enqueue logic extracted from the Astra child theme.
  * Version:     1.0.0
  * Author:      TM
+ * Requires PHP: 8.2
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -11,6 +12,17 @@ defined( 'ABSPATH' ) || exit;
 define( 'TM_MEDIA_PLAYER_VERSION', '1.0.0' );
 define( 'TM_MEDIA_PLAYER_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'TM_MEDIA_PLAYER_URL',     plugin_dir_url( __FILE__ ) );
+
+// Adapter layer (Phase 2 — Default WP Pilot Adapter).
+require_once TM_MEDIA_PLAYER_DIR . 'includes/contracts/interface-media-source-provider.php';
+require_once TM_MEDIA_PLAYER_DIR . 'includes/adapters/compatibility/class-compat-media-source-provider.php';
+require_once TM_MEDIA_PLAYER_DIR . 'includes/adapters/default-wp/class-wp-vendor-cpt.php';
+require_once TM_MEDIA_PLAYER_DIR . 'includes/adapters/default-wp/class-wp-media-source-provider.php';
+require_once TM_MEDIA_PLAYER_DIR . 'includes/adapters/class-adapter-registry.php';
+require_once TM_MEDIA_PLAYER_DIR . 'includes/parity/class-parity-check.php';
+
+// Register the tm_vendor CPT unconditionally (before Dokan guard).
+add_action( 'init', array( 'TMP_WP_Vendor_CPT', 'register_post_type' ), 5 );
 
 // =============================================================================
 // 1. PLAYLIST — tm_get_vendor_media_playlist(), tm_vendor_has_video_playlist_media()
@@ -29,16 +41,9 @@ function tm_get_vendor_media_playlist( $vendor_id ) {
 		return $payload;
 	}
 
-	$bio = '';
-	if ( function_exists( 'dokan_get_store_info' ) ) {
-		$store_info = dokan_get_store_info( $vendor_id );
-		if ( is_array( $store_info ) && ! empty( $store_info['vendor_biography'] ) ) {
-			$bio = $store_info['vendor_biography'];
-		}
-	}
-	if ( $bio === '' ) {
-		$bio = get_user_meta( $vendor_id, 'vendor_biography', true );
-	}
+	// Use the adapter registry to retrieve vendor data sources.
+	$source = TMP_Adapter_Registry::get_provider();
+	$bio    = $source->get_biography( $vendor_id );
 
 	$shortcode_pattern = get_shortcode_regex( array( 'gallery', 'playlist' ) );
 	if ( is_string( $bio ) && $bio !== '' && $shortcode_pattern ) {
@@ -122,18 +127,8 @@ function tm_get_vendor_media_playlist( $vendor_id ) {
 		}
 	}
 
-	$banner_video_id      = (int) get_user_meta( $vendor_id, 'dokan_banner_video', true );
-	$banner_video_url     = $banner_video_id ? wp_get_attachment_url( $banner_video_id ) : '';
-	$payload['fallbackVideo'] = $banner_video_url ? $banner_video_url : '';
-
-	$banner_image_url = '';
-	if ( function_exists( 'dokan' ) ) {
-		$vendor = dokan()->vendor->get( $vendor_id );
-		if ( $vendor && method_exists( $vendor, 'get_banner' ) ) {
-			$banner_image_url = $vendor->get_banner();
-		}
-	}
-	$payload['fallbackImage'] = $banner_image_url ? $banner_image_url : '';
+	$payload['fallbackVideo'] = $source->get_banner_video_url( $vendor_id );
+	$payload['fallbackImage'] = $source->get_banner_image_url( $vendor_id );
 	$payload['isFeatured']    = ( get_user_meta( $vendor_id, 'dokan_feature_seller', true ) === 'yes' );
 
 	return $payload;
@@ -145,14 +140,8 @@ function tm_vendor_has_video_playlist_media( $vendor_id ) {
 	$vendor_id = (int) $vendor_id;
 	if ( ! $vendor_id ) { return false; }
 
-	$bio = '';
-	if ( function_exists( 'dokan_get_store_info' ) ) {
-		$store_info = dokan_get_store_info( $vendor_id );
-		if ( is_array( $store_info ) && ! empty( $store_info['vendor_biography'] ) ) {
-			$bio = (string) $store_info['vendor_biography'];
-		}
-	}
-	if ( $bio === '' ) { $bio = (string) get_user_meta( $vendor_id, 'vendor_biography', true ); }
+	$source = TMP_Adapter_Registry::get_provider();
+	$bio    = $source->get_biography( $vendor_id );
 	if ( $bio === '' ) { return false; }
 
 	$pattern = get_shortcode_regex( array( 'playlist' ) );
@@ -219,8 +208,15 @@ function tm_get_vendor_store_content_payload( $vendor_id ) {
 	}
 	try {
 		set_query_var( 'author', $vendor_id );
+		// Resolve store-header template: plugin copy takes priority, then theme.
+		$_store_header = defined( 'TM_STORE_UI_DIR' )
+			? TM_STORE_UI_DIR . 'templates/dokan/store-header.php'
+			: locate_template( 'dokan/store-header.php' );
+		if ( ! $_store_header || ! file_exists( $_store_header ) ) {
+			$_store_header = locate_template( 'dokan/store-header.php' );
+		}
 		ob_start();
-		include locate_template( 'dokan/store-header.php' );
+		if ( $_store_header ) { include $_store_header; }
 		$html = ob_get_clean();
 		// Strip UTF-8 BOM (EF BB BF) that some template files prepend to output.
 		// Without this jQuery treats the response as a parse error and fires the AJAX
@@ -230,6 +226,7 @@ function tm_get_vendor_store_content_payload( $vendor_id ) {
 		}
 	} catch ( Throwable $e ) {
 		while ( ob_get_level() ) { ob_end_clean(); }
+		error_log( '[TM Vendor REST] Exception for vendor_id=' . $vendor_id . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
 		$payload = array( 'message' => 'Failed to load vendor content.', 'vendor_id' => $vendor_id );
 		if ( function_exists( 'current_user_can' ) && current_user_can( 'manage_options' ) ) {
 			$payload['debug'] = array( 'error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine() );
@@ -451,13 +448,19 @@ add_filter( 'body_class', function( $classes ) {
 	return $classes;
 }, 20 );
 
+// Astra-specific: suppress header/footer on showcase pages.
+// Guards ensure these are no-ops on non-Astra themes.
 add_filter( 'astra_header_display', function( $display ) {
 	return tm_is_showcase_page() ? false : $display;
 }, 20 );
-
 add_filter( 'astra_footer_display', function( $display ) {
 	return tm_is_showcase_page() ? false : $display;
 }, 20 );
+
+// Theme-agnostic header/footer suppression: no longer needed.
+// tm-theme's header.php outputs only the HTML boilerplate (DOCTYPE, head, wp_head,
+// body open), so suppressing get_header() would break the page structure.
+// Astra suppression is handled by the astra_footer_display filter above.
 
 add_filter( 'template_include', function( $template ) {
 	if ( is_admin() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
@@ -470,7 +473,11 @@ add_filter( 'template_include', function( $template ) {
 		|| has_shortcode( $queried->post_content, 'tm_talent_player' );
 	if ( ! $has_showcase ) { return $template; }
 	$GLOBALS['tm_showcase_page'] = true;
-	$forced = locate_template( 'template-talent-showcase-full.php' );
+	// Plugin path takes priority over theme locate_template.
+	$forced = defined( 'TM_STORE_UI_SHOWCASE_FULL_TEMPLATE' ) ? TM_STORE_UI_SHOWCASE_FULL_TEMPLATE : '';
+	if ( ! $forced || ! file_exists( $forced ) ) {
+		$forced = locate_template( 'template-talent-showcase-full.php' );
+	}
 	return $forced ? $forced : $template;
 }, 99 );
 
@@ -563,8 +570,10 @@ class TM_Media_Player_Assets {
 		if ( ! function_exists( 'dokan_is_store_page' ) || ! dokan_is_store_page() ) { return; }
 		remove_action( 'wp_enqueue_scripts', 'wp_enqueue_global_styles' );
 		remove_action( 'wp_enqueue_scripts', 'wp_enqueue_global_styles_custom_css' );
-		wp_dequeue_style( 'astra-addon-megamenu-dynamic' );
-		wp_deregister_style( 'astra-addon-megamenu-dynamic' );
+		if ( wp_style_is( 'astra-addon-megamenu-dynamic', 'registered' ) || wp_style_is( 'astra-addon-megamenu-dynamic', 'enqueued' ) ) {
+			wp_dequeue_style( 'astra-addon-megamenu-dynamic' );
+			wp_deregister_style( 'astra-addon-megamenu-dynamic' );
+		}
 	}
 
 	// -----------------------------------------------------------------------
@@ -575,7 +584,7 @@ class TM_Media_Player_Assets {
 		wp_enqueue_style(
 			'tm-player-css',
 			TM_MEDIA_PLAYER_URL . 'assets/css/player.css',
-			array( 'astra-child-theme-css', 'responsive-config-css' ),
+			array( 'tm-store-ui-responsive', 'tm-store-ui-css' ),
 			self::CSS_VERSION
 		);
 	}

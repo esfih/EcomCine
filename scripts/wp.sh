@@ -57,7 +57,8 @@ Commands:
   wp <args>       Run WP-CLI inside the WordPress container
   eval "<php>"    Run PHP with full WordPress bootstrap (wpdb initialized)
   db "<sql>"      Run a SQL query against the MySQL container
-  log [N]         Tail the debug log (default: 80 lines)
+  log [N]         Tail the WP debug log (default: 80 lines)
+  log:debug [N]   Tail the EcomCine structured debug log (default: 100 lines)
   php <file>      Copy local PHP file to container and run via wp eval-file
   shell           Open interactive bash shell inside WordPress container
 USAGE
@@ -110,19 +111,30 @@ case "$COMMAND" in
     fi
     ;;
 
+  log:debug)
+    N="${1:-100}"
+    EC_LOG="/var/www/html/wp-content/logs/ecomcine-debug.log"
+    docker exec -i "$WP_SERVICE" bash -c "tail -n $N '$EC_LOG' 2>/dev/null || echo 'ecomcine-debug.log not found. Run: ./scripts/install-debug-mu.sh --enable'" >&2 || true
+    ;;
+
   php)
     if [[ $# -eq 0 ]]; then
-      echo "Usage: ./scripts/wp.sh php <local-php-file>" >&2
+      echo "Usage: ./scripts/wp.sh php <local-php-file> [-- <script-args>...]" >&2
       exit 1
     fi
     local_file="$1"
+    shift  # consume the file path; remaining "$@" are forwarded to the PHP script
     if [[ ! -f "$local_file" ]]; then
       echo "File not found: $local_file" >&2
       exit 1
     fi
     tmp_name="/tmp/wpcli_eval_$(date +%s).php"
     docker cp "$local_file" "$WP_SERVICE:$tmp_name"
-    docker exec -i "$WP_SERVICE" wp eval-file "$tmp_name" --allow-root
+    if [[ $# -gt 0 ]]; then
+      docker exec -i "$WP_SERVICE" wp eval-file "$tmp_name" --allow-root -- "$@"
+    else
+      docker exec -i "$WP_SERVICE" wp eval-file "$tmp_name" --allow-root
+    fi
     docker exec -i "$WP_SERVICE" rm -f "$tmp_name"
     ;;
 

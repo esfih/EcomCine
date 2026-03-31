@@ -32,7 +32,7 @@ class DCA_WP_Category_Resolver implements DCA_Vendor_Category_Resolver {
 	 * @param int $vendor_id
 	 * @return string[]
 	 */
-	public function get_vendor_categories( $vendor_id ) {
+	public function get_vendor_categories( int $vendor_id ): array {
 		// TODO(phase-2): query a plugin-owned taxonomy ('dca_vendor_category')
 		// that works without Dokan.
 		$terms = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );

@@ -769,7 +769,9 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                         </div>
                                         <div class="vendor-cta-actions">
                                             <a href="#" class="vendor-cta-btn"><i class="fas fa-question" aria-hidden="true"></i> <?php esc_html_e( 'Ask question', 'dokan-lite' ); ?></a>
+                                            <?php if ( class_exists( 'EcomCine_Plugin_Capability', false ) && EcomCine_Plugin_Capability::has_wc_bookings() && class_exists( 'EcomCine_Admin_Settings', false ) && 'wp_cpt' !== EcomCine_Admin_Settings::get_runtime_mode() ) : ?>
                                             <a href="#" class="vendor-cta-btn"><i class="far fa-calendar-alt" aria-hidden="true"></i> <?php esc_html_e( 'Book session', 'dokan-lite' ); ?></a>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                     <div class="contact-channel-row" aria-label="Contact channel counts">
@@ -927,7 +929,9 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 </div>
                                 <div class="vendor-cta-actions">
                                     <a href="#" class="vendor-cta-btn"><i class="fas fa-question" aria-hidden="true"></i> <?php esc_html_e( 'Ask question', 'dokan-lite' ); ?></a>
+                                    <?php if ( class_exists( 'EcomCine_Plugin_Capability', false ) && EcomCine_Plugin_Capability::has_wc_bookings() && class_exists( 'EcomCine_Admin_Settings', false ) && 'wp_cpt' !== EcomCine_Admin_Settings::get_runtime_mode() ) : ?>
                                     <a href="#" class="vendor-cta-btn"><i class="far fa-calendar-alt" aria-hidden="true"></i> <?php esc_html_e( 'Book session', 'dokan-lite' ); ?></a>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php } ?>
