@@ -25,16 +25,16 @@ if (
 	return;
 }
 
-// Suppress Astra's native header so the page only renders our cinematic dark
+// Suppress the theme header so the page only renders our cinematic dark
 // header (output by the wp_body_open hook in functions.php).
 // Footer suppression is global in functions.php.
-add_filter( 'astra_header_display', '__return_false' );
+$GLOBALS['ecomcine_suppress_header'] = true;
 
-// All cinematic header CSS in player.css is scoped to body.dokan-store.
+// All cinematic header CSS in player.css is scoped to body.ecomcine-person-profile.
 // Add that class here so those rules apply on platform pages too.
 add_filter( 'body_class', function( $classes ) {
-	if ( ! in_array( 'dokan-store', $classes, true ) ) {
-		$classes[] = 'dokan-store';
+	if ( ! in_array( 'ecomcine-person-profile', $classes, true ) ) {
+		$classes[] = 'ecomcine-person-profile';
 	}
 	if ( ! in_array( 'tm-platform-page', $classes, true ) ) {
 		$classes[] = 'tm-platform-page';

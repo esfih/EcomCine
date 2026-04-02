@@ -114,7 +114,10 @@
       "media": {
         "banner": "media/adriana/banner.webp",
         "gravatar": "media/adriana/gravatar.jpg"
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Agnieszka",
@@ -294,7 +297,9 @@
         "tm_contact_emails": [
           "agnes@agnes.com"
         ],
-        "camera_type": "cinema"
+        "camera_type": "cinema",
+        "dokan_geo_latitude": 33.7455,
+        "dokan_geo_longitude": -117.8677
       },
       "media": {
         "banner": "media/agnieszka/banner.webp",
@@ -302,7 +307,10 @@
         "videos": [
           "media/agnieszka/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Aiko",
@@ -446,7 +454,9 @@
         "dokan_admin_percentage_type": "percentage",
         "_dokan_enable_manual_order": "no",
         "tm_l1_complete": "0",
-        "tm_l2_complete": "0"
+        "tm_l2_complete": "0",
+        "dokan_geo_latitude": 30.173533,
+        "dokan_geo_longitude": -95.504253
       },
       "media": {
         "banner": "media/aiko/banner.jpg",
@@ -454,7 +464,10 @@
         "videos": [
           "media/aiko/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Alessandro",
@@ -621,7 +634,9 @@
         "tm_contact_emails": [
           "alessandro@castingagencz.co"
         ],
-        "camera_type": "dslr"
+        "camera_type": "dslr",
+        "dokan_geo_latitude": 40.7282,
+        "dokan_geo_longitude": -73.7949
       },
       "media": {
         "banner": "media/alessandro/banner.webp",
@@ -629,7 +644,10 @@
         "videos": [
           "media/alessandro/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Ana",
@@ -799,7 +817,9 @@
         "talent_chest": "39-41",
         "talent_shoe_size": "12",
         "talent_eye_color": "blue",
-        "talent_hair_color": "blonde"
+        "talent_hair_color": "blonde",
+        "dokan_geo_latitude": 42.365588,
+        "dokan_geo_longitude": -71.104
       },
       "media": {
         "banner": "media/ana/banner.jpg",
@@ -807,7 +827,10 @@
         "videos": [
           "media/ana/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Ava",
@@ -977,7 +1000,9 @@
         "talent_chest": "39-41",
         "talent_shoe_size": "9",
         "talent_eye_color": "blue",
-        "talent_hair_color": "black"
+        "talent_hair_color": "black",
+        "dokan_geo_latitude": 42.35888,
+        "dokan_geo_longitude": -71.056804
       },
       "media": {
         "banner": "media/ava/banner.jpg",
@@ -985,7 +1010,10 @@
         "videos": [
           "media/ava/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Carina",
@@ -1110,7 +1138,10 @@
       "media": {
         "banner": "media/carina/banner.webp",
         "gravatar": "media/carina/gravatar.jpg"
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Efua",
@@ -1259,7 +1290,9 @@
         "talent_chest": "33-35",
         "talent_shoe_size": "9",
         "talent_eye_color": "brown",
-        "talent_hair_color": "black"
+        "talent_hair_color": "black",
+        "dokan_geo_latitude": 41.881953,
+        "dokan_geo_longitude": -87.632362
       },
       "media": {
         "banner": "media/efua/banner.jpg",
@@ -1267,7 +1300,10 @@
         "videos": [
           "media/efua/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Emily",
@@ -1424,7 +1460,9 @@
         "dokan_admin_percentage_type": "percentage",
         "_dokan_enable_manual_order": "no",
         "tm_l1_complete": "0",
-        "tm_l2_complete": "0"
+        "tm_l2_complete": "0",
+        "dokan_geo_latitude": 31.803973,
+        "dokan_geo_longitude": -98.822319
       },
       "media": {
         "banner": "media/emily/banner.webp",
@@ -1432,7 +1470,10 @@
         "videos": [
           "media/emily/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Ethan",
@@ -1580,7 +1621,9 @@
         "tm_contact_phone_main": "+1234500789",
         "tm_contact_phones": [
           "+1234500789"
-        ]
+        ],
+        "dokan_geo_latitude": 37.6879,
+        "dokan_geo_longitude": -122.4702
       },
       "media": {
         "banner": "media/ethan/banner.webp",
@@ -1588,7 +1631,10 @@
         "videos": [
           "media/ethan/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Eva",
@@ -1758,7 +1804,9 @@
         "dokan_admin_percentage_type": "percentage",
         "_dokan_enable_manual_order": "no",
         "tm_l1_complete": "0",
-        "tm_l2_complete": "0"
+        "tm_l2_complete": "0",
+        "dokan_geo_latitude": 42.751211,
+        "dokan_geo_longitude": -75.465247
       },
       "media": {
         "banner": "media/eva/banner.webp",
@@ -1766,7 +1814,10 @@
         "videos": [
           "media/eva/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Felicity",
@@ -1891,7 +1942,10 @@
       "media": {
         "banner": "media/felicity/banner.webp",
         "gravatar": "media/felicity/gravatar.jpg"
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Fiona",
@@ -2065,7 +2119,9 @@
         "dokan_admin_percentage_type": "percentage",
         "_dokan_enable_manual_order": "no",
         "tm_l1_complete": "0",
-        "tm_l2_complete": "0"
+        "tm_l2_complete": "0",
+        "dokan_geo_latitude": 51.5074,
+        "dokan_geo_longitude": -0.1278
       },
       "media": {
         "banner": "media/fiona/banner.webp",
@@ -2073,7 +2129,10 @@
         "videos": [
           "media/fiona/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Hiroshi",
@@ -2247,7 +2306,9 @@
         "dokan_admin_percentage_type": "percentage",
         "_dokan_enable_manual_order": "no",
         "tm_l1_complete": "0",
-        "tm_l2_complete": "0"
+        "tm_l2_complete": "0",
+        "dokan_geo_latitude": 32.7357,
+        "dokan_geo_longitude": -97.1081
       },
       "media": {
         "banner": "media/hiroshi/banner.jpg",
@@ -2255,7 +2316,10 @@
         "videos": [
           "media/hiroshi/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Isabella",
@@ -2417,7 +2481,9 @@
         "tm_contact_email_main": "isabella@sample.com",
         "tm_contact_emails": [
           "isabella@sample.com"
-        ]
+        ],
+        "dokan_geo_latitude": 32.781339,
+        "dokan_geo_longitude": -96.799759
       },
       "media": {
         "banner": "media/isabella/banner.jpg",
@@ -2425,7 +2491,10 @@
         "videos": [
           "media/isabella/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Jean-Pierre",
@@ -2574,7 +2643,9 @@
         "tm_contact_email_main": "jean@sample.com",
         "tm_contact_emails": [
           "jean@sample.com"
-        ]
+        ],
+        "dokan_geo_latitude": 15.221447,
+        "dokan_geo_longitude": -14.82088
       },
       "media": {
         "banner": "media/jean-pierre/banner.jpg",
@@ -2582,7 +2653,10 @@
         "videos": [
           "media/jean-pierre/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Lara",
@@ -2717,7 +2791,10 @@
       "media": {
         "banner": "media/lara/banner.webp",
         "gravatar": "media/lara/gravatar.jpg"
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Lizy",
@@ -2842,7 +2919,10 @@
       "media": {
         "banner": "media/lizy/banner.webp",
         "gravatar": "media/lizy/gravatar.jpg"
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Michael",
@@ -3012,7 +3092,9 @@
         "talent_chest": "42-44",
         "talent_shoe_size": "13",
         "talent_eye_color": "brown",
-        "talent_hair_color": "black"
+        "talent_hair_color": "black",
+        "dokan_geo_latitude": 36.169213,
+        "dokan_geo_longitude": -115.14062
       },
       "media": {
         "banner": "media/michael/banner.jpg",
@@ -3020,7 +3102,10 @@
         "videos": [
           "media/michael/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Natalia",
@@ -3171,7 +3256,9 @@
         "tm_contact_email_main": "natalia@natalia.com",
         "tm_contact_emails": [
           "natalia@natalia.com"
-        ]
+        ],
+        "dokan_geo_latitude": 19.43263,
+        "dokan_geo_longitude": -99.133178
       },
       "media": {
         "banner": "media/natalia/banner.webp",
@@ -3179,7 +3266,10 @@
         "videos": [
           "media/natalia/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Oliver",
@@ -3358,7 +3448,9 @@
         "tm_contact_email_main": "oliver@sample.com",
         "tm_contact_emails": [
           "oliver@sample.com"
-        ]
+        ],
+        "dokan_geo_latitude": 40.7831,
+        "dokan_geo_longitude": -73.9712
       },
       "media": {
         "banner": "media/oliver/banner.jpg",
@@ -3366,7 +3458,10 @@
         "videos": [
           "media/oliver/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Rahul Verma",
@@ -3542,7 +3637,9 @@
         "tm_contact_emails": [
           "rahul@gmail.com"
         ],
-        "camera_type": "dslr"
+        "camera_type": "dslr",
+        "dokan_geo_latitude": 31.803973,
+        "dokan_geo_longitude": -98.822319
       },
       "media": {
         "banner": "media/rahul-verma/banner.webp",
@@ -3550,7 +3647,10 @@
         "videos": [
           "media/rahul-verma/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Salma",
@@ -3712,7 +3812,9 @@
         "tm_contact_emails": [
           "salma@damas.com"
         ],
-        "camera_type": "action"
+        "camera_type": "action",
+        "dokan_geo_latitude": 3.065088,
+        "dokan_geo_longitude": -73.129056
       },
       "media": {
         "banner": "media/salma/banner.webp",
@@ -3720,7 +3822,10 @@
         "videos": [
           "media/salma/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Samira",
@@ -3904,7 +4009,9 @@
         "tm_social_youtube_url": "https://www.youtube.com/@Alena_Khmil",
         "tm_social_facebook_url": "https://facebook.com/people/Alena-Khmil/100003056663989",
         "tm_social_instagram_url": "https://www.instagram.com/alenakhmil77777",
-        "tm_social_linkedin_url": "https://www.linkedin.com/in/olena-khmil-b44a1a93"
+        "tm_social_linkedin_url": "https://www.linkedin.com/in/olena-khmil-b44a1a93",
+        "dokan_geo_latitude": 51.5074,
+        "dokan_geo_longitude": -0.1278
       },
       "media": {
         "banner": "media/samira/banner.webp",
@@ -3915,7 +4022,10 @@
           "media/samira/video3.mp4",
           "media/samira/video4.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Sarah",
@@ -4092,12 +4202,17 @@
         "talent_shoe_size": "10",
         "talent_eye_color": "hazel",
         "talent_hair_color": "blonde",
-        "talent_hair_style": "straight"
+        "talent_hair_style": "straight",
+        "dokan_geo_latitude": 37.444508,
+        "dokan_geo_longitude": -122.16095
       },
       "media": {
         "banner": "media/sarah/banner.webp",
         "gravatar": "media/sarah/gravatar.webp"
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "so",
@@ -4241,7 +4356,9 @@
         "dokan_admin_percentage_type": "percentage",
         "_dokan_enable_manual_order": "no",
         "tm_l1_complete": "0",
-        "tm_l2_complete": "0"
+        "tm_l2_complete": "0",
+        "dokan_geo_latitude": 32.350751,
+        "dokan_geo_longitude": -6.017073
       },
       "media": {
         "banner": "media/so/banner.webp",
@@ -4249,7 +4366,10 @@
         "videos": [
           "media/so/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Sonya",
@@ -4374,7 +4494,10 @@
       "media": {
         "banner": "media/sonya/banner.webp",
         "gravatar": "media/sonya/gravatar.jpg"
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Soo-Min",
@@ -4544,7 +4667,9 @@
         "talent_chest": "33-35",
         "talent_shoe_size": "10",
         "talent_eye_color": "black",
-        "talent_hair_color": "black"
+        "talent_hair_color": "black",
+        "dokan_geo_latitude": 34.048051,
+        "dokan_geo_longitude": -118.254187
       },
       "media": {
         "banner": "media/soo-min/banner.jpg",
@@ -4552,7 +4677,10 @@
         "videos": [
           "media/soo-min/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Stefan",
@@ -4701,7 +4829,9 @@
         "tm_contact_email_main": "stefan@sample.com",
         "tm_contact_emails": [
           "stefan@sample.com"
-        ]
+        ],
+        "dokan_geo_latitude": 48.853495,
+        "dokan_geo_longitude": 2.348392
       },
       "media": {
         "banner": "media/stefan/banner.jpg",
@@ -4709,7 +4839,10 @@
         "videos": [
           "media/stefan/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Valencia",
@@ -4834,7 +4967,10 @@
       "media": {
         "banner": "media/valencia/banner.webp",
         "gravatar": "media/valencia/gravatar.jpg"
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Zainab Bello",
@@ -4991,7 +5127,9 @@
         "dokan_admin_percentage_type": "percentage",
         "_dokan_enable_manual_order": "no",
         "tm_l1_complete": "0",
-        "tm_l2_complete": "0"
+        "tm_l2_complete": "0",
+        "dokan_geo_latitude": 40.150248,
+        "dokan_geo_longitude": -74.389317
       },
       "media": {
         "banner": "media/zainab-bello/banner.jpg",
@@ -4999,7 +5137,10 @@
         "videos": [
           "media/zainab-bello/video1.mp4"
         ]
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Zeyna",
@@ -5124,7 +5265,10 @@
       "media": {
         "banner": "media/zeyna/banner.webp",
         "gravatar": "media/zeyna/gravatar.jpg"
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     }
   ]
 }

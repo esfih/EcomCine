@@ -22,6 +22,36 @@ json_deny() {
   "stopReason": "$stop_reason",
   "systemMessage": "$system_message"
 }
+
+json_ask() {
+  local reason="$1"
+  local stop_reason="$2"
+  local system_message="$3"
+  cat <<JSON
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "ask",
+    "permissionDecisionReason": "$reason"
+  },
+  "stopReason": "$stop_reason",
+  "systemMessage": "$system_message"
+}
+JSON
+}
+
+request_or_deny() {
+  local reason="$1"
+  local stop_reason="$2"
+  local system_message="$3"
+  local mode="${ECOMCINE_GUARD_APPROVAL_MODE:-ask}"
+
+  if [[ "$mode" == "ask" ]]; then
+    json_ask "$reason" "$stop_reason" "$system_message"
+  else
+    json_deny "$reason" "$stop_reason" "$system_message"
+  fi
+}
 JSON
 }
 
@@ -54,10 +84,10 @@ if [[ "$is_mutating_file_tool" == true ]]; then
   # Require mutating file tools to target this workspace path.
   # This prevents accidental writes outside the active WSL workspace.
   if ! echo "$payload" | grep -q "$WORKSPACE_ROOT"; then
-    json_deny \
-      "Mutating file operations must target the active WSL workspace root: $WORKSPACE_ROOT" \
-      "Blocked out-of-workspace file mutation." \
-      "Retry with file paths under $WORKSPACE_ROOT."
+    request_or_deny \
+      "Approval required: mutating operation targets outside workspace root." \
+      "Approval needed for out-of-workspace mutation." \
+      "Allow only if intentional. Preferred path: retry under $WORKSPACE_ROOT."
     exit 0
   fi
 fi
@@ -86,10 +116,10 @@ if [[ "$is_terminal_tool" == true ]]; then
   esac
 
   if echo "$payload" | grep -Eiq '(^|[^A-Za-z])(apt|apt-get)[^"]*install|npm[^"]*install[[:space:]]+-g|pip3?[^"]*install[^"]*--user'; then
-    json_deny \
-      "Interactive package-manager installs are blocked in IDE terminal flow. Use ./scripts/run-catalog-command.sh host.tool.install <tool> from an external WSL terminal." \
-      "Blocked unsafe terminal command pattern." \
-      "Use host.tool.install instead of apt/npm -g/pip --user in IDE agent terminal flow."
+    request_or_deny \
+      "Approval required: interactive package-manager install in IDE terminal." \
+      "Approval needed for interactive package-manager install." \
+      "Short reason needed: missing required host tool. Preferred path: ./scripts/run-catalog-command.sh host.tool.install <tool> from external WSL terminal."
     exit 0
   fi
 fi

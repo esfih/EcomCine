@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.20
+ * Version: 0.1.22
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.20' );
+define( 'ECOMCINE_VERSION', '0.1.22' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -85,7 +85,11 @@ $required_files = array(
 	'includes/core/adapters/class-commerce-adapter-wp-baseline.php',
 	'includes/core/adapters/class-commerce-adapter-fluentcart.php',
 	'includes/core/runtime/class-runtime-adapters.php',
+	// EcomCine portability layer — must load before everything else.
+	'includes/functions.php',
+	'includes/class-person-category-registry.php',
 	'includes/admin/class-admin-settings.php',
+	'includes/admin/class-admin-categories-tab.php',
 	'includes/licensing/class-offer-catalog.php',
 	'includes/licensing/class-licensing.php',
 	'includes/compat/vendor-utilities.php',
@@ -113,6 +117,7 @@ if ( ! empty( $ecomcine_bootstrap_errors ) ) {
 EcomCine_Admin_Settings::init();
 EcomCine_Licensing::init();
 EcomCine_Plugin_Updater::init();
+EcomCine_Admin_Categories_Tab::init();
 
 // Demo data (non-critical — load after core bootstrap).
 $_demo_errors = [];
@@ -243,6 +248,20 @@ add_action( 'init', function() {
 	// plugin updates (which skip the activation hook) also provision the files.
 	ecomcine_deploy_debug_infrastructure();
 
+	// v0.1.22 — Flush rewrite rules for EcomCine person routes + standalone grid/listing wiring.
+	if ( version_compare( $stored, '0.1.22', '<' ) ) {
+		delete_option( 'ecomcine_rewrite_flushed' );
+	}
+
+	// v0.1.21 — Ensure ecomcine_person role exists and DB tables are installed.
+	if ( version_compare( $stored, '0.1.21', '<' ) ) {
+		ecomcine_register_person_role();
+		if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			EcomCine_Person_Category_Registry::install();
+			EcomCine_Person_Category_Registry::seed_defaults();
+		}
+	}
+
 	// v0.1.13 — Backfill tm_l1_complete for all approved Dokan vendors.
 	if ( version_compare( $stored, '0.1.13', '<' ) && function_exists( 'dokan_get_sellers' ) ) {
 		$paged   = 1;
@@ -310,8 +329,92 @@ ecomcine_load_legacy_module(
  * The flag file can be deleted at any time to disable logging with zero code changes:
  *   wp eval "unlink( WP_CONTENT_DIR . '/ecomcine-debug.txt' );"
  */
+/**
+ * Register the ecomcine_person WP role.
+ * Safe to call multiple times — add_role() is a no-op when the role already exists.
+ */
+function ecomcine_register_person_role(): void {
+	if ( ! get_role( 'ecomcine_person' ) ) {
+		add_role(
+			'ecomcine_person',
+			__( 'EcomCine Person', 'ecomcine' ),
+			array(
+				'read'                   => true,
+				'upload_files'           => true,
+				'edit_posts'             => false,
+				'publish_posts'          => false,
+				'delete_posts'           => false,
+				'manage_woocommerce'     => false,
+			)
+		);
+	}
+}
+
+// Register role on every init in case it was removed (e.g. by another plugin).
+add_action( 'init', 'ecomcine_register_person_role', 1 );
+
+// ── Theme-compat layer ────────────────────────────────────────────────────────
+// Load the thin compat file for whichever active theme supports the
+// ecomcine_suppress_header / ecomcine_suppress_footer globals.
+add_action( 'after_setup_theme', function() {
+	$compat_dir = ECOMCINE_DIR . 'includes/theme-compat/';
+	if ( function_exists( 'astra_header' ) ) {
+		require_once $compat_dir . 'astra.php';
+	}
+}, 20 );
+
+// ── Dokan bridge hooks ────────────────────────────────────────────────────────
+// When Dokan is active, its display/settings/save hooks are bridged to the
+// EcomCine equivalents so ecomcine-aware code works whether Dokan is present
+// or not.  These must be registered early (priority 1) so tm-store-ui modules
+// that hook onto ecomcine_person_* fire at the correct time relative to Dokan.
+add_action(
+	'init',
+	function () {
+		if ( ! function_exists( 'dokan' ) ) {
+			return;
+		}
+
+		// Profile display (Dokan store page, bottom drawer).
+		add_action(
+			'dokan_store_profile_bottom_drawer',
+			function ( $store_user, $store_info ) {
+				do_action( 'ecomcine_person_profile_display', $store_user, $store_info );
+			},
+			1,
+			2
+		);
+
+		// Settings form fields (Dokan vendor dashboard, after phone field).
+		add_action(
+			'dokan_settings_after_store_phone',
+			function ( $user_id, $profile_info ) {
+				do_action( 'ecomcine_person_settings_fields', $user_id, $profile_info );
+			},
+			1,
+			2
+		);
+
+		// Profile save (Dokan vendor dashboard).
+		add_action(
+			'dokan_store_profile_saved',
+			function ( $store_id, $settings ) {
+				do_action( 'ecomcine_person_profile_saved', $store_id, $settings );
+			},
+			1,
+			2
+		);
+	},
+	1
+);
+
 register_activation_hook( ECOMCINE_FILE, function() {
 	ecomcine_deploy_debug_infrastructure();
+	ecomcine_register_person_role();
+	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+		EcomCine_Person_Category_Registry::install();
+		EcomCine_Person_Category_Registry::seed_defaults();
+	}
 } );
 
 /**

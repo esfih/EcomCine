@@ -1,9 +1,8 @@
 <?php
-if ( ! function_exists( 'dokan' ) || ! dokan()->vendor ) {
-    return;
-}
-
-$store_user = dokan()->vendor->get( get_query_var( 'author' ) );
+$vendor_context_id = absint( get_query_var( 'author' ) );
+$store_user        = function_exists( 'tm_store_ui_get_store_user' )
+	? tm_store_ui_get_store_user( $vendor_context_id )
+	: null;
 if ( ! $store_user ) {
     return;
 }
@@ -997,7 +996,8 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                     <?php foreach ( $social_fields as $key => $field ) { ?>
                                         <?php if ( ! empty( $social_info[ $key ] ) ) { ?>
                                             <li>
-                                                <a href="<?php echo esc_url( $social_info[ $key ] ); ?>" target="_blank"><?php echo TM_Icons::svg( $field['icon'] ); ?></a>
+                                                <?php $icon_name = isset( $field['icon'] ) && is_string( $field['icon'] ) ? $field['icon'] : 'external-link'; ?>
+                                                <a href="<?php echo esc_url( $social_info[ $key ] ); ?>" target="_blank"><?php echo TM_Icons::svg( $icon_name ); ?></a>
                                             </li>
                                         <?php } ?>
                                     <?php } ?>
@@ -1123,6 +1123,14 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
             if ( is_wp_error( $store_categories ) ) {
                 $store_categories = array();
             }
+            // Prefer EcomCine registry when available; fall back to Dokan taxonomy.
+            if ( $vendor_id && class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+                $cat_rows = EcomCine_Person_Category_Registry::get_for_person( $vendor_id );
+                $reg_slugs = wp_list_pluck( $cat_rows, 'slug' );
+                if ( ! empty( $reg_slugs ) ) {
+                    $store_categories = $reg_slugs;
+                }
+            }
             
             // Normalize category slugs to lowercase for consistent checking
             $store_categories = array_map( 'strtolower', $store_categories );
@@ -1139,7 +1147,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                 'talent_hair_style',
             ];
             $has_physical_tab = false;
-            $has_physical_category = $vendor_id && ( in_array( 'model', $store_categories, true ) || in_array( 'artist', $store_categories, true ) );
+            $has_physical_category = $vendor_id && ( in_array( 'model', $store_categories, true ) || in_array( 'artist', $store_categories, true ) || in_array( 'actor', $store_categories, true ) );
             if ( $has_physical_category ) {
                 if ( $is_owner ) {
                     $has_physical_tab = true;
@@ -1169,7 +1177,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                 'drone_capability',
             ];
             $has_cameraman_tab = false;
-            $has_cameraman_category = $vendor_id && in_array( 'cameraman', $store_categories, true );
+            $has_cameraman_category = $vendor_id && ( in_array( 'cameraman', $store_categories, true ) || in_array( 'production-crew', $store_categories, true ) );
             if ( $has_cameraman_category ) {
                 if ( $is_owner ) {
                     $has_cameraman_tab = true;

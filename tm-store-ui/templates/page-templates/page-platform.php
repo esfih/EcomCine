@@ -2,7 +2,8 @@
 /**
  * Template Name: Platform Page
  * Description: Full-width platform page with the cinematic dark header/footer.
- *              Automatically applied to any page containing [dokan-stores] via
+ *              Automatically applied to any page containing [dokan-stores]
+ *              or [ecomcine-stores] via
  *              the template_include filter in functions.php.
  *              Can also be assigned manually: WP Admin → Pages → Page Attributes → Template.
  *

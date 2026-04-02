@@ -70,6 +70,10 @@ case "$COMMAND_ID" in
     bash ./scripts/playwright-selftest.sh install "$@"
     ;;
 
+  qa.playwright.browsers.install)
+    bash ./scripts/install-playwright-system.sh "$@"
+    ;;
+
   qa.playwright.test.smoke)
     bash ./scripts/playwright-selftest.sh smoke "$@"
     ;;
@@ -243,7 +247,7 @@ case "$COMMAND_ID" in
   host.tool.install)
     if [[ $# -lt 1 ]]; then
       echo "ERROR: host.tool.install requires <tool>" >&2
-      echo "Allowed tools: ripgrep jq yq php-cli" >&2
+      echo "Allowed tools: ripgrep jq yq php-cli nodejs" >&2
       exit 2
     fi
     bash ./scripts/install-host-tool.sh "$1"
@@ -392,6 +396,12 @@ case "$COMMAND_ID" in
     ;;
 
   *)
+    if [[ "${ECOMCINE_CATALOG_UNKNOWN_MODE:-ask}" == "ask" ]]; then
+      echo "APPROVAL_REQUIRED: Unknown command catalog ID: $COMMAND_ID" >&2
+      echo "Reason: this task needs a non-cataloged command. Please approve adding a catalog entry or provide a temporary one-time command." >&2
+      echo "Reference: specs/IDE-AI-Command-Catalog.md" >&2
+      exit 4
+    fi
     echo "ERROR: Unknown command catalog ID: $COMMAND_ID" >&2
     echo "No improvisation allowed. Propose a new entry in specs/IDE-AI-Command-Catalog.md and request user approval." >&2
     exit 3

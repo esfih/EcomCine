@@ -8,7 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-add_filter( 'astra_header_display', '__return_false' );
+add_action( 'template_redirect', function() {
+	$GLOBALS['ecomcine_suppress_header'] = true;
+}, 1 );
 
 add_filter( 'body_class', function( $classes ) {
 	if ( ! in_array( 'tm-showcase-page', $classes, true ) ) {
@@ -47,7 +49,14 @@ get_header();
 	<div class="dokan-store-wrap layout-full">
 		<div id="dokan-primary" class="dokan-single-store dokan-store-full-width">
 			<?php if ( $vendor_id ) : ?>
-				<?php dokan_get_template_part( 'store-header' ); ?>
+				<?php
+				$tm_rendered = function_exists( 'tm_store_ui_render_store_header' )
+					? tm_store_ui_render_store_header( $vendor_id )
+					: false;
+				if ( ! $tm_rendered ) {
+					echo '<div class="tm-talent-showcase-empty">Unable to render talent profile.</div>';
+				}
+				?>
 			<?php else : ?>
 				<div class="tm-talent-showcase-empty">No talent available.</div>
 			<?php endif; ?>

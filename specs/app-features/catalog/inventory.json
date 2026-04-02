@@ -3,7 +3,7 @@
     "schema_version": "1.0",
     "last_updated": "2026-03-27",
     "description": "Structured inventory of all catalogued features across EcomCine plugin groups. Used for migration planning, adapter progress tracking, and quick overview.",
-    "total_features": 21,
+    "total_features": 22,
     "groups": [
       "dokan-category-attributes",
       "tm-media-player",
@@ -369,16 +369,33 @@
       },
       "parity_oracle_short": "Same social links and completeness score per meta state; map shown/hidden per location meta + feature flag.",
       "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-005.md"
+    },
+    {
+      "id": "tho-006",
+      "title": "No Scroll Grid auto-fit mode for person listing",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Provide optional no-scroll viewport-fit mode for person listing grid while preserving 16:9 cards and pagination navigation.",
+      "actors": ["admin", "visitor", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["ecomcine-settings-persons_grid", "tm-store-ui-shortcode-ecomcine-stores", "vendor-store-css", "viewport-resize-observer"],
+      "adapter_status": {
+        "compatibility": "not-started",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "With no-scroll enabled, configured rows/columns and pagination fit viewport with no page scroll while preserving 16:9 cards.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-006.md"
     }
   ],
   "migration_summary": {
     "by_phase": {
-      "phase_2_pilot": ["dca-001", "dca-002", "dca-003", "dca-004", "tmp-001", "tmp-002", "tmp-003", "tmp-004", "tap-001", "tap-002", "tho-002", "tho-003"],
+      "phase_2_pilot": ["dca-001", "dca-002", "dca-003", "dca-004", "tmp-001", "tmp-002", "tmp-003", "tmp-004", "tap-001", "tap-002", "tho-002", "tho-003", "tho-006"],
       "phase_3_transactional": ["tap-003", "tap-004", "tvbm-001", "tvbm-002", "tvbm-003", "tvbm-004", "tho-001", "tho-004", "tho-005"]
     },
     "by_risk": {
       "high": ["tmp-001", "tmp-002", "tmp-003", "tmp-004", "tap-004", "tvbm-001", "tvbm-002", "tvbm-003", "tvbm-004", "tho-001"],
-      "medium": ["dca-001", "dca-002", "dca-003", "dca-004", "tap-001", "tap-002", "tap-003", "tho-002", "tho-003", "tho-004", "tho-005"]
+      "medium": ["dca-001", "dca-002", "dca-003", "dca-004", "tap-001", "tap-002", "tap-003", "tho-002", "tho-003", "tho-004", "tho-005", "tho-006"]
     },
     "recommended_pilot_order": [
       "dokan-category-attributes (dca-001 → dca-004)",

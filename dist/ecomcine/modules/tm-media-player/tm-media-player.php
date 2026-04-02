@@ -500,7 +500,7 @@ if ( ! class_exists( 'TM_Media_Player_Assets' ) ) :
 class TM_Media_Player_Assets {
 
 	/** JS + CSS version strings — bump to bust browser caches. */
-	const JS_VERSION  = '2.0.2';
+	const JS_VERSION  = '2.0.3';
 	const CSS_VERSION = '1.8.1';
 
 	/** CDN URLs for Mapbox (loaded on-demand for editable profile pages). */
@@ -616,6 +616,11 @@ class TM_Media_Player_Assets {
 
 	private static function localize_showcase( $vendor_id, $mode ) {
 		$nonce = wp_create_nonce( 'vendor_inline_edit' );
+		$mapbox_token = function_exists( 'ecomcine_get_mapbox_token' )
+			? ecomcine_get_mapbox_token()
+			: ( function_exists( 'dokan_get_option' )
+				? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
+				: '' );
 		wp_localize_script( 'tm-player-js', 'vendorStoreData', array(
 			'ajaxurl'               => admin_url( 'admin-ajax.php' ),
 			'ajax_url'              => admin_url( 'admin-ajax.php' ),
@@ -632,7 +637,7 @@ class TM_Media_Player_Assets {
 			'editNonce'             => $nonce,
 			'nonce'                 => $nonce,
 			'onboardNonce'          => $nonce,
-			'mapbox_token'          => '',
+			'mapbox_token'          => $mapbox_token,
 			'jqueryUiCssUrl'        => '',
 			'jqueryUiCoreUrl'       => '',
 			'jqueryUiWidgetUrl'     => '',
@@ -652,9 +657,11 @@ class TM_Media_Player_Assets {
 	private static function localize_profile( $vendor_id, $can_edit ) {
 		$current_user_id = get_current_user_id();
 		$is_owner        = (bool) $can_edit;
-		$mapbox_token    = function_exists( 'dokan_get_option' )
-			? dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
-			: '';
+		$mapbox_token    = function_exists( 'ecomcine_get_mapbox_token' )
+			? ecomcine_get_mapbox_token()
+			: ( function_exists( 'dokan_get_option' )
+				? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
+				: '' );
 
 		$jquery_ui_css_url  = '';
 		$jquery_ui_css_path = WP_CONTENT_DIR . '/plugins/woocommerce-bookings/dist/jquery-ui-styles.css';
@@ -705,9 +712,11 @@ class TM_Media_Player_Assets {
 	}
 
 	private static function maybe_enqueue_mapbox( array $deps ) {
-		$mapbox_token = function_exists( 'dokan_get_option' )
-			? dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
-			: '';
+		$mapbox_token = function_exists( 'ecomcine_get_mapbox_token' )
+			? ecomcine_get_mapbox_token()
+			: ( function_exists( 'dokan_get_option' )
+				? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
+				: '' );
 		if ( empty( $mapbox_token ) ) { return $deps; }
 
 		wp_enqueue_style(

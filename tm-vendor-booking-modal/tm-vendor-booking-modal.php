@@ -21,16 +21,22 @@ class TM_Vendor_Booking_Modal {
 		add_action( 'wp_ajax_nopriv_tm_vendor_booking_add_to_cart', array( $this, 'ajax_booking_add_to_cart' ) );
 		add_action( 'wp_ajax_tm_vendor_booking_checkout', array( $this, 'ajax_booking_checkout' ) );
 		add_action( 'wp_ajax_nopriv_tm_vendor_booking_checkout', array( $this, 'ajax_booking_checkout' ) );
-		add_filter( 'woocommerce_checkout_fields', array( $this, 'filter_checkout_fields' ), 20 );
-		add_action( 'woocommerce_after_checkout_billing_form', array( $this, 'render_modal_checkout_flag' ) );
-		add_filter( 'woocommerce_enable_order_notes_field', array( $this, 'disable_order_notes' ) );
-		add_filter( 'woocommerce_checkout_coupon_message', array( $this, 'filter_coupon_message' ) );
-		add_filter( 'woocommerce_get_privacy_policy_text', array( $this, 'filter_privacy_text' ), 20 );
-		add_filter( 'woocommerce_checkout_privacy_policy_text', array( $this, 'filter_privacy_text' ), 20 );
-		add_action( 'woocommerce_checkout_create_order', array( $this, 'set_order_defaults' ), 10, 2 );
+
+		if ( class_exists( 'WooCommerce' ) ) {
+			add_filter( 'woocommerce_checkout_fields', array( $this, 'filter_checkout_fields' ), 20 );
+			add_action( 'woocommerce_after_checkout_billing_form', array( $this, 'render_modal_checkout_flag' ) );
+			add_filter( 'woocommerce_enable_order_notes_field', array( $this, 'disable_order_notes' ) );
+			add_filter( 'woocommerce_checkout_coupon_message', array( $this, 'filter_coupon_message' ) );
+			add_filter( 'woocommerce_get_privacy_policy_text', array( $this, 'filter_privacy_text' ), 20 );
+			add_filter( 'woocommerce_checkout_privacy_policy_text', array( $this, 'filter_privacy_text' ), 20 );
+			add_action( 'woocommerce_checkout_create_order', array( $this, 'set_order_defaults' ), 10, 2 );
+		}
 	}
 
 	private function is_store_page() {
+		if ( function_exists( 'ecomcine_is_person_page' ) ) {
+			return ecomcine_is_person_page();
+		}
 		if ( function_exists( 'dokan_is_store_page' ) ) {
 			return dokan_is_store_page();
 		}

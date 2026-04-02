@@ -1,0 +1,594 @@
+<?php
+/**
+ * EcomCine Core Portable API
+ *
+ * All functions here work on bare WordPress with zero dependency on Dokan,
+ * WooCommerce, or Astra.  When those plugins are present, the functions
+ * delegate to them as a compatibility shim so existing meta and calls keep
+ * working during a migration period.
+ *
+ * Naming convention:
+ *   ecomcine_*         — stable public API
+ *   _ecomcine_*        — private internal helpers (not part of the public API)
+ *
+ * Meta key registry (authoritative):
+ *   ecomcine_store_name    — display / store name
+ *   ecomcine_bio           — biography / description
+ *   ecomcine_phone         — contact phone
+ *   ecomcine_banner_id     — attachment ID for banner image
+ *   ecomcine_avatar_id     — attachment ID for avatar/gravatar
+ *   ecomcine_address       — serialized address array (street_1, city, state, zip, country)
+ *   ecomcine_social        — serialized social links array
+ *   ecomcine_geo_address   — human-readable geolocation string  (or lat,lng raw from Mapbox)
+ *   ecomcine_geo_lat       — latitude float string
+ *   ecomcine_geo_lng       — longitude float string
+ *   ecomcine_enabled       — '1' when person is approved/enabled
+ *
+ * @package EcomCine
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+// ── Country list ──────────────────────────────────────────────────────────────
+
+if ( ! function_exists( 'ecomcine_get_countries' ) ) {
+	/**
+	 * Return the ISO 3166-1 alpha-2 country code → country name map.
+	 *
+	 * WooCommerce is used when active (locale/translation support);
+	 * otherwise falls back to the bundled static file.
+	 *
+	 * @return array<string,string>
+	 */
+	function ecomcine_get_countries(): array {
+		if ( function_exists( 'WC' ) && WC()->countries ) {
+			return (array) WC()->countries->get_countries();
+		}
+
+		static $_cache = null;
+		if ( null === $_cache ) {
+			$static_file = defined( 'ECOMCINE_DIR' )
+				? ECOMCINE_DIR . 'includes/data/iso-countries.php'
+				: __DIR__ . '/data/iso-countries.php';
+			$_cache = file_exists( $static_file ) ? (array) require $static_file : array();
+		}
+
+		return $_cache;
+	}
+}
+
+// ── Person role helpers ───────────────────────────────────────────────────────
+
+if ( ! function_exists( 'ecomcine_is_person_user' ) ) {
+	/**
+	 * Return true when a WP user has the ecomcine_person role.
+	 *
+	 * Falls back to the legacy Dokan 'seller' role when ecomcine_person is not
+	 * registered — preserves compatibility with existing installations that have
+	 * not yet run the activation/upgrade routine.
+	 *
+	 * @param int $user_id
+	 * @return bool
+	 */
+	function ecomcine_is_person_user( int $user_id ): bool {
+		if ( ! $user_id ) {
+			return false;
+		}
+		$user = get_userdata( $user_id );
+		if ( ! $user ) {
+			return false;
+		}
+
+		$roles = (array) $user->roles;
+
+		// Primary check: ecomcine_person role.
+		if ( in_array( 'ecomcine_person', $roles, true ) ) {
+			return true;
+		}
+
+		// Legacy fallback: Dokan vendor role.
+		if ( in_array( 'seller', $roles, true ) ) {
+			return true;
+		}
+
+		return false;
+	}
+}
+
+if ( ! function_exists( 'ecomcine_get_persons' ) ) {
+	/**
+	 * Return WP_User objects for all EcomCine persons.
+	 *
+	 * @param array $args Extra args forwarded to WP_User_Query.
+	 * @return WP_User[]
+	 */
+	function ecomcine_get_persons( array $args = array() ): array {
+		// Portability: include both roles so mixed datasets (seller + ecomcine_person)
+		// are queryable during migration/cutover.
+		$roles = array( 'seller' );
+		if ( isset( $GLOBALS['wp_roles'] ) && array_key_exists( 'ecomcine_person', $GLOBALS['wp_roles']->roles ) ) {
+			$roles[] = 'ecomcine_person';
+		}
+
+		$role_args = array( 'role__in' => array_values( array_unique( $roles ) ) );
+
+		$query_args = array_merge(
+			array( 'number' => -1 ),
+			$role_args,
+			$args
+		);
+
+		return get_users( $query_args );
+	}
+}
+
+if ( ! function_exists( 'ecomcine_is_person_enabled' ) ) {
+	/**
+	 * Return true when the person's account is enabled/approved.
+	 *
+	 * @param int $user_id
+	 * @return bool
+	 */
+	function ecomcine_is_person_enabled( int $user_id ): bool {
+		$own = get_user_meta( $user_id, 'ecomcine_enabled', true );
+		if ( '' !== $own ) {
+			return '1' === (string) $own || 'yes' === (string) $own;
+		}
+		// Dokan fallback.
+		$dokan = get_user_meta( $user_id, 'dokan_enable_selling', true );
+		if ( '' !== $dokan ) {
+			return 'yes' === (string) $dokan;
+		}
+
+		return false;
+	}
+}
+
+// ── Person info ───────────────────────────────────────────────────────────────
+
+if ( ! function_exists( 'ecomcine_get_person_info' ) ) {
+	/**
+	 * Return a normalised info array for a person.
+	 *
+	 * Reads ecomcine_* meta keys first; when absent, falls back to
+	 * dokan_profile_settings for seamless migration.
+	 *
+	 * @param int $user_id
+	 * @return array
+	 */
+	function ecomcine_get_person_info( int $user_id ): array {
+		if ( ! $user_id ) {
+			return array();
+		}
+
+		// Own meta keys.
+		$store_name = get_user_meta( $user_id, 'ecomcine_store_name', true );
+		$bio        = get_user_meta( $user_id, 'ecomcine_bio', true );
+		$phone      = get_user_meta( $user_id, 'ecomcine_phone', true );
+		$banner_id  = get_user_meta( $user_id, 'ecomcine_banner_id', true );
+		$avatar_id  = get_user_meta( $user_id, 'ecomcine_avatar_id', true );
+		$address    = get_user_meta( $user_id, 'ecomcine_address', true );
+		$social     = get_user_meta( $user_id, 'ecomcine_social', true );
+
+		// Dokan fallback when own keys are empty.
+		$dps = null;
+		if ( '' === $store_name || '' === $bio ) {
+			$raw = get_user_meta( $user_id, 'dokan_profile_settings', true );
+			$dps = is_array( $raw ) ? $raw : array();
+		}
+
+		if ( '' === $store_name && $dps !== null ) {
+			$store_name = $dps['store_name'] ?? '';
+		}
+		if ( '' === $bio && $dps !== null ) {
+			$bio = $dps['vendor_biography'] ?? '';
+		}
+		if ( '' === $phone && $dps !== null ) {
+			if ( null === $dps ) {
+				$raw = get_user_meta( $user_id, 'dokan_profile_settings', true );
+				$dps = is_array( $raw ) ? $raw : array();
+			}
+			$phone = $dps['phone'] ?? '';
+		}
+		if ( ( '' === $banner_id || ! $banner_id ) && $dps !== null ) {
+			$banner_id = $dps['banner'] ?? '';
+		}
+		if ( ( '' === $avatar_id || ! $avatar_id ) && $dps !== null ) {
+			$avatar_id = $dps['gravatar'] ?? '';
+		}
+		if ( empty( $address ) && $dps !== null ) {
+			$address = isset( $dps['address'] ) && is_array( $dps['address'] ) ? $dps['address'] : array();
+		}
+		if ( empty( $social ) && $dps !== null ) {
+			$social = isset( $dps['social'] ) && is_array( $dps['social'] ) ? $dps['social'] : array();
+		}
+
+		return array(
+			'store_name' => (string) $store_name,
+			'bio'        => (string) $bio,
+			'phone'      => (string) $phone,
+			'banner_id'  => (int) $banner_id,
+			'avatar_id'  => (int) $avatar_id,
+			'address'    => is_array( $address ) ? $address : array(),
+			'social'     => is_array( $social ) ? $social : array(),
+		);
+	}
+}
+
+// ── URL / page detection ──────────────────────────────────────────────────────
+
+if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
+	/**
+	 * Return true when a person has a published standalone profile artifact.
+	 *
+	 * @param int $user_id
+	 * @return bool
+	 */
+	function ecomcine_has_public_person_profile( int $user_id ): bool {
+		$user_id = (int) $user_id;
+		if ( $user_id <= 0 ) {
+			return false;
+		}
+
+		if ( class_exists( 'TMP_WP_Vendor_CPT', false ) && method_exists( 'TMP_WP_Vendor_CPT', 'get_post_id_for_vendor' ) ) {
+			$post_id = (int) TMP_WP_Vendor_CPT::get_post_id_for_vendor( $user_id );
+			if ( $post_id > 0 ) {
+				return 'publish' === get_post_status( $post_id );
+			}
+		}
+
+		$posts = get_posts(
+			array(
+				'post_type'      => 'tm_vendor',
+				'post_status'    => 'publish',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'meta_query'     => array(
+					array(
+						'key'   => '_tm_vendor_user_id',
+						'value' => $user_id,
+					),
+				),
+			)
+		);
+
+		return ! empty( $posts );
+	}
+
+	/**
+	 * Resolve a person user ID from nicename slug.
+	 *
+	 * @param string $slug
+	 * @return int
+	 */
+	function ecomcine_resolve_person_user_id_by_slug( string $slug ): int {
+		$slug = sanitize_title( $slug );
+		if ( '' === $slug ) {
+			return 0;
+		}
+
+		$user = get_user_by( 'slug', $slug );
+		if ( ! $user ) {
+			return 0;
+		}
+
+		$user_id = (int) $user->ID;
+		if ( $user_id <= 0 ) {
+			return 0;
+		}
+
+		if ( function_exists( 'ecomcine_is_person_user' ) && ! ecomcine_is_person_user( $user_id ) ) {
+			return 0;
+		}
+
+		if ( function_exists( 'ecomcine_is_person_enabled' ) && ! ecomcine_is_person_enabled( $user_id ) ) {
+			return 0;
+		}
+
+		if ( function_exists( 'ecomcine_has_public_person_profile' ) && ! ecomcine_has_public_person_profile( $user_id ) ) {
+			return 0;
+		}
+
+		return $user_id;
+	}
+
+	/**
+	 * Return the canonical public profile URL for a person.
+	 *
+	 * Uses EcomCine's own /person/{nicename}/ rewrite when the rewrite rule is
+	 * registered; otherwise delegates to dokan_get_store_url() as a fallback.
+	 *
+	 * @param int $user_id
+	 * @return string URL or empty string.
+	 */
+	function ecomcine_get_person_url( int $user_id ): string {
+		if ( ! $user_id ) {
+			return '';
+		}
+
+		if ( function_exists( 'ecomcine_is_person_user' ) && ! ecomcine_is_person_user( $user_id ) ) {
+			return '';
+		}
+
+		if ( function_exists( 'ecomcine_is_person_enabled' ) && ! ecomcine_is_person_enabled( $user_id ) ) {
+			return '';
+		}
+
+		if ( function_exists( 'ecomcine_has_public_person_profile' ) && ! ecomcine_has_public_person_profile( $user_id ) ) {
+			return '';
+		}
+
+		// EcomCine native rewrite rule: /person/{user_nicename}/.
+		$rewrite_base = get_option( 'ecomcine_person_base', 'person' );
+		$user         = get_userdata( $user_id );
+		if ( $user && $user->user_nicename ) {
+			$url = trailingslashit( home_url( '/' . trim( $rewrite_base, '/' ) . '/' . $user->user_nicename ) );
+			return $url;
+		}
+
+		// Dokan fallback for sites that have not yet migrated rewrite rules.
+		if ( function_exists( 'dokan_get_store_url' ) ) {
+			return (string) dokan_get_store_url( $user_id );
+		}
+
+		return '';
+	}
+}
+
+// Register /person/{nicename}/ routing and map it to ecomcine_person query var.
+add_action( 'init', function() {
+	$rewrite_base = trim( (string) get_option( 'ecomcine_person_base', 'person' ), '/' );
+	if ( '' === $rewrite_base ) {
+		$rewrite_base = 'person';
+	}
+
+	add_rewrite_tag( '%ecomcine_person%', '([^&]+)' );
+	add_rewrite_rule( '^' . preg_quote( $rewrite_base, '/' ) . '/([^/]+)/?$', 'index.php?ecomcine_person=$matches[1]', 'top' );
+
+	$flush_key      = 'ecomcine_person_rewrite_flushed';
+	$flush_expected = '1|' . $rewrite_base;
+	$flush_state    = (string) get_option( $flush_key, '' );
+	if ( $flush_expected !== $flush_state ) {
+		flush_rewrite_rules( false );
+		update_option( $flush_key, $flush_expected, false );
+	}
+}, 20 );
+
+add_filter( 'query_vars', function( array $vars ): array {
+	if ( ! in_array( 'ecomcine_person', $vars, true ) ) {
+		$vars[] = 'ecomcine_person';
+	}
+
+	return $vars;
+} );
+
+// Set dynamic document title for standalone person profile pages.
+add_filter( 'pre_get_document_title', function( string $title ): string {
+	$slug = (string) get_query_var( 'ecomcine_person', '' );
+	if ( '' === $slug ) {
+		return $title;
+	}
+
+	$user_id = function_exists( 'ecomcine_resolve_person_user_id_by_slug' )
+		? ecomcine_resolve_person_user_id_by_slug( $slug )
+		: 0;
+	if ( $user_id <= 0 ) {
+		return $title;
+	}
+
+	$full_name = trim( (string) get_the_author_meta( 'display_name', $user_id ) );
+	if ( '' === $full_name ) {
+		$user = get_userdata( $user_id );
+		if ( $user ) {
+			$full_name = trim( (string) $user->display_name );
+		}
+	}
+	if ( '' === $full_name ) {
+		$full_name = 'Person';
+	}
+
+	$site_name = trim( (string) get_bloginfo( 'name' ) );
+	if ( '' === $site_name ) {
+		$site_name = 'EcomCine';
+	}
+
+	return sprintf( '%s profile page on %s', $full_name, $site_name );
+}, 20 );
+
+// Prevent core canonical redirects from hijacking person routes when slugs collide with attachments.
+add_filter( 'redirect_canonical', function( $redirect_url, $requested_url ) {
+	$slug = (string) get_query_var( 'ecomcine_person', '' );
+	if ( '' !== $slug ) {
+		return false;
+	}
+
+	return $redirect_url;
+}, 10, 2 );
+
+// Route single person pages to the standalone profile template.
+add_filter( 'template_include', function( string $template ): string {
+	$slug = (string) get_query_var( 'ecomcine_person', '' );
+	if ( '' === $slug ) {
+		return $template;
+	}
+
+	$user_id = function_exists( 'ecomcine_resolve_person_user_id_by_slug' )
+		? ecomcine_resolve_person_user_id_by_slug( $slug )
+		: 0;
+	if ( $user_id <= 0 ) {
+		global $wp_query;
+		if ( $wp_query instanceof WP_Query ) {
+			$wp_query->set_404();
+		}
+		status_header( 404 );
+		nocache_headers();
+		$not_found = get_404_template();
+		return $not_found ? $not_found : $template;
+	}
+
+	set_query_var( 'author', $user_id );
+	$GLOBALS['tm_showcase_page'] = true;
+
+	$person_template = defined( 'TM_STORE_UI_DIR' )
+		? TM_STORE_UI_DIR . 'templates/page-templates/template-person-profile.php'
+		: '';
+
+	if ( $person_template && file_exists( $person_template ) ) {
+		return $person_template;
+	}
+
+	return $template;
+}, 91 );
+
+if ( ! function_exists( 'ecomcine_is_person_page' ) ) {
+	/**
+	 * Return true when the current request is a single-person profile page.
+	 *
+	 * @return bool
+	 */
+	function ecomcine_is_person_page(): bool {
+		// EcomCine native query var.
+		if ( get_query_var( 'ecomcine_person' ) ) {
+			return true;
+		}
+
+		// Dokan fallback.
+		if ( function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
+			return true;
+		}
+
+		return false;
+	}
+}
+
+if ( ! function_exists( 'ecomcine_is_person_listing' ) ) {
+	/**
+	 * Return true when the current request is the person/vendors listing page.
+	 *
+	 * @return bool
+	 */
+	function ecomcine_is_person_listing(): bool {
+		// Check against the configured talents/listing page ID.
+		$listing_page_id = (int) get_option( 'ecomcine_listing_page_id', 0 );
+		if ( $listing_page_id && is_page( $listing_page_id ) ) {
+			return true;
+		}
+
+		// Fallback: page with the 'talents' slug.
+		$talents_page = get_page_by_path( 'talents' );
+		if ( $talents_page && is_page( $talents_page->ID ) ) {
+			return true;
+		}
+
+		// Dokan fallback.
+		if ( function_exists( 'dokan_is_store_listing' ) && dokan_is_store_listing() ) {
+			return true;
+		}
+
+		return false;
+	}
+}
+
+// ── Geolocation ───────────────────────────────────────────────────────────────
+
+if ( ! function_exists( 'ecomcine_get_geo' ) ) {
+	/**
+	 * Return the geolocation data array for a person.
+	 *
+	 * Reads ecomcine_geo_* meta first; falls back to dokan_geo_* keys.
+	 *
+	 * @param int $user_id
+	 * @return array{ address: string, lat: string, lng: string }
+	 */
+	function ecomcine_get_geo( int $user_id ): array {
+		$address = get_user_meta( $user_id, 'ecomcine_geo_address', true );
+		$lat     = get_user_meta( $user_id, 'ecomcine_geo_lat', true );
+		$lng     = get_user_meta( $user_id, 'ecomcine_geo_lng', true );
+
+		// Dokan fallback.
+		if ( '' === $address ) {
+			$address = (string) get_user_meta( $user_id, 'dokan_geo_address', true );
+		}
+		if ( '' === $lat ) {
+			$lat = (string) get_user_meta( $user_id, 'dokan_geo_latitude', true );
+		}
+		if ( '' === $lng ) {
+			$lng = (string) get_user_meta( $user_id, 'dokan_geo_longitude', true );
+		}
+
+		return array(
+			'address' => (string) $address,
+			'lat'     => (string) $lat,
+			'lng'     => (string) $lng,
+		);
+	}
+}
+
+// ── Mapbox token ──────────────────────────────────────────────────────────────
+
+if ( ! function_exists( 'ecomcine_get_mapbox_token' ) ) {
+	/**
+	 * Return the Mapbox public token used for geocoding / map embeds.
+	 *
+	 * @return string Token string or empty string when not configured.
+	 */
+	function ecomcine_get_mapbox_token(): string {
+		// Own settings first.
+		if ( class_exists( 'EcomCine_Admin_Settings', false ) ) {
+			$settings = EcomCine_Admin_Settings::get_settings();
+			$token    = $settings['mapbox_token'] ?? '';
+			if ( '' !== (string) $token ) {
+				return (string) $token;
+			}
+		}
+
+		// Dokan fallback.
+		if ( function_exists( 'dokan_get_option' ) ) {
+			$dokan_token = dokan_get_option( 'mapbox_api_key', 'dokan_geolocation', '' );
+			if ( '' !== (string) $dokan_token ) {
+				return (string) $dokan_token;
+			}
+		}
+
+		return '';
+	}
+}
+
+// ── Template loader ───────────────────────────────────────────────────────────
+
+if ( ! function_exists( 'ecomcine_load_template' ) ) {
+	/**
+	 * Load a template file from (in priority order):
+	 *   1. Active theme:               ecomcine/{$name}.php
+	 *   2. EcomCine plugin templates:  ecomcine/templates/{$name}.php
+	 *   3. Bundled-theme templates:    ecomcine/bundled-theme/templates/{$name}.php
+	 *
+	 * @param string $name  Template slug (no extension, no leading slash).
+	 * @param array  $args  Variables to extract into template scope.
+	 * @return void
+	 */
+	function ecomcine_load_template( string $name, array $args = array() ): void {
+		$file_name = sanitize_file_name( $name ) . '.php';
+
+		$candidates = array(
+			get_stylesheet_directory() . '/ecomcine/' . $file_name,
+			get_template_directory()   . '/ecomcine/' . $file_name,
+		);
+
+		if ( defined( 'ECOMCINE_DIR' ) ) {
+			$candidates[] = ECOMCINE_DIR . 'templates/' . $file_name;
+			$candidates[] = ECOMCINE_DIR . 'bundled-theme/templates/' . $file_name;
+		}
+
+		foreach ( $candidates as $path ) {
+			if ( file_exists( $path ) ) {
+				if ( ! empty( $args ) ) {
+					// phpcs:ignore WordPress.PHP.DontExtract.extract_extract
+					extract( $args, EXTR_SKIP );
+				}
+				include $path;
+				return;
+			}
+		}
+	}
+}

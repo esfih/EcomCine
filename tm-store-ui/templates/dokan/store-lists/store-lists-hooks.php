@@ -41,6 +41,32 @@
 
 defined( 'ABSPATH' ) || exit;
 
+if ( ! function_exists( 'tm_store_lists_is_listing_page' ) ) {
+	/**
+	 * Detect store-listing contexts for both legacy and native shortcodes.
+	 *
+	 * @return bool
+	 */
+	function tm_store_lists_is_listing_page() {
+		if ( is_page_template( 'dokan/store-listing.php' ) || is_page_template( 'page-platform.php' ) || is_page_template( 'tm-store-ui/page-platform' ) ) {
+			return true;
+		}
+
+		$post = get_queried_object();
+		if ( ! ( $post instanceof WP_Post ) ) {
+			$post_id = get_queried_object_id();
+			$post    = $post_id ? get_post( (int) $post_id ) : null;
+		}
+
+		if ( $post instanceof WP_Post ) {
+			$content = (string) $post->post_content;
+			return has_shortcode( $content, 'dokan-stores' ) || has_shortcode( $content, 'ecomcine-stores' );
+		}
+
+		return false;
+	}
+}
+
 
 // =============================================================================
 // 0. SUPPRESS DOKAN PRO GEOLOCATION FILTER
@@ -137,7 +163,7 @@ add_action( 'dokan_before_store_lists_filter_category', function() {
 add_action( 'dokan_after_store_lists_filter_category', function() {
 	// Build the "Clear all filters" URL: strip known filter params, keep everything else.
 	$_filter_keys = [
-		'dokan_seller_search', 'dokan_seller_category',
+		'dokan_seller_search', 'dokan_seller_category', 'ecomcine_person_category',
 		'verified', 'featured', 'profile_level',
 		'talent_height',     'talent_weight',     'talent_waist',
 		'talent_hip',        'talent_chest',      'talent_shoe_size',
@@ -229,18 +255,34 @@ function filter_dokan_seller_listing_args( $args ) {
 	];
 
 	// ── Category ─────────────────────────────────────────────────────────────
-	if ( isset( $_GET['dokan_seller_category'] ) && ! empty( $_GET['dokan_seller_category'] ) ) {
-		$category_slug = sanitize_text_field( $_GET['dokan_seller_category'] );
+	if ( isset( $_GET['ecomcine_person_category'] ) && ! empty( $_GET['ecomcine_person_category'] ) ) {
+		$category_slug = sanitize_text_field( wp_unslash( $_GET['ecomcine_person_category'] ) );
 
-		if ( ! isset( $args['store_category_query'] ) ) {
-			$args['store_category_query'] = array();
+		// Use EcomCine registry when available (portable, no Dokan required).
+		if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			$person_ids_for_cat = EcomCine_Person_Category_Registry::get_person_ids_for_slug( $category_slug );
+			if ( ! empty( $person_ids_for_cat ) ) {
+				// Merge with any existing include restriction.
+				if ( ! empty( $args['include'] ) ) {
+					$args['include'] = array_intersect( (array) $args['include'], $person_ids_for_cat );
+				} else {
+					$args['include'] = $person_ids_for_cat;
+				}
+			} else {
+				// Category exists but has no members — return empty.
+				$args['include'] = array( 0 );
+			}
+		} elseif ( taxonomy_exists( 'store_category' ) ) {
+			// Dokan fallback: use store_category_query.
+			if ( ! isset( $args['store_category_query'] ) ) {
+				$args['store_category_query'] = array();
+			}
+			$args['store_category_query'][] = array(
+				'taxonomy' => 'store_category',
+				'field'    => 'slug',
+				'terms'    => $category_slug,
+			);
 		}
-
-		$args['store_category_query'][] = array(
-			'taxonomy' => 'store_category',
-			'field'    => 'slug',
-			'terms'    => $category_slug,
-		);
 	}
 
 	// ── Enhanced Search: name + biography ────────────────────────────────────
@@ -453,8 +495,7 @@ add_action( 'dokan_seller_listing_after_featured', 'add_verified_badge_to_seller
 //     window.tmShowcaseData for the JS pager "Showcase" button.
 // =============================================================================
 add_action( 'wp_footer', function() {
-	$on_store_page = is_page_template( 'dokan/store-listing.php' ) ||
-	                 has_shortcode( get_post_field( 'post_content', get_the_ID() ), 'dokan-stores' );
+	$on_store_page = tm_store_lists_is_listing_page();
 	if ( ! $on_store_page ) {
 		return;
 	}
@@ -500,8 +541,7 @@ add_action( 'wp_footer', function() {
 // =============================================================================
 
 add_action( 'wp_footer', function() {
-	$on_store_page = is_page_template( 'dokan/store-listing.php' ) ||
-	                 has_shortcode( get_post_field( 'post_content', get_the_ID() ), 'dokan-stores' );
+	$on_store_page = tm_store_lists_is_listing_page();
 	if ( ! $on_store_page ) {
 		return;
 	}
@@ -777,6 +817,7 @@ add_action( 'wp_footer', function() {
 			var $pag     = $wrap.find( '.pagination-container' ).first();
 			var prevHref = null, nextHref = null;
 			if ( $pag.length ) {
+				$( 'body' ).addClass( 'tm-pager-enhanced' );
 				var $pa = $pag.find( 'a.prev' ); if ( $pa.length ) { prevHref = $pa.attr( 'href' ); }
 				var $na = $pag.find( 'a.next' ); if ( $na.length ) { nextHref = $na.attr( 'href' ); }
 				$pag.hide();

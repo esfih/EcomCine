@@ -319,9 +319,10 @@ function tm_rest_get_vendor_store_content( WP_REST_Request $request ) {
 }
 endif;
 
-if ( ! function_exists( 'get_vendor_navigation_list' ) ) :
-function get_vendor_navigation_list() {
-	$current_vendor_id = isset( $_POST['current_vendor_id'] ) ? absint( $_POST['current_vendor_id'] ) : 0;
+if ( ! function_exists( 'tm_collect_candidate_vendor_ids' ) ) :
+function tm_collect_candidate_vendor_ids() {
+	$vendor_ids = array();
+
 	$vendor_query = new WP_User_Query( array(
 		'role__in' => array( 'seller', 'vendor' ),
 		'orderby'  => 'registered',
@@ -330,6 +331,47 @@ function get_vendor_navigation_list() {
 		'number'   => 500,
 	) );
 	$vendors = $vendor_query->get_results();
+	if ( ! empty( $vendors ) ) {
+		foreach ( $vendors as $vendor ) {
+			$vendor_id = 0;
+			if ( is_object( $vendor ) && isset( $vendor->ID ) ) { $vendor_id = absint( $vendor->ID ); }
+			elseif ( is_numeric( $vendor ) ) { $vendor_id = absint( $vendor ); }
+			if ( $vendor_id ) {
+				$vendor_ids[] = $vendor_id;
+			}
+		}
+	}
+
+	// Standalone source: tm_vendor CPT -> user mapping.
+	$vendor_posts = get_posts( array(
+		'post_type'      => 'tm_vendor',
+		'post_status'    => 'publish',
+		'posts_per_page' => 500,
+		'orderby'        => 'date',
+		'order'          => 'ASC',
+		'fields'         => 'ids',
+	) );
+	if ( ! empty( $vendor_posts ) ) {
+		foreach ( $vendor_posts as $vendor_post_id ) {
+			$mapped_user_id = absint( get_post_meta( (int) $vendor_post_id, '_tm_vendor_user_id', true ) );
+			if ( ! $mapped_user_id ) {
+				$mapped_user_id = absint( get_post_field( 'post_author', (int) $vendor_post_id ) );
+			}
+			if ( $mapped_user_id ) {
+				$vendor_ids[] = $mapped_user_id;
+			}
+		}
+	}
+
+	$vendor_ids = array_values( array_unique( array_filter( array_map( 'absint', $vendor_ids ) ) ) );
+	return $vendor_ids;
+}
+endif;
+
+if ( ! function_exists( 'get_vendor_navigation_list' ) ) :
+function get_vendor_navigation_list() {
+	$current_vendor_id = isset( $_POST['current_vendor_id'] ) ? absint( $_POST['current_vendor_id'] ) : 0;
+	$vendors = tm_collect_candidate_vendor_ids();
 	if ( empty( $vendors ) ) {
 		wp_send_json_error( array( 'message' => 'No vendors found' ) );
 		return;
@@ -338,21 +380,18 @@ function get_vendor_navigation_list() {
 	$current_index = 0;
 	$index         = 0;
 	foreach ( $vendors as $vendor ) {
-		$vendor_id = 0;
-		if ( is_object( $vendor ) && isset( $vendor->ID ) ) { $vendor_id = absint( $vendor->ID ); }
-		elseif ( is_numeric( $vendor ) ) { $vendor_id = absint( $vendor ); }
+		$vendor_id = absint( $vendor );
 		if ( ! $vendor_id ) { continue; }
-		if ( ! tm_vendor_has_video_playlist_media( $vendor_id ) ) { continue; }
 		if ( function_exists( 'dokan_get_store_url' ) ) {
 			$store_url = dokan_get_store_url( $vendor_id );
 		} else {
 			$user_data = get_userdata( $vendor_id );
-			$store_url = home_url( '/store/' . $user_data->user_nicename );
+			$store_url = $user_data ? get_author_posts_url( $vendor_id, $user_data->user_nicename ) : home_url( '/?author=' . $vendor_id );
 		}
 		$store_name = get_user_meta( $vendor_id, 'dokan_store_name', true );
 		if ( empty( $store_name ) ) {
 			$user_data  = get_userdata( $vendor_id );
-			$store_name = $user_data->display_name;
+			$store_name = $user_data ? $user_data->display_name : ( 'Talent #' . $vendor_id );
 		}
 		$vendor_list[] = array( 'id' => $vendor_id, 'name' => $store_name, 'url' => $store_url );
 		if ( $vendor_id == $current_vendor_id ) { $current_index = $index; }
@@ -372,22 +411,12 @@ endif;
 
 if ( ! function_exists( 'tm_get_showcase_vendor_ids' ) ) :
 function tm_get_showcase_vendor_ids() {
-	$vendor_query = new WP_User_Query( array(
-		'role__in' => array( 'seller', 'vendor' ),
-		'orderby'  => 'registered',
-		'order'    => 'ASC',
-		'fields'   => array( 'ID' ),
-		'number'   => 500,
-	) );
-	$vendors    = $vendor_query->get_results();
+	$vendors    = tm_collect_candidate_vendor_ids();
 	$vendor_ids = array();
 	if ( empty( $vendors ) ) { return $vendor_ids; }
 	foreach ( $vendors as $vendor ) {
-		$vendor_id = 0;
-		if ( is_object( $vendor ) && isset( $vendor->ID ) ) { $vendor_id = absint( $vendor->ID ); }
-		elseif ( is_numeric( $vendor ) ) { $vendor_id = absint( $vendor ); }
+		$vendor_id = absint( $vendor );
 		if ( ! $vendor_id ) { continue; }
-		if ( ! tm_vendor_has_video_playlist_media( $vendor_id ) ) { continue; }
 		$vendor_ids[] = $vendor_id;
 	}
 	return $vendor_ids;
@@ -458,25 +487,24 @@ if ( ! shortcode_exists( 'tm_talent_player' ) ) {
 
 add_filter( 'body_class', function( $classes ) {
 	if ( tm_is_showcase_page() ) {
-		if ( ! in_array( 'dokan-store', $classes, true ) )    { $classes[] = 'dokan-store'; }
-		if ( ! in_array( 'tm-showcase-page', $classes, true ) ) { $classes[] = 'tm-showcase-page'; }
+		// Dual-emit: ecomcine-person-profile is the canonical EcomCine class;
+		// dokan-store is kept for backward-compat with player.css legacy selectors.
+		if ( ! in_array( 'ecomcine-person-profile', $classes, true ) ) { $classes[] = 'ecomcine-person-profile'; }
+		if ( ! in_array( 'dokan-store', $classes, true ) )             { $classes[] = 'dokan-store'; }
+		if ( ! in_array( 'tm-showcase-page', $classes, true ) )        { $classes[] = 'tm-showcase-page'; }
 	}
 	return $classes;
 }, 20 );
 
-// Astra-specific: suppress header/footer on showcase pages.
-// Guards ensure these are no-ops on non-Astra themes.
-add_filter( 'astra_header_display', function( $display ) {
-	return tm_is_showcase_page() ? false : $display;
-}, 20 );
-add_filter( 'astra_footer_display', function( $display ) {
-	return tm_is_showcase_page() ? false : $display;
-}, 20 );
-
-// Theme-agnostic header/footer suppression: no longer needed.
-// tm-theme's header.php outputs only the HTML boilerplate (DOCTYPE, head, wp_head,
-// body open), so suppressing get_header() would break the page structure.
-// Astra suppression is handled by the astra_footer_display filter above.
+// Theme-agnostic header/footer suppression via EcomCine globals.
+// A thin theme-compat layer (ecomcine/includes/theme-compat/) translates these
+// globals into each theme's native suppression mechanism.
+add_action( 'template_redirect', function() {
+	if ( tm_is_showcase_page() ) {
+		$GLOBALS['ecomcine_suppress_header'] = true;
+		$GLOBALS['ecomcine_suppress_footer'] = true;
+	}
+}, 1 );
 
 add_filter( 'template_include', function( $template ) {
 	if ( is_admin() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
@@ -506,7 +534,7 @@ if ( ! class_exists( 'TM_Media_Player_Assets' ) ) :
 class TM_Media_Player_Assets {
 
 	/** JS + CSS version strings — bump to bust browser caches. */
-	const JS_VERSION  = '2.0.2';
+	const JS_VERSION  = '2.0.3';
 	const CSS_VERSION = '1.8.1';
 
 	/** CDN URLs for Mapbox (loaded on-demand for editable profile pages). */
@@ -624,6 +652,11 @@ class TM_Media_Player_Assets {
 
 	private static function localize_showcase( $vendor_id, $mode ) {
 		$nonce = wp_create_nonce( 'vendor_inline_edit' );
+		$mapbox_token = function_exists( 'ecomcine_get_mapbox_token' )
+			? ecomcine_get_mapbox_token()
+			: ( function_exists( 'dokan_get_option' )
+				? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
+				: '' );
 		wp_localize_script( 'tm-player-js', 'vendorStoreData', array(
 			'ajaxurl'               => admin_url( 'admin-ajax.php' ),
 			'ajax_url'              => admin_url( 'admin-ajax.php' ),
@@ -640,7 +673,7 @@ class TM_Media_Player_Assets {
 			'editNonce'             => $nonce,
 			'nonce'                 => $nonce,
 			'onboardNonce'          => $nonce,
-			'mapbox_token'          => '',
+			'mapbox_token'          => $mapbox_token,
 			'jqueryUiCssUrl'        => '',
 			'jqueryUiCoreUrl'       => '',
 			'jqueryUiWidgetUrl'     => '',
@@ -660,9 +693,11 @@ class TM_Media_Player_Assets {
 	private static function localize_profile( $vendor_id, $can_edit ) {
 		$current_user_id = get_current_user_id();
 		$is_owner        = (bool) $can_edit;
-		$mapbox_token    = function_exists( 'dokan_get_option' )
-			? dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
-			: '';
+		$mapbox_token    = function_exists( 'ecomcine_get_mapbox_token' )
+			? ecomcine_get_mapbox_token()
+			: ( function_exists( 'dokan_get_option' )
+				? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
+				: '' );
 
 		$jquery_ui_css_url  = '';
 		$jquery_ui_css_path = WP_CONTENT_DIR . '/plugins/woocommerce-bookings/dist/jquery-ui-styles.css';
@@ -713,9 +748,11 @@ class TM_Media_Player_Assets {
 	}
 
 	private static function maybe_enqueue_mapbox( array $deps ) {
-		$mapbox_token = function_exists( 'dokan_get_option' )
-			? dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
-			: '';
+		$mapbox_token = function_exists( 'ecomcine_get_mapbox_token' )
+			? ecomcine_get_mapbox_token()
+			: ( function_exists( 'dokan_get_option' )
+				? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
+				: '' );
 		if ( empty( $mapbox_token ) ) { return $deps; }
 
 		wp_enqueue_style(

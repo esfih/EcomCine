@@ -31,6 +31,11 @@ Current theme layer orchestrates asset loading, template overrides, Dokan/Woo ho
 - Core logic candidate: profile scoring and social-metric computation rules
 - Default WP adapter target: service-layer modules independent from Dokan templates
 
+6. No Scroll Grid auto-fit mode for person listing
+- Current dependencies: persons-grid settings, listing shortcode wrapper CSS variables, viewport metrics
+- Core logic candidate: ratio-safe grid fit solver constrained by viewport and reserved UI regions
+- Default WP adapter target: native EcomCine listing fit mode with no-scroll UX contract
+
 ## Migration Risk Notes
 
 - High coupling hotspot: many behaviors are implemented as hook-level interventions.
@@ -41,3 +46,4 @@ Current theme layer orchestrates asset loading, template overrides, Dokan/Woo ho
 - Same storefront section visibility and ordering.
 - Same vendor profile state after save/update events.
 - Same vendor identity blocks on product and listing surfaces.
+- With No Scroll Grid enabled, configured rows/columns and pagination fit without page scroll on supported desktop viewports.

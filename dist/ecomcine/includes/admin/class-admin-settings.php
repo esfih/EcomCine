@@ -467,6 +467,10 @@ class EcomCine_Admin_Settings {
 	public static function defaults() {
 		return array(
 			'runtime_mode' => 'wp_woo_dokan_booking',
+			'persons_grid' => array(
+				'rows'    => 2,
+				'columns' => 4,
+			),
 			'features' => array(
 				'media_player'  => true,
 				'account_panel' => true,
@@ -499,6 +503,10 @@ class EcomCine_Admin_Settings {
 		$settings['features'] = wp_parse_args(
 			isset( $stored['features'] ) && is_array( $stored['features'] ) ? $stored['features'] : array(),
 			$defaults['features']
+		);
+		$settings['persons_grid'] = wp_parse_args(
+			isset( $stored['persons_grid'] ) && is_array( $stored['persons_grid'] ) ? $stored['persons_grid'] : array(),
+			$defaults['persons_grid']
 		);
 		$settings['style_tokens'] = wp_parse_args(
 			isset( $stored['style_tokens'] ) && is_array( $stored['style_tokens'] ) ? $stored['style_tokens'] : array(),
@@ -656,9 +664,10 @@ class EcomCine_Admin_Settings {
 			return $defaults;
 		}
 
-		$sanitized = $defaults;
+		$current   = self::get_settings();
+		$sanitized = wp_parse_args( $current, $defaults );
 
-		$runtime_mode = isset( $input['runtime_mode'] ) ? sanitize_text_field( $input['runtime_mode'] ) : '';
+		$runtime_mode = isset( $input['runtime_mode'] ) ? sanitize_text_field( $input['runtime_mode'] ) : (string) $sanitized['runtime_mode'];
 
 		// Migrate legacy slugs from old two-option system.
 		if ( 'preferred_stack' === $runtime_mode ) {
@@ -686,21 +695,51 @@ class EcomCine_Admin_Settings {
 		$sanitized['runtime_mode'] = $runtime_mode;
 
 		$feature_keys = array_keys( $defaults['features'] );
-		foreach ( $feature_keys as $feature_key ) {
-			$sanitized['features'][ $feature_key ] = ! empty( $input['features'][ $feature_key ] );
+		if ( isset( $input['features'] ) && is_array( $input['features'] ) ) {
+			foreach ( $feature_keys as $feature_key ) {
+				$sanitized['features'][ $feature_key ] = ! empty( $input['features'][ $feature_key ] );
+			}
+		}
+
+		if ( isset( $input['persons_grid'] ) && is_array( $input['persons_grid'] ) ) {
+			$rows = isset( $input['persons_grid']['rows'] ) ? absint( $input['persons_grid']['rows'] ) : (int) $defaults['persons_grid']['rows'];
+			$cols = isset( $input['persons_grid']['columns'] ) ? absint( $input['persons_grid']['columns'] ) : (int) $defaults['persons_grid']['columns'];
+
+			$sanitized['persons_grid']['rows']    = max( 1, min( 12, $rows ) );
+			$sanitized['persons_grid']['columns'] = max( 1, min( 6, $cols ) );
 		}
 
 		$style_keys = array_keys( $defaults['style_tokens'] );
-		foreach ( $style_keys as $style_key ) {
-			$raw = isset( $input['style_tokens'][ $style_key ] ) ? $input['style_tokens'][ $style_key ] : '';
-			$color = sanitize_hex_color( $raw );
-			$sanitized['style_tokens'][ $style_key ] = $color ? $color : $defaults['style_tokens'][ $style_key ];
+		if ( isset( $input['style_tokens'] ) && is_array( $input['style_tokens'] ) ) {
+			foreach ( $style_keys as $style_key ) {
+				$raw = isset( $input['style_tokens'][ $style_key ] ) ? $input['style_tokens'][ $style_key ] : '';
+				$color = sanitize_hex_color( $raw );
+				$sanitized['style_tokens'][ $style_key ] = $color ? $color : $defaults['style_tokens'][ $style_key ];
+			}
 		}
 
 		$label_keys = array_keys( $defaults['labels'] );
-		foreach ( $label_keys as $label_key ) {
-			$raw_label = isset( $input['labels'][ $label_key ] ) ? sanitize_text_field( $input['labels'][ $label_key ] ) : '';
-			$sanitized['labels'][ $label_key ] = '' !== $raw_label ? $raw_label : $defaults['labels'][ $label_key ];
+		if ( isset( $input['labels'] ) && is_array( $input['labels'] ) ) {
+			foreach ( $label_keys as $label_key ) {
+				$raw_label = isset( $input['labels'][ $label_key ] ) ? sanitize_text_field( $input['labels'][ $label_key ] ) : '';
+				$sanitized['labels'][ $label_key ] = '' !== $raw_label ? $raw_label : $defaults['labels'][ $label_key ];
+			}
+		}
+
+		// Mapbox token — store as-is; only public tokens (pk.*) allowed at this boundary.
+		if ( array_key_exists( 'mapbox_token', $input ) ) {
+			$mapbox_raw = sanitize_text_field( (string) $input['mapbox_token'] );
+			// Only accept Mapbox public tokens (prefix pk.) or empty string.
+			if ( '' !== $mapbox_raw && ! str_starts_with( $mapbox_raw, 'pk.' ) ) {
+				$mapbox_raw = '';
+				add_settings_error(
+					self::OPTION_KEY,
+					'mapbox_token_invalid',
+					__( 'Mapbox token not saved: only public tokens beginning with “pk.” are accepted.', 'ecomcine' ),
+					'error'
+				);
+			}
+			$sanitized['mapbox_token'] = $mapbox_raw;
 		}
 
 		return $sanitized;
@@ -781,6 +820,7 @@ class EcomCine_Admin_Settings {
 		$active_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings';
 		$settings   = self::get_settings();
 		$features   = $settings['features'];
+		$persons_grid = isset( $settings['persons_grid'] ) && is_array( $settings['persons_grid'] ) ? $settings['persons_grid'] : self::defaults()['persons_grid'];
 		$tokens     = $settings['style_tokens'];
 		$labels     = $settings['labels'];
 		$created_pages = isset( $_GET['ecomcine_created'] ) ? absint( $_GET['ecomcine_created'] ) : 0;
@@ -825,19 +865,64 @@ class EcomCine_Admin_Settings {
 			<nav class="nav-tab-wrapper" style="margin-bottom:0;">
 				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=settings' ) ); ?>"
 				   class="nav-tab <?php echo 'settings' === $active_tab ? 'nav-tab-active' : ''; ?>">Settings</a>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=licensing' ) ); ?>"
-				   class="nav-tab <?php echo 'licensing' === $active_tab ? 'nav-tab-active' : ''; ?>">Licensing</a>
-			</nav>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=categories' ) ); ?>"
+			   class="nav-tab <?php echo 'categories' === $active_tab ? 'nav-tab-active' : ''; ?>">Talent Categories</a>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=persons-grid' ) ); ?>"
+			   class="nav-tab <?php echo 'persons-grid' === $active_tab ? 'nav-tab-active' : ''; ?>">Persons Grid</a>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=licensing' ) ); ?>"
+			   class="nav-tab <?php echo 'licensing' === $active_tab ? 'nav-tab-active' : ''; ?>">Licensing</a>
+		</nav>
 
-			<?php if ( 'licensing' === $active_tab ) : ?>
-
-				<?php if ( class_exists( 'EcomCine_Licensing', false ) ) : ?>
-					<?php EcomCine_Licensing::render_tab_content(); ?>
-				<?php else : ?>
-					<p style="margin-top:16px;">Licensing module not loaded.</p>
-				<?php endif; ?>
-
+		<?php if ( 'categories' === $active_tab ) : ?>
+			<?php if ( class_exists( 'EcomCine_Admin_Categories_Tab', false ) ) : ?>
+				<?php EcomCine_Admin_Categories_Tab::render(); ?>
 			<?php else : ?>
+				<p style="margin-top:16px;">Categories module not loaded.</p>
+			<?php endif; ?>
+
+		<?php elseif ( 'licensing' === $active_tab ) : ?>
+			<?php if ( class_exists( 'EcomCine_Licensing', false ) ) : ?>
+				<?php EcomCine_Licensing::render_tab_content(); ?>
+			<?php else : ?>
+				<p style="margin-top:16px;">Licensing module not loaded.</p>
+			<?php endif; ?>
+
+		<?php elseif ( 'persons-grid' === $active_tab ) : ?>
+			<div style="margin-top:16px; max-width:700px; background:#fff; border:1px solid #ccd0d4; border-radius:3px; padding:18px 20px; box-shadow:0 1px 1px rgba(0,0,0,.04);">
+				<h2 style="margin-top:0;">Persons Grid</h2>
+				<p class="description" style="margin-bottom:16px;">
+					Define how many rows and columns are displayed per Talents page.
+					Cards per page are computed as <strong>rows x columns</strong>.
+				</p>
+
+				<form method="post" action="options.php">
+					<?php settings_fields( 'ecomcine_settings_group' ); ?>
+					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row"><label for="ecomcine-persons-grid-rows">Rows</label></th>
+							<td>
+								<input id="ecomcine-persons-grid-rows" type="number" min="1" max="12" step="1"
+									name="<?php echo esc_attr( self::OPTION_KEY ); ?>[persons_grid][rows]"
+									value="<?php echo esc_attr( (string) ( (int) $persons_grid['rows'] ) ); ?>"
+									class="small-text" />
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="ecomcine-persons-grid-columns">Columns</label></th>
+							<td>
+								<input id="ecomcine-persons-grid-columns" type="number" min="1" max="6" step="1"
+									name="<?php echo esc_attr( self::OPTION_KEY ); ?>[persons_grid][columns]"
+									value="<?php echo esc_attr( (string) ( (int) $persons_grid['columns'] ) ); ?>"
+									class="small-text" />
+								<p class="description" style="margin:8px 0 0;">Desktop card width follows the selected columns. Tablet/mobile responsive breakpoints still apply.</p>
+							</td>
+						</tr>
+					</table>
+					<?php submit_button( 'Save Persons Grid Settings' ); ?>
+				</form>
+			</div>
+
+		<?php else : ?>
 
 				<style>
 				.ecomcine-settings-grid {
@@ -942,9 +1027,13 @@ class EcomCine_Admin_Settings {
 										);
 										?>
 										<select id="ecomcine-runtime-mode" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[runtime_mode]">
-											<?php foreach ( $mode_options as $slug => $mode_label ) : ?>
-												<option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $settings['runtime_mode'], $slug ); ?>>
-													<?php echo esc_html( $mode_label ); ?>
+											<?php foreach ( $mode_options as $slug => $mode_label ) :
+												$prereqs_met = self::mode_prerequisites_met( $slug );
+											?>
+												<option value="<?php echo esc_attr( $slug ); ?>"
+													<?php selected( $settings['runtime_mode'], $slug ); ?>
+													<?php disabled( false === $prereqs_met && $settings['runtime_mode'] !== $slug ); ?>>
+													<?php echo esc_html( $mode_label . ( $prereqs_met ? '' : ' — prerequisites missing' ) ); ?>
 												</option>
 											<?php endforeach; ?>
 										</select>
@@ -1033,6 +1122,23 @@ class EcomCine_Admin_Settings {
 									<th scope="row"><label for="ecomcine-text-color">Text Color</label></th>
 									<td>
 										<input id="ecomcine-text-color" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[style_tokens][text_color]" value="<?php echo esc_attr( $tokens['text_color'] ); ?>" class="regular-text" />
+									</td>
+								</tr>
+							</table>
+						</div>
+
+						<div class="ecomcine-settings-card">
+							<h2>Mapbox</h2>
+							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row"><label for="ecomcine-mapbox-token">Public Token</label></th>
+									<td>
+										<input id="ecomcine-mapbox-token" type="text"
+											name="<?php echo esc_attr( self::OPTION_KEY ); ?>[mapbox_token]"
+											value="<?php echo esc_attr( $settings['mapbox_token'] ?? '' ); ?>"
+											class="regular-text"
+											placeholder="pk.…" />
+										<p class="description">Mapbox public token (pk.…) for geocoding and map embeds. Leave blank to disable.</p>
 									</td>
 								</tr>
 							</table>

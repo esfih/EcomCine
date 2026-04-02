@@ -11,11 +11,18 @@ if ( ! function_exists( 'tm_get_vendor_public_profile_url' ) ) {
 	 */
 	function tm_get_vendor_public_profile_url( $vendor_id ) {
 		$vendor_id = (int) $vendor_id;
-		if ( ! $vendor_id || ! function_exists( 'dokan_get_store_url' ) ) {
+		if ( ! $vendor_id ) {
 			return '';
 		}
 
-		$canonical_url = dokan_get_store_url( $vendor_id );
+		// Use EcomCine portable function when available.
+		if ( function_exists( 'ecomcine_get_person_url' ) ) {
+			$canonical_url = ecomcine_get_person_url( $vendor_id );
+		} elseif ( function_exists( 'dokan_get_store_url' ) ) {
+			$canonical_url = dokan_get_store_url( $vendor_id );
+		} else {
+			return '';
+		}
 		if ( empty( $canonical_url ) ) {
 			return '';
 		}
@@ -230,14 +237,22 @@ if ( ! function_exists( 'tm_get_vendor_qr_svg_markup' ) ) {
 if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 	/**
 	 * Build vendor location display using Dokan geolocation data.
+	 *
+	 * When dokan_geo_address contains raw lat/lng coordinates (e.g. from Mapbox
+	 * geocoding without a reverse-lookup), fall back to the address sub-array
+	 * inside dokan_profile_settings for a human-readable display.
 	 */
 	function tm_get_vendor_geo_location_display( $vendor_id, $store_info = array(), $store_address = array() ) {
 		$vendor_id = (int) $vendor_id;
-		if ( ! $vendor_id || ! function_exists( 'WC' ) ) {
+		if ( ! $vendor_id ) {
 			return '';
 		}
 
-		$geo_address = get_user_meta( $vendor_id, 'dokan_geo_address', true );
+		$geo_address = get_user_meta( $vendor_id, 'ecomcine_geo_address', true );
+		if ( '' === $geo_address ) {
+			// Dokan fallback.
+			$geo_address = (string) get_user_meta( $vendor_id, 'dokan_geo_address', true );
+		}
 		if ( empty( $geo_address ) && ! empty( $store_info['location'] ) ) {
 			$geo_address = is_string( $store_info['location'] ) ? $store_info['location'] : '';
 		}
@@ -245,26 +260,76 @@ if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 			return '';
 		}
 
-		$address_parts = array_map( 'trim', explode( ',', $geo_address ) );
-		$address_parts = array_values( array_filter( $address_parts, 'strlen' ) );
-		$country_name = end( $address_parts );
-
-		$countries = WC()->countries->get_countries();
+		$countries    = function_exists( 'ecomcine_get_countries' ) ? ecomcine_get_countries() : array();
 		$country_code = '';
-		foreach ( $countries as $code => $name ) {
-			if ( stripos( $name, $country_name ) !== false || stripos( $country_name, $name ) !== false ) {
-				$country_code = $code;
-				break;
+		$flag         = '';
+
+		// Detect raw lat/lng string (e.g. "48.853495, 2.348392" or "30.173533,-95.504253").
+		// These cannot be shown as a human-readable address, so fall back to the
+		// structured address stored in dokan_profile_settings.
+		if ( preg_match( '/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/', trim( $geo_address ) ) ) {
+			// Grab the address array from profile settings (always an array, unlike
+			// the $store_address parameter which is a short-address string).
+			$dps           = get_user_meta( $vendor_id, 'dokan_profile_settings', true );
+			$addr          = is_array( $dps ) && ! empty( $dps['address'] ) ? (array) $dps['address'] : array();
+			$city          = trim( $addr['city']  ?? '' );
+			$state         = trim( $addr['state'] ?? '' );
+			$country_raw   = trim( $addr['country'] ?? '' );
+
+			// Build a display string and resolve flag.
+			$city_state = implode( ', ', array_filter( [ $city, $state ] ) );
+
+			if ( strlen( $country_raw ) === 2 ) {
+				$country_code = strtoupper( $country_raw );
+			} elseif ( ! empty( $country_raw ) ) {
+				foreach ( $countries as $code => $name ) {
+					if ( stripos( $name, $country_raw ) !== false || stripos( $country_raw, $name ) !== false ) {
+						$country_code = strtoupper( $code );
+						break;
+					}
+				}
 			}
+
+			// If we have nothing useful to show, hide the location widget entirely.
+			if ( empty( $city_state ) && empty( $country_code ) ) {
+				return '';
+			}
+
+			// Use full country name as fallback display when city/state are empty.
+			$geo_address_without_country = ! empty( $city_state ) ? $city_state
+				: ( isset( $countries[ $country_code ] ) ? $countries[ $country_code ] : '' );
+
+			if ( empty( $geo_address_without_country ) ) {
+				return '';
+			}
+		} else {
+			// Normal human-readable address path.
+			$address_parts = array_values( array_filter( array_map( 'trim', explode( ',', $geo_address ) ), 'strlen' ) );
+			$country_name  = end( $address_parts );
+
+			foreach ( $countries as $code => $name ) {
+				if ( stripos( $name, $country_name ) !== false || stripos( $country_name, $name ) !== false ) {
+					$country_code = strtoupper( $code );
+					break;
+				}
+			}
+
+			// Fallback: profile_settings address array (more reliable than string parameter).
+			if ( ! $country_code ) {
+				$dps       = get_user_meta( $vendor_id, 'dokan_profile_settings', true );
+				$addr_arr  = is_array( $dps ) && ! empty( $dps['address'] ) ? (array) $dps['address'] : array();
+				$c_raw     = trim( $addr_arr['country'] ?? '' );
+				if ( strlen( $c_raw ) === 2 ) {
+					$country_code = strtoupper( $c_raw );
+				}
+			}
+
+			$geo_address_without_country = count( $address_parts ) >= 2
+				? implode( ', ', array_slice( $address_parts, 0, 2 ) )
+				: $geo_address;
 		}
 
-		if ( ! $country_code && ! empty( $store_address['country'] ) ) {
-			$country_code = $store_address['country'];
-		}
-
-		$flag = '';
 		if ( $country_code && strlen( $country_code ) === 2 ) {
-			$country_code = strtoupper( $country_code );
 			$flag_code = strtolower( $country_code );
 			$flag = '<img src="https://flagcdn.com/w40/' . esc_attr( $flag_code ) . '.png"'
 				. ' srcset="https://flagcdn.com/w80/' . esc_attr( $flag_code ) . '.png 2x"'
@@ -274,18 +339,12 @@ if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 				. ' class="country-flag-img">';
 		}
 
-		if ( count( $address_parts ) >= 2 ) {
-			$geo_address_without_country = implode( ', ', array_slice( $address_parts, 0, 2 ) );
-		} else {
-			$geo_address_without_country = $geo_address;
-		}
-
 		$display_parts = array();
 		if ( ! empty( $flag ) ) {
-			$country_full_name = isset( $countries[ $country_code ] ) ? $countries[ $country_code ] : $country_name;
+			$country_full_name = isset( $countries[ $country_code ] ) ? $countries[ $country_code ] : $country_code;
 			$display_parts[] = '<span class="country-flag" title="' . esc_attr( $country_full_name ) . '">' . $flag . '</span>';
 		}
-		$display_parts[] = '<span class="geo-address">' . $geo_address_without_country . '</span>';
+		$display_parts[] = '<span class="geo-address">' . esc_html( $geo_address_without_country ) . '</span>';
 
 		return implode( '', $display_parts );
 	}

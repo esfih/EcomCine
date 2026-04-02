@@ -46,8 +46,12 @@ function tm_store_ui_bootstrap() {
 	// Vendor profile
 	require_once TM_STORE_UI_DIR . 'includes/vendor-profile/vendor-completeness.php';
 	require_once TM_STORE_UI_DIR . 'includes/vendor-profile/vendor-profile-ajax.php';
+	// Standalone bridge (wp_cpt mode): render store header without Dokan/Woo.
+	require_once TM_STORE_UI_DIR . 'includes/standalone/store-header-bridge.php';
 	// Vendors map shortcode
 	require_once TM_STORE_UI_DIR . 'includes/vendors-map/vendors-map-shortcode.php';
+	// Native standalone stores listing shortcode.
+	require_once TM_STORE_UI_DIR . 'includes/shortcodes/ecomcine-stores-shortcode.php';
 	// Store-listing hooks (lives in templates/dokan/store-lists/ since it ships with templates)
 	require_once TM_STORE_UI_DIR . 'templates/dokan/store-lists/store-lists-hooks.php';
 	// THO adapter layer

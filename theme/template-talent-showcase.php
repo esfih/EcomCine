@@ -23,10 +23,9 @@ if ( $vendor_id ) {
 	}
 }
 
-// Suppress Astra's native #masthead entirely — the showcase uses .tm-cinematic-header
-// (rendered via wp_body_open hook) instead. This prevents Astra's transparent-header JS
-// from finding a #masthead to measure, so it never injects an inline padding-top on #content.
-add_filter( 'astra_header_display', '__return_false' );
+// Suppress the theme header entirely — the showcase uses .tm-cinematic-header
+// (rendered via wp_body_open hook) instead.
+$GLOBALS['ecomcine_suppress_header'] = true;
 
 add_filter( 'body_class', function( $classes ) {
 	if ( ! in_array( 'tm-showcase-page', $classes, true ) ) {
@@ -55,7 +54,14 @@ get_header( 'shop' );
 <div class="dokan-store-wrap layout-full">
 	<div id="dokan-primary" class="dokan-single-store dokan-store-full-width">
 		<?php if ( $vendor_id ) : ?>
-			<?php dokan_get_template_part( 'store-header' ); ?>
+			<?php
+			$tm_rendered = function_exists( 'tm_store_ui_render_store_header' )
+				? tm_store_ui_render_store_header( $vendor_id )
+				: false;
+			if ( ! $tm_rendered ) {
+				echo '<div class="tm-talent-showcase-empty">Unable to render talent profile.</div>';
+			}
+			?>
 		<?php else : ?>
 			<div class="tm-talent-showcase-empty">No talent available.</div>
 		<?php endif; ?>

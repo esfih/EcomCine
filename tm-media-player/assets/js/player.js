@@ -2822,7 +2822,7 @@ jQuery(document).ready(function($) {
 	var currentVendorIndex = -1;
 	var isVendorSwitching = false;
 	var lastManualSwipeAt = 0;
-	var VENDOR_NAV_CACHE_KEY = "tm_vendor_nav_list_v2_video";
+	var VENDOR_NAV_CACHE_KEY = "tm_vendor_nav_list_v3_showcase";
 	var VENDOR_NAV_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12 hours
 	var VENDOR_PAYLOAD_PRELOAD_KEY = "tm_vendor_payloads_preloaded_v1";
 	var vendorPayloadPreload = {
@@ -5695,9 +5695,12 @@ jQuery(document).ready(function($) {
 		injectMapboxCss('https://api.mapbox.com/mapbox-gl-js/v1.4.1/mapbox-gl.css', 'gl');
 		injectMapboxCss('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.css', 'geocoder');
 
-		pending += 2;
-		injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.min.js', done);
-		injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/v1.4.1/mapbox-gl.js', done);
+		pending += 1;
+		injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/v1.4.1/mapbox-gl.js', function() {
+			pending += 1;
+			injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.min.js', done);
+			done();
+		});
 	}
 
 	function initInlineLocationMap($wrapper) {
@@ -5705,13 +5708,21 @@ jQuery(document).ready(function($) {
 		var $panel = $wrapper.find('.inline-mapbox-panel').first();
 		if (!$panel.length) return;
 		if ($panel.data('mapbox-initialized')) return;
-		if (!vendorStoreData.mapbox_token) return;
+
+		var mapboxToken = '';
+		if (window.vendorStoreData && window.vendorStoreData.mapbox_token) {
+			mapboxToken = window.vendorStoreData.mapbox_token;
+		}
+		if (!mapboxToken && window.vendorStoreUiData && window.vendorStoreUiData.mapbox_token) {
+			mapboxToken = window.vendorStoreUiData.mapbox_token;
+		}
+		if (!mapboxToken) return;
 
 		ensureMapboxAssets(function() {
 			if ($panel.data('mapbox-initialized')) return;
 			if (typeof mapboxgl === 'undefined' || typeof MapboxGeocoder === 'undefined') return;
 
-			mapboxgl.accessToken = vendorStoreData.mapbox_token;
+			mapboxgl.accessToken = mapboxToken;
 
 			var $mapEl = $panel.find('.inline-mapbox-map').first();
 			var $searchEl = $panel.find('.inline-mapbox-search').first();
@@ -5776,7 +5787,7 @@ jQuery(document).ready(function($) {
 			}
 
 			var geocoder = new MapboxGeocoder({
-				accessToken: vendorStoreData.mapbox_token,
+				accessToken: mapboxToken,
 				types: 'country,region,place,postcode,locality,neighborhood',
 				placeholder: 'Start typing location...',
 				marker: false,

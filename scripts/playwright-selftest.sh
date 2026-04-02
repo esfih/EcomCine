@@ -22,6 +22,39 @@ if [[ -n "$NODE_BIN" && -f "$PW_DIR/node_modules/playwright/cli.js" ]]; then
   has_local_node=true
 fi
 
+local_runtime_ready_cache=""
+
+probe_local_playwright_runtime() {
+  if [[ "$has_local_node" != true ]]; then
+    return 1
+  fi
+
+  if [[ -n "$local_runtime_ready_cache" ]]; then
+    [[ "$local_runtime_ready_cache" == "ok" ]]
+    return
+  fi
+
+  if "$NODE_BIN" - "$PW_DIR" >/dev/null 2>&1 <<'NODE'
+const path = require('path');
+const pwDir = process.argv[2];
+const playwright = require(path.join(pwDir, 'node_modules', 'playwright'));
+
+(async () => {
+  const browser = await playwright.chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  await page.goto('about:blank');
+  await browser.close();
+})();
+NODE
+  then
+    local_runtime_ready_cache="ok"
+    return 0
+  fi
+
+  local_runtime_ready_cache="fail"
+  return 1
+}
+
 # Use the repo-local Playwright CLI — avoids relying on npx which may resolve
 # to the Windows-hosted npm on WSL2 development machines.
 PW_CLI="$PW_DIR/node_modules/playwright/cli.js"
@@ -54,10 +87,10 @@ case "$ACTION" in
     ;;
 
   smoke)
-    if [[ "$has_local_node" == true ]]; then
+    if [[ "$has_local_node" == true ]] && probe_local_playwright_runtime; then
       "$NODE_BIN" "$PW_CLI" test --project=chromium --grep @smoke "$@"
     else
-      echo "[playwright-selftest] Local Linux Node not found; using Docker image $PW_DOCKER_IMAGE"
+      echo "[playwright-selftest] Local browser runtime is unavailable; using Docker image $PW_DOCKER_IMAGE"
       run_in_docker "node node_modules/playwright/cli.js test --project=chromium --grep @smoke $*"
     fi
     ;;
@@ -80,14 +113,14 @@ case "$ACTION" in
       fi
     fi
 
-    if [[ "$has_local_node" == true ]]; then
+    if [[ "$has_local_node" == true ]] && probe_local_playwright_runtime; then
       if [[ -n "$SCENARIO_FILE" ]]; then
         ECOMCINE_INTERACTIONS_FILE="$SCENARIO_FILE" "$NODE_BIN" "$PW_CLI" test --project=chromium --grep @interactions "$@"
       else
         "$NODE_BIN" "$PW_CLI" test --project=chromium --grep @interactions "$@"
       fi
     else
-      echo "[playwright-selftest] Local Linux Node not found; using Docker image $PW_DOCKER_IMAGE"
+      echo "[playwright-selftest] Local browser runtime is unavailable; using Docker image $PW_DOCKER_IMAGE"
       if [[ -n "$SCENARIO_FILE" ]]; then
         run_in_docker "ECOMCINE_INTERACTIONS_FILE='$SCENARIO_FILE' node node_modules/playwright/cli.js test --project=chromium --grep @interactions $*"
       else
@@ -97,19 +130,19 @@ case "$ACTION" in
     ;;
 
   debug)
-    if [[ "$has_local_node" == true ]]; then
+    if [[ "$has_local_node" == true ]] && probe_local_playwright_runtime; then
       "$NODE_BIN" "$PW_CLI" test --project=chromium --trace on --workers=1 "$@"
     else
-      echo "[playwright-selftest] Local Linux Node not found; using Docker image $PW_DOCKER_IMAGE"
+      echo "[playwright-selftest] Local browser runtime is unavailable; using Docker image $PW_DOCKER_IMAGE"
       run_in_docker "node node_modules/playwright/cli.js test --project=chromium --trace on --workers=1 $*"
     fi
     ;;
 
   headed)
-    if [[ "$has_local_node" == true ]]; then
+    if [[ "$has_local_node" == true ]] && probe_local_playwright_runtime; then
       "$NODE_BIN" "$PW_CLI" test --project=chromium --headed --workers=1 "$@"
     else
-      echo "[playwright-selftest] Local Linux Node not found; using Docker image $PW_DOCKER_IMAGE"
+      echo "[playwright-selftest] Local browser runtime is unavailable; using Docker image $PW_DOCKER_IMAGE"
       run_in_docker "node node_modules/playwright/cli.js test --project=chromium --headed --workers=1 $*"
     fi
     ;;

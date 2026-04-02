@@ -866,18 +866,15 @@ a.dokan-clear-filters-link:hover {
  *  Phone (<= 600px) .................... 1 column   (100%)
  * ────────────────────────────────────────────────────────────────────────── */
 
-/* Default: 4 columns — TV, full desktops, laptops >= 1101px */
-#dokan-seller-listing-wrap.grid-view ul.dokan-seller-wrap li.coloum-3 {
-	width: 25% !important;
-	box-sizing: border-box !important;
-	margin-bottom: 0 !important;
+#dokan-seller-listing-wrap.grid-view.ecomcine-store-grid {
+	--tm-grid-columns: 4;
 }
 
-/* Limit to 2 rows (8 cards) on large screens */
-@media (min-width: 1101px) {
-	#dokan-seller-listing-wrap.grid-view ul.dokan-seller-wrap li.coloum-3:nth-child(n+9) {
-		display: none !important;
-	}
+/* Default: 4 columns — TV, full desktops, laptops >= 1101px */
+#dokan-seller-listing-wrap.grid-view ul.dokan-seller-wrap li.coloum-3 {
+	width: calc(100% / var(--tm-grid-columns, 4)) !important;
+	box-sizing: border-box !important;
+	margin-bottom: 0 !important;
 }
 
 /* 3 columns — tablet landscape */
@@ -960,6 +957,19 @@ a.dokan-clear-filters-link:hover {
 	min-height: 0 !important;
 	position: relative !important;
 	overflow: hidden !important;
+}
+
+#dokan-seller-listing-wrap .dokan-single-seller .store-wrapper .store-header .store-banner a,
+#dokan-seller-listing-wrap .dokan-single-seller .store-wrapper .store-header .store-banner img,
+#dokan-seller-listing-wrap .dokan-single-seller .store-wrapper .store-header .store-banner .tm-store-fallback-banner {
+	display: block !important;
+	width: 100% !important;
+	height: 100% !important;
+}
+
+#dokan-seller-listing-wrap .dokan-single-seller .store-wrapper .store-header .store-banner img {
+	object-fit: cover !important;
+	object-position: center center !important;
 }
 #dokan-seller-listing-wrap.grid-view .store-content {
 	background: transparent !important;
@@ -4863,8 +4873,82 @@ body.tm-mobile-portrait .hero-toggle-row {
 /* Hide Dokan's native numbered pagination from the very first paint so it
    never flashes before the JS arrow pager takes over. The JS can still read
    prev/next hrefs from the hidden element since display:none keeps it in DOM. */
-.pagination-container {
+body.tm-pager-enhanced .pagination-container {
 display: none !important;
+}
+
+/* Fallback/native pagination styling for ecomcine-stores.
+   Keeps the pagination block visually aligned with the original footer look
+   when JS pager enhancement is unavailable. */
+.pagination-container {
+	margin-top: 56px;
+	margin-bottom: 28px;
+	padding: 0 20px;
+}
+
+.pagination-container .pagination-wrap {
+	display: flex;
+	justify-content: center;
+}
+
+.pagination-container ul.pagination {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.pagination-container ul.pagination > li {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.pagination-container ul.pagination > li > a,
+.pagination-container ul.pagination > li > span {
+	min-width: 40px;
+	height: 40px;
+	padding: 0 12px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999px;
+	border: 1px solid rgba(212, 175, 55, 0.45);
+	background: rgba(0, 0, 0, 0.62);
+	color: #D4AF37;
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1;
+	transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+}
+
+.pagination-container ul.pagination > li > a:hover,
+.pagination-container ul.pagination > li > a:focus-visible {
+	background: rgba(212, 175, 55, 0.18);
+	border-color: #D4AF37;
+	transform: translateY(-1px);
+	outline: none;
+}
+
+.pagination-container ul.pagination > li > span.current {
+	background: rgba(212, 175, 55, 0.22);
+	border-color: #D4AF37;
+	color: #f2d77a;
+}
+
+.pagination-container ul.pagination > li > span.dots {
+	min-width: 18px;
+	padding: 0 4px;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	color: rgba(212, 175, 55, 0.85);
 }
 
 #tm-card-pager {
@@ -5442,11 +5526,29 @@ body.tm-showcase-page {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* 1 ─ Store-data: left-aligned flex column */
+#dokan-seller-listing-wrap.ecomcine-store-listing-wrap .store-wrapper {
+	position: relative !important;
+}
+
+#dokan-seller-listing-wrap.ecomcine-store-listing-wrap .store-wrapper .tm-store-card-link {
+	position: absolute !important;
+	inset: 0 !important;
+	z-index: 20 !important;
+	display: block !important;
+	text-decoration: none !important;
+	border: 0 !important;
+}
+
+#dokan-seller-listing-wrap.ecomcine-store-listing-wrap .store-wrapper > *:not(.tm-store-card-link) {
+	pointer-events: none !important;
+}
+
 #dokan-seller-listing-wrap .store-data {
 	display: flex !important;
 	flex-direction: column !important;
 	align-items: flex-start !important;
 	width: 100% !important;
+	gap: 2px !important;
 }
 
 /* 2 ─ Vendor name wrapper: full-width, position:relative anchor.
@@ -5454,20 +5556,53 @@ body.tm-showcase-page {
        vertical position on every card whether featured or not. */
 #dokan-seller-listing-wrap .store-data .vendor-name-featured {
 	position: relative !important;
-	display: block !important;
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: flex-start !important;
 	width: 100% !important;
-	padding-bottom: 32px !important;
+	padding-bottom: 0 !important;
 }
 
-/* 3 ─ Featured label: sits INSIDE the 32px reserved area, not below it.
-       bottom:4px = 4px gap from the baseline of the reserved strip. */
-#dokan-seller-listing-wrap .store-data .featured-label {
-	position: absolute !important;
-	top: auto !important;
-	bottom: 4px !important;
-	left: 0 !important;
-	margin-top: 0 !important;
-	z-index: 5 !important;
+#dokan-seller-listing-wrap .store-data .vendor-name-featured h2 {
+	margin: 0 !important;
+	min-height: 20px !important;
+	display: flex !important;
+	align-items: center !important;
+}
+
+/* 3 ─ Vendor name overlay pill + status badge row */
+#dokan-seller-listing-wrap .store-data .vendor-name-featured .vendor-name-pill {
+	display: inline-flex !important;
+	align-items: center !important;
+	padding: 3px 10px !important;
+	border-radius: 999px !important;
+	background: rgba(0, 0, 0, 0.45) !important;
+	line-height: 1.2 !important;
+}
+
+#dokan-seller-listing-wrap .store-data .vendor-name-featured .tm-card-status-row {
+	display: flex !important;
+	gap: 6px !important;
+	align-items: center !important;
+	margin-top: 3px !important;
+	flex-wrap: wrap !important;
+	min-height: 18px !important;
+}
+
+#dokan-seller-listing-wrap .store-data .vendor-name-featured .tm-card-status-row.tm-card-status-row--empty {
+	visibility: hidden !important;
+}
+
+#dokan-seller-listing-wrap .store-data .vendor-name-featured .tm-card-status-row .featured-label,
+#dokan-seller-listing-wrap .store-data .vendor-name-featured .tm-card-status-row .verified-label {
+	position: static !important;
+	margin: 0 !important;
+	padding: 3px 10px !important;
+	border-radius: 999px !important;
+	font-size: 11px !important;
+	line-height: 1.2 !important;
+	display: inline-flex !important;
+	align-items: center !important;
 }
 
 /* 4 ─ Categories + Location wrappers: left-aligned blocks */
@@ -5477,7 +5612,7 @@ body.tm-showcase-page {
 	width: 100% !important;
 	text-align: left !important;
 	justify-content: flex-start !important;
-	margin-top: 4px !important;
+	margin-top: 2px !important;
 }
 
 /* 5 ─ field-display: plain block so the inline pill inside sizes to content */
@@ -5496,6 +5631,40 @@ body.tm-showcase-page {
 	align-items: center !important;
 	justify-content: flex-start !important;
 	text-align: left !important;
+	gap: 6px !important;
+	padding: 3px 10px !important;
+	border-radius: 999px !important;
+	background: rgba(0, 0, 0, 0.45) !important;
+}
+
+#dokan-seller-listing-wrap .store-data .store-categories-display .tm-card-category-label {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 4px !important;
+	font-size: 10px !important;
+	font-weight: 700 !important;
+	letter-spacing: 0.08em !important;
+	text-transform: uppercase !important;
+	color: #d4af37 !important;
+	opacity: 0.95 !important;
+	white-space: nowrap !important;
+}
+
+#dokan-seller-listing-wrap .store-data .store-categories-display .tm-card-category-label::before {
+	content: '' !important;
+	width: 6px !important;
+	height: 6px !important;
+	border-radius: 50% !important;
+	background: #d4af37 !important;
+	box-shadow: 0 0 8px rgba(212, 175, 55, 0.55) !important;
+	flex-shrink: 0 !important;
+}
+
+#dokan-seller-listing-wrap .store-data .store-categories-display .tm-card-category-value {
+	font-size: 12px !important;
+	color: #c0c0c0 !important;
+	font-style: italic !important;
+	text-align: left !important;
 }
 #dokan-seller-listing-wrap .store-data .store-categories-display .tm-combo-pill__cats,
 #dokan-seller-listing-wrap .store-data .store-categories-display .tm-combo-pill__level,
@@ -5509,12 +5678,24 @@ body.tm-showcase-page {
 	display: inline-flex !important;
 	align-items: center !important;
 	gap: 6px !important;
-	padding: 4px 14px !important;
+	padding: 3px 10px !important;
 	border-radius: 999px !important;
 	background: rgba(0, 0, 0, 0.45) !important;
 	font-size: 12px !important;
 	color: #C0C0C0 !important;
 	font-style: italic !important;
+}
+
+#dokan-seller-listing-wrap.grid-view .store-content {
+	position: absolute !important;
+	bottom: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 55%, transparent 100%) !important;
+	padding: 10px 12px 38px 12px !important;
+	z-index: 5 !important;
+	text-align: left !important;
+	display: block !important;
 }
 
 /* Keep geo-address text colour consistent */

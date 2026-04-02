@@ -139,33 +139,45 @@ add_shortcode( 'vendors_map', function() {
 
 	// ── Pre-flight checks ─────────────────────────────────────────────────────
 
-	if ( ! function_exists( 'dokan_pro' ) || ! dokan_pro()->module->is_active( 'geolocation' ) ) {
-		return '<p>Geolocation module is not active.</p>';
-	}
+	// Use EcomCine canonical token getter (reads own settings, falls back to Dokan).
+	$mapbox_access_token = function_exists( 'ecomcine_get_mapbox_token' )
+		? ecomcine_get_mapbox_token()
+		: ( function_exists( 'dokan_get_option' ) ? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' ) : '' );
 
-	if ( 'mapbox' !== dokan_get_option( 'map_api_source', 'dokan_appearance', 'google' ) ) {
-		return '<p>Please set Map API Source to Mapbox in Dokan settings.</p>';
-	}
-
-	$mapbox_access_token = dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' );
 	if ( empty( $mapbox_access_token ) ) {
-		return '<p>Please configure Mapbox Access Token in Dokan → Settings → Appearance.</p>';
+		return '<p>Please configure the Mapbox Access Token in EcomCine → Settings.</p>';
 	}
 
 	// ── Build vendor data ─────────────────────────────────────────────────────
 
-	$users = get_users( array(
-		'role'       => 'seller',
-		'number'     => -1,
-		'meta_query' => array(
-			'relation' => 'AND',
-			array( 'key' => 'dokan_geo_latitude',   'compare' => 'EXISTS' ),
-			array( 'key' => 'dokan_geo_longitude',  'compare' => 'EXISTS' ),
-			// Same two-gate criteria as the store listing: approved + L1-complete.
-			array( 'key' => 'dokan_enable_selling', 'value'   => 'yes', 'compare' => '=' ),
-			array( 'key' => 'tm_l1_complete',       'value'   => '1',   'compare' => '=' ),
-		),
-	) );
+	// Use ecomcine_get_persons() for role portability (seller ↔ ecomcine_person).
+	$users = function_exists( 'ecomcine_get_persons' )
+		? ecomcine_get_persons( array(
+			'meta_query' => array(
+				'relation' => 'AND',
+				array( 'key' => 'dokan_geo_latitude',  'compare' => 'EXISTS' ),
+				array( 'key' => 'dokan_geo_longitude', 'compare' => 'EXISTS' ),
+				array( 'key' => 'tm_l1_complete',      'value'   => '1', 'compare' => '=' ),
+			),
+		) )
+		: get_users( array(
+			'role'       => 'seller',
+			'number'     => -1,
+			'meta_query' => array(
+				'relation' => 'AND',
+				array( 'key' => 'dokan_geo_latitude',   'compare' => 'EXISTS' ),
+				array( 'key' => 'dokan_geo_longitude',  'compare' => 'EXISTS' ),
+				array( 'key' => 'dokan_enable_selling', 'value'   => 'yes', 'compare' => '=' ),
+				array( 'key' => 'tm_l1_complete',       'value'   => '1',   'compare' => '=' ),
+			),
+		) );
+
+	// Portability: filter to enabled persons only using EcomCine canonical check.
+	if ( function_exists( 'ecomcine_is_person_enabled' ) ) {
+		$users = array_values( array_filter( $users, static function ( $u ) {
+			return ecomcine_is_person_enabled( $u->ID );
+		} ) );
+	}
 
 	if ( empty( $users ) ) {
 		return '<p>No vendors with location data found.</p>';
@@ -201,11 +213,15 @@ add_shortcode( 'vendors_map', function() {
 		$v_terms = wp_get_object_terms( $user->ID, 'store_category', array( 'fields' => 'slugs' ) );
 		$v_cats  = ( is_array( $v_terms ) && ! is_wp_error( $v_terms ) ) ? $v_terms : array();
 
-		$store_info       = dokan_get_store_info( $user->ID );
+		$store_info       = function_exists( 'ecomcine_get_person_info' )
+			? ecomcine_get_person_info( $user->ID )
+			: ( function_exists( 'dokan_get_store_info' ) ? dokan_get_store_info( $user->ID ) : array() );
 		$vendor_markers[] = array(
 			'id'         => $user->ID,
 			'name'       => $store_info['store_name'] ?? $user->display_name,
-			'url'        => dokan_get_store_url( $user->ID ),
+			'url'        => function_exists( 'ecomcine_get_person_url' )
+				? ecomcine_get_person_url( $user->ID )
+				: ( function_exists( 'dokan_get_store_url' ) ? dokan_get_store_url( $user->ID ) : get_author_posts_url( $user->ID ) ),
 			'lat'        => $lat,
 			'lng'        => $lng,
 			'address'    => get_user_meta( $user->ID, 'dokan_geo_address', true ),

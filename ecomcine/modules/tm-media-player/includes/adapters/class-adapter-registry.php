@@ -64,6 +64,22 @@ final class TMP_Adapter_Registry {
 			return new TMP_WP_Media_Source_Provider();
 		}
 
+		// In standalone runtime, source media from tm_vendor CPT records.
+		if ( class_exists( 'EcomCine_Admin_Settings', false ) && method_exists( 'EcomCine_Admin_Settings', 'get_runtime_mode' ) ) {
+			$runtime_mode = (string) EcomCine_Admin_Settings::get_runtime_mode();
+			if ( 'wp_cpt' === $runtime_mode ) {
+				return new TMP_WP_Media_Source_Provider();
+			}
+		}
+
+		$settings = get_option( 'ecomcine_settings', array() );
+		if ( is_array( $settings ) ) {
+			$runtime_mode = isset( $settings['runtime_mode'] ) ? (string) $settings['runtime_mode'] : '';
+			if ( 'wp_cpt' === $runtime_mode ) {
+				return new TMP_WP_Media_Source_Provider();
+			}
+		}
+
 		// Compat adapter whenever Dokan is available.
 		return new TMP_Compat_Media_Source_Provider();
 	}

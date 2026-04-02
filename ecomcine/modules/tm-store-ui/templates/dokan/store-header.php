@@ -1,9 +1,8 @@
 <?php
-if ( ! function_exists( 'dokan' ) || ! dokan()->vendor ) {
-    return;
-}
-
-$store_user = dokan()->vendor->get( get_query_var( 'author' ) );
+$vendor_context_id = absint( get_query_var( 'author' ) );
+$store_user        = function_exists( 'tm_store_ui_get_store_user' )
+	? tm_store_ui_get_store_user( $vendor_context_id )
+	: null;
 if ( ! $store_user ) {
     return;
 }
@@ -997,7 +996,8 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                     <?php foreach ( $social_fields as $key => $field ) { ?>
                                         <?php if ( ! empty( $social_info[ $key ] ) ) { ?>
                                             <li>
-                                                <a href="<?php echo esc_url( $social_info[ $key ] ); ?>" target="_blank"><?php echo TM_Icons::svg( $field['icon'] ); ?></a>
+                                                <?php $icon_name = isset( $field['icon'] ) && is_string( $field['icon'] ) ? $field['icon'] : 'external-link'; ?>
+                                                <a href="<?php echo esc_url( $social_info[ $key ] ); ?>" target="_blank"><?php echo TM_Icons::svg( $icon_name ); ?></a>
                                             </li>
                                         <?php } ?>
                                     <?php } ?>

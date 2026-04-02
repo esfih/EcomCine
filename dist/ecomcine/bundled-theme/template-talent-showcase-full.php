@@ -40,15 +40,15 @@ if ( ! empty( $vendor_ids ) ) {
 	} );
 }
 
-$GLOBALS['ecomcine_suppress_site_header'] = true;
+$GLOBALS['ecomcine_suppress_header'] = true;
 get_header();
 ?>
 
 <div class="tm-showcase-takeover">
-	<div class="dokan-store-wrap layout-full">
-		<div id="dokan-primary" class="dokan-single-store dokan-store-full-width">
+	<div class="ecomcine-person-wrap layout-full">
+		<div id="ecomcine-person-primary" class="ecomcine-person-profile ecomcine-full-width">
 			<?php if ( $vendor_id ) : ?>
-				<?php dokan_get_template_part( 'store-header' ); ?>
+				<?php ecomcine_load_template( 'person-header', [ 'vendor_id' => $vendor_id ] ); ?>
 			<?php else : ?>
 				<div class="tm-talent-showcase-empty">No talent available.</div>
 			<?php endif; ?>

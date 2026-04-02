@@ -282,7 +282,7 @@ jQuery(document).ready(function($) {
 		$modal.find('.editor-title .modal-help-wrapper').remove();
 		$('body').removeClass('tm-birthdate-modal-open');
 
-		$modal.removeClass('is-open is-location-editor is-onboard-modal').attr('aria-hidden', 'true');
+		$modal.removeClass('is-open is-location-editor is-onboard-modal tm-location-manual-mode').attr('aria-hidden', 'true');
 		$modal.find('.editor-body').empty();
 		$modal.find('.editor-save-btn').show().text('Save');
 		$modal.find('.editor-cancel-btn').text('Cancel');
@@ -2344,8 +2344,11 @@ jQuery(document).ready(function($) {
 	}
 
 	function ensureMapboxAssets(readyCallback) {
+		if (typeof readyCallback !== 'function') {
+			return;
+		}
 		if (typeof mapboxgl !== 'undefined' && typeof MapboxGeocoder !== 'undefined') {
-			readyCallback();
+			readyCallback(true);
 			return;
 		}
 		mapboxLoader.queue.push(readyCallback);
@@ -2357,32 +2360,50 @@ jQuery(document).ready(function($) {
 			pending--;
 			if (pending > 0) return;
 			mapboxLoader.loading = false;
-			if (typeof mapboxgl === 'undefined' || typeof MapboxGeocoder === 'undefined') {
-				mapboxLoader.queue = [];
-				return;
-			}
+			var assetsReady = (typeof mapboxgl !== 'undefined' && typeof MapboxGeocoder !== 'undefined');
 			var queue = mapboxLoader.queue.slice();
 			mapboxLoader.queue = [];
 			queue.forEach(function(fn) {
 				try {
-					fn();
+					fn(assetsReady);
 				} catch (e) {}
 			});
 		};
 
-		injectMapboxCss('https://api.mapbox.com/mapbox-gl-js/v1.4.1/mapbox-gl.css', 'gl');
-		injectMapboxCss('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.css', 'geocoder');
+		injectMapboxCss('https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css', 'gl');
+		injectMapboxCss('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.2/mapbox-gl-geocoder.css', 'geocoder');
 
 		pending += 1;
-		injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/v1.4.1/mapbox-gl.js', function() {
+		injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js', function() {
 			pending += 1;
-			injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.min.js', done);
+			injectMapboxScript('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.2/mapbox-gl-geocoder.min.js', done);
 			done();
 		});
 	}
 
+	function enableLocationManualMode($wrapper, message) {
+		var $modal = $('.tm-field-editor-modal');
+		var $panel = $wrapper.find('.inline-mapbox-panel').first();
+		var $input = $wrapper.find('.location-search-input').first();
+		var $note = $wrapper.find('.tm-location-fallback-note').first();
+
+		$modal.addClass('tm-location-manual-mode');
+		if ($panel.length) {
+			$panel.hide();
+		}
+		if ($input.length) {
+			$input.show();
+		}
+		if (!$note.length) {
+			$note = $('<div class="tm-location-fallback-note" aria-live="polite"></div>');
+			$wrapper.append($note);
+		}
+		$note.text(message || 'Map is unavailable right now. You can still type an address and save.').show();
+	}
+
 	function initInlineLocationMap($wrapper) {
 		if (!$wrapper || !$wrapper.length) return;
+		var $modal = $('.tm-field-editor-modal');
 		var $panel = $wrapper.find('.inline-mapbox-panel').first();
 		if (!$panel.length) return;
 		if ($panel.data('mapbox-initialized')) return;
@@ -2394,11 +2415,20 @@ jQuery(document).ready(function($) {
 		if (!mapboxToken && window.vendorStoreData && window.vendorStoreData.mapbox_token) {
 			mapboxToken = window.vendorStoreData.mapbox_token;
 		}
-		if (!mapboxToken) return;
+		if (!mapboxToken) {
+			enableLocationManualMode($wrapper, 'Mapbox token is missing. Type your location and save.');
+			return;
+		}
 
-		ensureMapboxAssets(function() {
+		ensureMapboxAssets(function(assetsReady) {
+			if (!assetsReady) {
+				enableLocationManualMode($wrapper, 'Mapbox assets failed to load. Type your location and save.');
+				return;
+			}
 			if ($panel.data('mapbox-initialized')) return;
 			if (typeof mapboxgl === 'undefined' || typeof MapboxGeocoder === 'undefined') return;
+
+			try {
 
 			mapboxgl.accessToken = mapboxToken;
 
@@ -2491,12 +2521,21 @@ jQuery(document).ready(function($) {
 				$dataInput.val('');
 			});
 
+			$wrapper.find('.tm-location-fallback-note').hide();
+			$modal.removeClass('tm-location-manual-mode');
+			$panel.show();
 			$input.hide();
 			$panel.data('mapbox-initialized', true);
 
 			setTimeout(function() {
 				map.resize();
 			}, 80);
+			} catch (err) {
+				enableLocationManualMode($wrapper, 'Mapbox UI failed to initialize. Type your location and save.');
+				if (window.console && typeof window.console.error === 'function') {
+					window.console.error('[tm-store-ui] Mapbox modal init failed', err);
+				}
+			}
 		});
 	}
 

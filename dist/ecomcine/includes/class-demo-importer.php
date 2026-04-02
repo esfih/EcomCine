@@ -127,15 +127,21 @@ class EcomCine_Demo_Importer {
 			'last_name'    => sanitize_text_field( $v['last_name'] ?? '' ),
 		] );
 
-		// Ensure the seller role (Dokan).
+		// Set ecomcine_person role as primary; also assign 'seller' when Dokan is active
+		// so existing Dokan-dependent code continues to work during migration.
 		$user = new WP_User( $user_id );
+		if ( get_role( 'ecomcine_person' ) ) {
+			if ( ! in_array( 'ecomcine_person', (array) $user->roles, true ) ) {
+				$user->add_role( 'ecomcine_person' );
+			}
+		}
 		if ( isset( $GLOBALS['wp_roles'] ) && array_key_exists( 'seller', $GLOBALS['wp_roles']->roles ) ) {
 			if ( ! in_array( 'seller', (array) $user->roles, true ) ) {
-				$user->set_role( 'seller' );
+				$user->add_role( 'seller' );
 			}
-		} elseif ( ! $is_update ) {
+		} elseif ( ! get_role( 'ecomcine_person' ) && ! $is_update ) {
 			$user->set_role( 'subscriber' );
-			$result['log'][] = "Dokan 'seller' role not found; {$login} set to subscriber.";
+			$result['log'][] = "No recognised person role found; {$login} set to subscriber.";
 		}
 
 		// Write all plain usermeta (excluding dokan_profile_settings which we handle separately).
@@ -208,10 +214,66 @@ class EcomCine_Demo_Importer {
 			update_user_meta( $user_id, 'dokan_profile_settings', $dps );
 		}
 
+		// Write ecomcine_* canonical meta (authoritative; Dokan meta kept for compat).
+		$ecomcine_info = array(
+			'ecomcine_store_name' => sanitize_text_field( $dps['store_name'] ?? '' ),
+			'ecomcine_bio'        => wp_kses_post( $dps['vendor_biography'] ?? '' ),
+			'ecomcine_phone'      => sanitize_text_field( $dps['phone'] ?? '' ),
+			'ecomcine_banner_id'  => (int) ( $dps['banner'] ?? 0 ),
+			'ecomcine_avatar_id'  => (int) ( $dps['gravatar'] ?? 0 ),
+			'ecomcine_address'    => is_array( $dps['address'] ?? null ) ? $dps['address'] : array(),
+			'ecomcine_social'     => is_array( $dps['social'] ?? null ) ? $dps['social'] : array(),
+			'ecomcine_enabled'    => '1',
+		);
+		foreach ( $ecomcine_info as $meta_key => $meta_value ) {
+			update_user_meta( $user_id, $meta_key, $meta_value );
+		}
+
 		// Always guarantee the two flags every demo vendor requires,
 		// regardless of what the JSON export contained.
 		update_user_meta( $user_id, 'dokan_enable_selling', 'yes' );
 		update_user_meta( $user_id, 'tm_l1_complete', '1' );
+
+		// Assign EcomCine person categories.
+		// Prefer the top-level 'store_categories' key (array of slugs);
+		// fall back to legacy dps['categories'] objects for backward compat.
+		$category_slugs = array();
+		if ( ! empty( $v['store_categories'] ) && is_array( $v['store_categories'] ) ) {
+			foreach ( $v['store_categories'] as $slug_raw ) {
+				$s = sanitize_title( (string) $slug_raw );
+				if ( '' !== $s && 'uncategorized' !== $s ) {
+					$category_slugs[] = $s;
+				}
+			}
+		}
+		if ( empty( $category_slugs ) ) {
+			$category_objects = isset( $dps['categories'] ) ? (array) $dps['categories'] : [];
+			foreach ( $category_objects as $cat ) {
+				$s = isset( $cat['slug'] ) ? sanitize_title( $cat['slug'] ) : '';
+				if ( '' !== $s && 'uncategorized' !== $s ) {
+					$category_slugs[] = $s;
+				}
+			}
+		}
+
+		if ( ! empty( $category_slugs ) && class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			EcomCine_Person_Category_Registry::set_person_categories_by_slug( $user_id, $category_slugs );
+			$result['log'][] = "Set EcomCine categories for {$login}: " . implode( ', ', $category_slugs );
+		}
+
+		// Also keep store_category taxonomy assignments when Dokan is present.
+		if ( ! empty( $category_slugs ) && taxonomy_exists( 'store_category' ) ) {
+			$term_ids = [];
+			foreach ( $category_slugs as $s ) {
+				$term = get_term_by( 'slug', $s, 'store_category' );
+				if ( $term && ! is_wp_error( $term ) ) {
+					$term_ids[] = (int) $term->term_id;
+				}
+			}
+			if ( ! empty( $term_ids ) ) {
+				wp_set_object_terms( $user_id, $term_ids, 'store_category' );
+			}
+		}
 
 		if ( $is_update ) {
 			return 'updated';

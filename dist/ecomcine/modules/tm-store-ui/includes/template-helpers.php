@@ -262,33 +262,70 @@ function tm_get_vendor_geo_location_display( $vendor_id, $store_info = array(), 
 		$geo_address = is_string( $store_info['location'] ) ? $store_info['location'] : '';
 	}
 	if ( empty( $geo_address ) ) { return ''; }
-	$address_parts = array_values( array_filter( array_map( 'trim', explode( ',', $geo_address ) ), 'strlen' ) );
-	$country_name  = end( $address_parts );
-	$countries     = WC()->countries->get_countries();
-	$country_code  = '';
-	foreach ( $countries as $code => $name ) {
-		if ( stripos( $name, $country_name ) !== false || stripos( $country_name, $name ) !== false ) {
-			$country_code = $code;
-			break;
+
+	// If the stored value is raw lat/lng coordinates (e.g. "37.444508,-122.16095"),
+	// it cannot be parsed as a human-readable address — fall back to the address array.
+	if ( preg_match( '/^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/', trim( $geo_address ) ) ) {
+		// Build a display string from address fields instead.
+		$city    = trim( $store_address['city']  ?? '' );
+		$state   = trim( $store_address['state'] ?? '' );
+		$country = trim( $store_address['country'] ?? '' );
+		if ( empty( $city ) && empty( $state ) && empty( $country ) ) {
+			return ''; // Nothing useful to show.
 		}
+		$parts = array_filter( [ $city, $state ] );
+		$geo_address = implode( ', ', $parts );
+		// country_code for flag
+		$country_code = strlen( $country ) === 2 ? strtoupper( $country ) : '';
+		if ( ! $country_code ) {
+			$countries = WC()->countries->get_countries();
+			foreach ( $countries as $code => $name ) {
+				if ( stripos( $name, $country ) !== false || stripos( $country, $name ) !== false ) {
+					$country_code = strtoupper( $code );
+					break;
+				}
+			}
+		}
+	} else {
+		$address_parts = array_values( array_filter( array_map( 'trim', explode( ',', $geo_address ) ), 'strlen' ) );
+		$country_name  = end( $address_parts );
+		$countries     = WC()->countries->get_countries();
+		$country_code  = '';
+		foreach ( $countries as $code => $name ) {
+			if ( stripos( $name, $country_name ) !== false || stripos( $country_name, $name ) !== false ) {
+				$country_code = $code;
+				break;
+			}
+		}
+		if ( ! $country_code && ! empty( $store_address['country'] ) ) {
+			$country_code = $store_address['country'];
+		}
+		$country_code = strtoupper( (string) $country_code );
 	}
-	if ( ! $country_code && ! empty( $store_address['country'] ) ) {
-		$country_code = $store_address['country'];
-	}
+
 	$flag = '';
 	if ( $country_code && strlen( $country_code ) === 2 ) {
-		$country_code = strtoupper( $country_code );
 		$flag_code    = strtolower( $country_code );
 		$flag = '<img src="https://flagcdn.com/w40/' . esc_attr( $flag_code ) . '.png"'
 		      . ' srcset="https://flagcdn.com/w80/' . esc_attr( $flag_code ) . '.png 2x"'
 		      . ' width="35" height="35" loading="lazy" alt="" class="country-flag-img">';
 	}
-	$geo_address_without_country = count( $address_parts ) >= 2
-		? implode( ', ', array_slice( $address_parts, 0, 2 ) )
-		: $geo_address;
+
+	if ( empty( $geo_address ) ) { return ''; }
+
+	// Trim the display to city + state/region (first two parts) if not already done.
+	if ( ! isset( $address_parts ) ) {
+		$geo_address_without_country = $geo_address;
+	} else {
+		$geo_address_without_country = count( $address_parts ) >= 2
+			? implode( ', ', array_slice( $address_parts, 0, 2 ) )
+			: $geo_address;
+	}
+
 	$display_parts = [];
 	if ( ! empty( $flag ) ) {
-		$country_full_name = isset( $countries[ $country_code ] ) ? $countries[ $country_code ] : $country_name;
+		$countries_ref = isset( $countries ) ? $countries : WC()->countries->get_countries();
+		$country_full_name = isset( $countries_ref[ $country_code ] ) ? $countries_ref[ $country_code ] : $country_code;
 		$display_parts[] = '<span class="country-flag" title="' . esc_attr( $country_full_name ) . '">' . $flag . '</span>';
 	}
 	$display_parts[] = '<span class="geo-address">' . esc_html( $geo_address_without_country ) . '</span>';

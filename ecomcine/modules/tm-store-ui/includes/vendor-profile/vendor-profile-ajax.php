@@ -1293,7 +1293,9 @@ add_action( 'wp_ajax_vendor_update_location', function() {
 		// No coordinates provided (user typed a free-text address without
 		// selecting from the autocomplete dropdown). Re-geocode server-side
 		// via the Mapbox Geocoding API so the map dot stays accurate.
-		$token = dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' );
+		$token = function_exists( 'ecomcine_get_mapbox_token' )
+			? ecomcine_get_mapbox_token()
+			: ( function_exists( 'dokan_get_option' ) ? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' ) : '' );
 		if ( ! empty( $token ) ) {
 			$geocode_url = add_query_arg(
 				array(

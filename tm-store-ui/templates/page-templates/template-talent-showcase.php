@@ -50,7 +50,14 @@ get_header( 'shop' );
 <div class="dokan-store-wrap layout-full">
 	<div id="dokan-primary" class="dokan-single-store dokan-store-full-width">
 		<?php if ( $vendor_id ) : ?>
-			<?php dokan_get_template_part( 'store-header' ); ?>
+			<?php
+			$tm_rendered = function_exists( 'tm_store_ui_render_store_header' )
+				? tm_store_ui_render_store_header( $vendor_id )
+				: false;
+			if ( ! $tm_rendered ) {
+				echo '<div class="tm-talent-showcase-empty">Unable to render talent profile.</div>';
+			}
+			?>
 		<?php else : ?>
 			<div class="tm-talent-showcase-empty">No talent available.</div>
 		<?php endif; ?>

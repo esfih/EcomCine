@@ -53,12 +53,46 @@ function tm_store_ui_enqueue_assets() {
 		'all'
 	);
 
+	// Preload Mapbox assets through WP enqueue pipeline so the location editor
+	// modal does not rely on dynamic runtime script injection.
+	wp_enqueue_style(
+		'tm-store-ui-mapbox-gl',
+		'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css',
+		array(),
+		'2.15.0',
+		'all'
+	);
+
+	wp_enqueue_style(
+		'tm-store-ui-mapbox-geocoder',
+		'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.2/mapbox-gl-geocoder.css',
+		array( 'tm-store-ui-mapbox-gl' ),
+		'5.0.2',
+		'all'
+	);
+
+	wp_enqueue_script(
+		'tm-store-ui-mapbox-gl-js',
+		'https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js',
+		array(),
+		'2.15.0',
+		true
+	);
+
+	wp_enqueue_script(
+		'tm-store-ui-mapbox-geocoder-js',
+		'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.2/mapbox-gl-geocoder.min.js',
+		array( 'tm-store-ui-mapbox-gl-js' ),
+		'5.0.2',
+		true
+	);
+
 	// Vendor store JS — biography lightbox, inline editing, social metrics polling,
 	// location map modal, onboard share link.
 	wp_enqueue_script(
 		'tm-store-ui-js',
 		TM_STORE_UI_URL . 'assets/js/vendor-store.js',
-		array( 'jquery' ),
+		array( 'jquery', 'tm-store-ui-mapbox-geocoder-js' ),
 		TM_STORE_UI_VERSION,
 		true
 	);
@@ -67,7 +101,6 @@ function tm_store_ui_enqueue_assets() {
 	$_vendor_id  = 0;
 	$_is_owner   = false;
 	$_can_edit   = false;
-	$_mapbox     = '';
 
 	if ( function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
 		$_vendor_id     = absint( get_query_var( 'author' ) );
@@ -78,10 +111,16 @@ function tm_store_ui_enqueue_assets() {
 				? (bool) tm_can_edit_vendor_profile( $_vendor_id )
 				: $_is_owner;
 		}
-		$_mapbox = function_exists( 'dokan_get_option' )
-			? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
-			: '';
 	}
+
+	// Mapbox token — needed on every page that could show the location geocoder
+	// (store profile, showcase, locations page). Use EcomCine canonical getter
+	// which reads own settings first, then falls back to Dokan geolocation key.
+	$_mapbox = function_exists( 'ecomcine_get_mapbox_token' )
+		? ecomcine_get_mapbox_token()
+		: ( function_exists( 'dokan_get_option' )
+			? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
+			: '' );
 
 	wp_localize_script( 'tm-store-ui-js', 'vendorStoreUiData', array(
 		'ajaxurl'               => admin_url( 'admin-ajax.php' ),

@@ -16,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TM_STORE_UI_VERSION', '1.0.1' );
+define( 'TM_STORE_UI_VERSION', '1.0.2' );
 define( 'TM_STORE_UI_FILE',    __FILE__ );
 define( 'TM_STORE_UI_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'TM_STORE_UI_URL',     plugin_dir_url( __FILE__ ) );

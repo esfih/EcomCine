@@ -11,11 +11,18 @@ if ( ! function_exists( 'tm_get_vendor_public_profile_url' ) ) {
 	 */
 	function tm_get_vendor_public_profile_url( $vendor_id ) {
 		$vendor_id = (int) $vendor_id;
-		if ( ! $vendor_id || ! function_exists( 'dokan_get_store_url' ) ) {
+		if ( ! $vendor_id ) {
 			return '';
 		}
 
-		$canonical_url = dokan_get_store_url( $vendor_id );
+		// Use EcomCine portable function when available.
+		if ( function_exists( 'ecomcine_get_person_url' ) ) {
+			$canonical_url = ecomcine_get_person_url( $vendor_id );
+		} elseif ( function_exists( 'dokan_get_store_url' ) ) {
+			$canonical_url = dokan_get_store_url( $vendor_id );
+		} else {
+			return '';
+		}
 		if ( empty( $canonical_url ) ) {
 			return '';
 		}
@@ -237,11 +244,15 @@ if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 	 */
 	function tm_get_vendor_geo_location_display( $vendor_id, $store_info = array(), $store_address = array() ) {
 		$vendor_id = (int) $vendor_id;
-		if ( ! $vendor_id || ! function_exists( 'WC' ) ) {
+		if ( ! $vendor_id ) {
 			return '';
 		}
 
-		$geo_address = get_user_meta( $vendor_id, 'dokan_geo_address', true );
+		$geo_address = get_user_meta( $vendor_id, 'ecomcine_geo_address', true );
+		if ( '' === $geo_address ) {
+			// Dokan fallback.
+			$geo_address = (string) get_user_meta( $vendor_id, 'dokan_geo_address', true );
+		}
 		if ( empty( $geo_address ) && ! empty( $store_info['location'] ) ) {
 			$geo_address = is_string( $store_info['location'] ) ? $store_info['location'] : '';
 		}
@@ -249,7 +260,7 @@ if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 			return '';
 		}
 
-		$countries    = WC()->countries->get_countries();
+		$countries    = function_exists( 'ecomcine_get_countries' ) ? ecomcine_get_countries() : array();
 		$country_code = '';
 		$flag         = '';
 

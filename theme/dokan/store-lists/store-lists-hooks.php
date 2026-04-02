@@ -774,6 +774,83 @@ add_action( 'wp_footer', function() {
 			var $wrap = $( '#dokan-seller-listing-wrap' ).first();
 			if ( ! $wrap.length ) { return; }
 
+			function syncShellWidth() {
+				var cols = parseInt( $wrap.attr( 'data-grid-columns' ), 10 ) || 4;
+				var rows = parseInt( $wrap.attr( 'data-grid-rows' ), 10 ) || 2;
+				var vw   = window.innerWidth || document.documentElement.clientWidth || 0;
+				var vh   = window.innerHeight || document.documentElement.clientHeight || 0;
+
+				if ( vw <= 0 || vh <= 0 ) { return; }
+
+				var baseShell = Math.min( 1920, Math.max( 320, vw - 40 ) );
+				var shell     = baseShell;
+				var rowGap    = 26;
+				var isTarget  = ( rows === 3 && ( cols === 3 || cols === 4 ) );
+				var bodyEl    = document.body;
+
+				if ( bodyEl ) {
+					bodyEl.classList.remove( 'tm-grid-fit-target', 'tm-grid-fit-active' );
+				}
+
+				if ( isTarget ) {
+					if ( bodyEl ) {
+						bodyEl.classList.add( 'tm-grid-fit-target' );
+					}
+
+					rowGap = 22;
+
+					var wrapRect  = $wrap[0].getBoundingClientRect();
+					var gridTop   = Math.max( 0, wrapRect.top );
+					var $pagerBar = $( '#tm-pager-bar:visible' ).first();
+					var pagerH    = 0;
+
+					if ( $pagerBar.length ) {
+						pagerH = Math.ceil( $pagerBar.outerHeight( true ) || 0 );
+					}
+
+					if ( ! pagerH ) {
+						var $nativePag = $wrap.find( '.pagination-container' ).first();
+						if ( $nativePag.length ) {
+							pagerH = Math.ceil( $nativePag.outerHeight( true ) || 0 );
+						}
+					}
+
+					if ( ! pagerH ) {
+						pagerH = 64;
+					}
+
+					var usableH       = vh - gridTop - pagerH - 18;
+					var avatarOverhang = 30;
+					if ( usableH > 240 ) {
+						var cardH     = ( usableH - ( Math.max( rows - 1, 0 ) * rowGap ) - avatarOverhang ) / rows;
+						var cardW     = cardH * ( 16 / 9 );
+						var slotW     = cardW + 30;
+						var fitShellW = cols * slotW;
+
+						if ( isFinite( fitShellW ) && fitShellW > 0 ) {
+							shell = Math.min( baseShell, fitShellW );
+						}
+					}
+
+					if ( bodyEl && shell < ( baseShell - 2 ) ) {
+						bodyEl.classList.add( 'tm-grid-fit-active' );
+					}
+				}
+
+				document.documentElement.style.setProperty( '--tm-shell-row-gap', rowGap + 'px' );
+				document.documentElement.style.setProperty( '--tm-shell-sync-width', Math.max( 320, Math.floor( shell ) ) + 'px' );
+			}
+
+			var shellRaf = 0;
+			$( window ).off( 'resize.tmShellSync orientationchange.tmShellSync' ).on( 'resize.tmShellSync orientationchange.tmShellSync', function() {
+				if ( shellRaf ) {
+					window.cancelAnimationFrame( shellRaf );
+				}
+				shellRaf = window.requestAnimationFrame( syncShellWidth );
+			} );
+
+			syncShellWidth();
+
 			var $pag     = $wrap.find( '.pagination-container' ).first();
 			var prevHref = null, nextHref = null;
 			if ( $pag.length ) {
@@ -898,6 +975,11 @@ add_action( 'wp_footer', function() {
 			if ( hasContent ) { // Only append the bar if it has any content (arrows or buttons)
 				$pager.append( $bar );
 			}
+
+			if ( shellRaf ) {
+				window.cancelAnimationFrame( shellRaf );
+			}
+			shellRaf = window.requestAnimationFrame( syncShellWidth );
 		})();
 
 		} // initStoreFilters
