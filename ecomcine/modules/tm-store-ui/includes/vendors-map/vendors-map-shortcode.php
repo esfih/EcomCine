@@ -41,9 +41,10 @@ add_action( 'wp_ajax_tm_fix_vendor_geocoords', function() {
 		wp_send_json_error( 'Missing user_id' );
 	}
 
-	$address = get_user_meta( $user_id, 'dokan_geo_address', true );
+	$geo     = function_exists( 'ecomcine_get_geo' ) ? ecomcine_get_geo( $user_id ) : array();
+	$address = isset( $geo['address'] ) ? (string) $geo['address'] : '';
 	if ( empty( $address ) ) {
-		wp_send_json_error( 'No dokan_geo_address set for user ' . $user_id );
+		wp_send_json_error( 'No canonical geo address set for user ' . $user_id );
 	}
 
 	$token = dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' );
@@ -75,11 +76,11 @@ add_action( 'wp_ajax_tm_fix_vendor_geocoords', function() {
 	$place   = $body['features'][0]['place_name'] ?? $address;
 
 	// Capture old values before overwriting
-	$lat_old = floatval( get_user_meta( $user_id, 'dokan_geo_latitude',  true ) );
-	$lng_old = floatval( get_user_meta( $user_id, 'dokan_geo_longitude', true ) );
+	$lat_old = isset( $geo['lat'] ) ? floatval( $geo['lat'] ) : 0.0;
+	$lng_old = isset( $geo['lng'] ) ? floatval( $geo['lng'] ) : 0.0;
 
-	update_user_meta( $user_id, 'dokan_geo_latitude',  $lat_new );
-	update_user_meta( $user_id, 'dokan_geo_longitude', $lng_new );
+	update_user_meta( $user_id, 'ecomcine_geo_lat', $lat_new );
+	update_user_meta( $user_id, 'ecomcine_geo_lng', $lng_new );
 
 	wp_send_json_success( array(
 		'user_id'    => $user_id,
@@ -155,8 +156,9 @@ add_shortcode( 'vendors_map', function() {
 		? ecomcine_get_persons( array(
 			'meta_query' => array(
 				'relation' => 'AND',
-				array( 'key' => 'dokan_geo_latitude',  'compare' => 'EXISTS' ),
-				array( 'key' => 'dokan_geo_longitude', 'compare' => 'EXISTS' ),
+				array( 'key' => 'ecomcine_geo_lat',  'compare' => 'EXISTS' ),
+				array( 'key' => 'ecomcine_geo_lng', 'compare' => 'EXISTS' ),
+				array( 'key' => 'ecomcine_enabled', 'value' => '1', 'compare' => '=' ),
 				array( 'key' => 'tm_l1_complete',      'value'   => '1', 'compare' => '=' ),
 			),
 		) )
@@ -165,9 +167,9 @@ add_shortcode( 'vendors_map', function() {
 			'number'     => -1,
 			'meta_query' => array(
 				'relation' => 'AND',
-				array( 'key' => 'dokan_geo_latitude',   'compare' => 'EXISTS' ),
-				array( 'key' => 'dokan_geo_longitude',  'compare' => 'EXISTS' ),
-				array( 'key' => 'dokan_enable_selling', 'value'   => 'yes', 'compare' => '=' ),
+				array( 'key' => 'ecomcine_geo_lat',   'compare' => 'EXISTS' ),
+				array( 'key' => 'ecomcine_geo_lng',  'compare' => 'EXISTS' ),
+				array( 'key' => 'ecomcine_enabled', 'value'   => '1', 'compare' => '=' ),
 				array( 'key' => 'tm_l1_complete',       'value'   => '1',   'compare' => '=' ),
 			),
 		) );
@@ -185,8 +187,9 @@ add_shortcode( 'vendors_map', function() {
 
 	$vendor_markers = array();
 	foreach ( $users as $user ) {
-		$lat_raw = get_user_meta( $user->ID, 'dokan_geo_latitude',  true );
-		$lng_raw = get_user_meta( $user->ID, 'dokan_geo_longitude', true );
+		$user_geo = function_exists( 'ecomcine_get_geo' ) ? ecomcine_get_geo( $user->ID ) : array();
+		$lat_raw = isset( $user_geo['lat'] ) ? $user_geo['lat'] : '';
+		$lng_raw = isset( $user_geo['lng'] ) ? $user_geo['lng'] : '';
 
 		// Reject empty, serialized, JSON or array meta — is_numeric accepts '51.5' but
 		// not 'a:1:{...}', so this is the fastest guard against corrupted Dokan data.
@@ -216,7 +219,7 @@ add_shortcode( 'vendors_map', function() {
 			}
 		}
 
-		$address_str  = (string) get_user_meta( $user->ID, 'dokan_geo_address', true );
+		$address_str  = isset( $user_geo['address'] ) ? (string) $user_geo['address'] : '';
 		$address_parts = array_map( 'trim', explode( ',', $address_str ) );
 		$country_str   = ! empty( $address_parts ) ? end( $address_parts ) : '';
 

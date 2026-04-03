@@ -18,7 +18,7 @@
  * 3. PROFILE SAVE   dokan_store_profile_saved
  *    Persists physical, cameraman, and demographic fields on form submit.
  *
- * @package TM_Store_UI
+ * @package Astra Child
  */
 
 defined( 'ABSPATH' ) || exit;

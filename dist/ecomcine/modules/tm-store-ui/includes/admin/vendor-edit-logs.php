@@ -13,7 +13,7 @@
  * tm_log_admin_vendor_edit()    record a field change
  * tm_sanitize_log_value()       truncate/format a value for display
  *
- * @package TM_Store_UI
+ * @package Astra Child
  */
 
 defined( 'ABSPATH' ) || exit;

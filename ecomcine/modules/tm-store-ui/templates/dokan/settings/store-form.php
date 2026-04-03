@@ -116,7 +116,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
     
     <?php
     // Get existing banner video if set (stored in separate meta)
-    $banner_video_id = get_user_meta( get_current_user_id(), 'dokan_banner_video', true );
+    $banner_video_id = get_user_meta( get_current_user_id(), 'ecomcine_banner_video', true );
     $banner_video_url = $banner_video_id ? wp_get_attachment_url( $banner_video_id ) : '';
     ?>
     
@@ -153,7 +153,8 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
         </label>
         <div class="dokan-w5">
             <?php
-            $video_position = ! empty( $profile_info['banner_video_position'] ) ? $profile_info['banner_video_position'] : 'center';
+            $video_position = (string) get_user_meta( get_current_user_id(), 'ecomcine_banner_video_position', true );
+            $video_position = $video_position ? $video_position : 'center';
             ?>
             <select name="banner_video_position" id="banner_video_position" class="dokan-form-control">
                 <option value="center" <?php selected( $video_position, 'center' ); ?>><?php esc_html_e( 'Center (Default)', 'dokan-lite' ); ?></option>

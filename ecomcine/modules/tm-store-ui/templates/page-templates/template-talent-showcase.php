@@ -44,6 +44,9 @@ if ( defined( 'LSCWP_V' ) ) {
 	do_action( 'litespeed_control_set_nocache', 'showcase page — per-request vendor selection' );
 }
 
+$GLOBALS['ecomcine_suppress_site_header'] = true;
+$GLOBALS['ecomcine_suppress_header'] = true;
+
 get_header( 'shop' );
 ?>
 

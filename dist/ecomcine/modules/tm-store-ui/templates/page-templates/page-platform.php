@@ -7,7 +7,7 @@
  *              the template_include filter in functions.php.
  *              Can also be assigned manually: WP Admin → Pages → Page Attributes → Template.
  *
- * @package TM_Store_UI
+ * @package Astra Child
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

@@ -186,6 +186,7 @@
 						name:       v.name,
 						url:        v.url,
 						address:    v.address || '',
+						country:    v.country || '',
 						avatar:     v.avatar,
 						cats:       v.cats || '',
 						vendorId:   v.id,
@@ -316,6 +317,7 @@
 			if ( ! panelEl ) { return; }
 
 			var activeSlug    = null;
+			var activeCountry = null;
 			var activeSortKey = 'newest';
 
 			var SORT_OPTIONS = [
@@ -325,11 +327,14 @@
 				{ value: 'name_za', label: 'Name Z \u2192 A' },
 			];
 
-			/** Return the currently-filtered feature set (respects activeSlug). */
+			/** Return the currently-filtered feature set (respects activeSlug + activeCountry). */
 			function filteredFeatures() {
-				if ( ! activeSlug ) { return allFeatures; }
 				return allFeatures.filter( function ( f ) {
-					return ( f.properties.cats || '' ).split( ',' ).indexOf( activeSlug ) !== -1;
+					var catOk = ! activeSlug ||
+						( f.properties.cats || '' ).split( ',' ).indexOf( activeSlug ) !== -1;
+					var countryOk = ! activeCountry ||
+						( f.properties.country || '' ) === activeCountry;
+					return catOk && countryOk;
 				} );
 			}
 
@@ -361,7 +366,7 @@
 				// Showcase button
 				var scBtn = panelEl.querySelector( '.tm-vmap-showcase-btn' );
 				if ( scBtn ) {
-					scBtn.href = ( instance.showcaseUrl || '/showcase/' ) + '?tm_ids=' + ids.join( ',' );
+					scBtn.href = ( instance.showcaseUrl || '/showcase/' ) + '?tm_ids=' + ids.join( ',' ) + '&tm_order=' + activeSortKey;
 					var scCount = scBtn.querySelector( '.tm-vmap-sc-count' );
 					if ( scCount ) { scCount.textContent = count; }
 				}
@@ -370,7 +375,8 @@
 				var fBtn = panelEl.querySelector( '.tm-vmap-filter-btn' );
 				if ( fBtn ) {
 					var fParams = new URLSearchParams();
-					if ( activeSlug ) { fParams.set( 'dokan_seller_category', activeSlug ); }
+					if ( activeSlug )   { fParams.set( 'ecomcine_person_category', activeSlug ); }
+					if ( activeCountry ) { fParams.set( 'country', activeCountry ); }
 					fParams.set( 'tm_order', activeSortKey );
 					fBtn.href = ( instance.talentsUrl || '/talents/' ) + '?' + fParams.toString();
 					var fCount = fBtn.querySelector( '.tm-vmap-sc-count' );
@@ -380,6 +386,23 @@
 
 			// ── Build HTML ──────────────────────────────────────────────────────
 			var html = '';
+
+			// Country dropdown (only shown when 2+ distinct countries exist)
+			var countrySet = {};
+			allFeatures.forEach( function ( f ) {
+				var c = f.properties.country;
+				if ( c ) { countrySet[ c ] = true; }
+			} );
+			var countryList = Object.keys( countrySet ).sort();
+			if ( countryList.length >= 2 ) {
+				html += '<p class="tm-vmap-cat-panel__title">Filter by country</p>'
+					+ '<select class="tm-vmap-country-select">'
+					+ '<option value="">All countries</option>';
+				countryList.forEach( function ( c ) {
+					html += '<option value="' + escapeHtml( c ) + '">' + escapeHtml( c ) + '</option>';
+				} );
+				html += '</select>';
+			}
 
 			// Category section (only shown when there are categories)
 			if ( categories && categories.length ) {
@@ -403,14 +426,14 @@
 			} );
 			html += '</ul>';
 
-			// Showcase + Filter buttons — initial state uses all vendors sorted newest-first
-			var initialIds    = sortedVendorIds( allFeatures, 'newest' );
+			// Showcase + Filter buttons — initial state uses all vendors sorted by activeSortKey
+			var initialIds    = sortedVendorIds( allFeatures, activeSortKey );
 			var initialCount  = initialIds.length;
 			var initialFParams = new URLSearchParams();
-			initialFParams.set( 'tm_order', 'newest' );
+			initialFParams.set( 'tm_order', activeSortKey );
 
 			html += '<a class="tm-vmap-showcase-btn"'
-				+ ' href="' + escapeHtml( ( instance.showcaseUrl || '/showcase/' ) + '?tm_ids=' + initialIds.join( ',' ) ) + '">'
+				+ ' href="' + escapeHtml( ( instance.showcaseUrl || '/showcase/' ) + '?tm_ids=' + initialIds.join( ',' ) + '&tm_order=' + activeSortKey ) + '">'
 				+ '&#9654;&#8201;Showcase '
 				+ '<span class="tm-vmap-sc-count">' + initialCount + '</span>'
 				+ ' talents</a>';
@@ -422,6 +445,25 @@
 				+ ' talents</a>';
 
 			panelEl.innerHTML = html;
+
+			// ── Country select listener ──────────────────────────────────────────
+			var countrySelect = panelEl.querySelector( '.tm-vmap-country-select' );
+			if ( countrySelect ) {
+				countrySelect.addEventListener( 'change', function () {
+					activeCountry = this.value || null;
+					var filtered = filteredFeatures();
+					map.getSource( srcId ).setData( { type: 'FeatureCollection', features: filtered } );
+					if ( filtered.length ) {
+						var sumLng = 0, sumLat = 0;
+						filtered.forEach( function ( f ) {
+							sumLng += f.geometry.coordinates[0];
+							sumLat += f.geometry.coordinates[1];
+						} );
+						map.easeTo( { center: [ sumLng / filtered.length, sumLat / filtered.length ], duration: 600 } );
+					}
+					updatePanelBtns();
+				} );
+			}
 
 			// ── Single delegated listener ────────────────────────────────────────
 			panelEl.addEventListener( 'click', function ( e ) {
@@ -441,10 +483,17 @@
 					var filtered = filteredFeatures();
 					map.getSource( srcId ).setData( { type: 'FeatureCollection', features: filtered } );
 
-					if ( filtered.length ) {
-						var b = new mapboxgl.LngLatBounds();
-						filtered.forEach( function ( f ) { b.extend( f.geometry.coordinates ); } );
-						map.fitBounds( b, { padding: 80, maxZoom: 8, duration: 600 } );
+				// Pan to the centroid of the filtered markers — no zoom change.
+				if ( filtered.length ) {
+					var sumLng = 0, sumLat = 0;
+					filtered.forEach( function ( f ) {
+						sumLng += f.geometry.coordinates[0];
+						sumLat += f.geometry.coordinates[1];
+					} );
+					map.easeTo( {
+						center:   [ sumLng / filtered.length, sumLat / filtered.length ],
+						duration: 600,
+					} );
 					}
 					updatePanelBtns();
 					return;

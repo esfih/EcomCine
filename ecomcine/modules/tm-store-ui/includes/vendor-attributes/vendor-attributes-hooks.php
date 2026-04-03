@@ -23,74 +23,6 @@
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Resolve vendor category slugs from EcomCine registry with Dokan fallback.
- *
- * @param int $vendor_id
- * @return array<int,string>
- */
-function tm_vendor_category_slugs( $vendor_id ) {
-	$vendor_id = (int) $vendor_id;
-	if ( $vendor_id < 1 ) {
-		return [];
-	}
-
-	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
-		$assigned = EcomCine_Person_Category_Registry::get_for_person( $vendor_id );
-		if ( ! empty( $assigned ) ) {
-			$slugs = [];
-			foreach ( $assigned as $row ) {
-				if ( ! empty( $row['slug'] ) ) {
-					$slugs[] = sanitize_key( (string) $row['slug'] );
-				}
-			}
-			if ( ! empty( $slugs ) ) {
-				return array_values( array_unique( $slugs ) );
-			}
-		}
-	}
-
-	$store_categories = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );
-	if ( is_wp_error( $store_categories ) ) {
-		return [];
-	}
-
-	return array_values( array_unique( array_map( 'sanitize_key', (array) $store_categories ) ) );
-}
-
-/**
- * Return configured public field metadata for a category slug.
- *
- * @param string $category_slug
- * @return array<string,array<string,string>>
- */
-function tm_category_field_meta( $category_slug ) {
-	if ( ! class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
-		return [];
-	}
-
-	$category = EcomCine_Person_Category_Registry::get_by_slug( (string) $category_slug );
-	if ( ! $category ) {
-		return [];
-	}
-
-	$fields = EcomCine_Person_Category_Registry::get_fields_for_category( (int) $category['id'], true );
-	$meta   = [];
-	foreach ( $fields as $field ) {
-		$key = sanitize_key( (string) ( $field['field_key'] ?? '' ) );
-		if ( '' === $key ) {
-			continue;
-		}
-		$meta[ $key ] = [
-			'label' => sanitize_text_field( (string) ( $field['field_label'] ?? $key ) ),
-			'icon'  => sanitize_text_field( (string) ( $field['field_icon'] ?? '' ) ),
-			'type'  => sanitize_key( (string) ( $field['field_type'] ?? 'select' ) ),
-		];
-	}
-
-	return $meta;
-}
-
 
 // =============================================================================
 // 1. PROFILE DISPLAY
@@ -103,7 +35,7 @@ function tm_category_field_meta( $category_slug ) {
  * This appears for ALL vendors regardless of category
  * Priority 3 = appears before category-specific attributes (priority 5)
  */
-add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_info ) {
+add_action( 'ecomcine_person_profile_display', function( $store_user, $store_info ) {
 	$vendor_id = get_vendor_id_from_store_user( $store_user );
 	if ( ! $vendor_id ) {
 		return;
@@ -366,14 +298,30 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
  * Display Physical Attributes & Cameraman Equipment on Vendor Store Page
  * Combined in one parent wrapper for consistent positioning
  */
-add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_info ) {
+add_action( 'ecomcine_person_profile_display', function( $store_user, $store_info ) {
 	$vendor_id = get_vendor_id_from_store_user( $store_user );
 	if ( ! $vendor_id ) {
 		return;
 	}
 
-	$store_categories = tm_vendor_category_slugs( $vendor_id );
-	$has_physical_category  = in_array( 'model', $store_categories, true ) || in_array( 'artist', $store_categories, true );
+	// Use EcomCine Person Category Registry (portable, no Dokan dependency).
+	// Falls back to store_category taxonomy when registry returns empty or is not loaded.
+	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+		$cat_rows         = EcomCine_Person_Category_Registry::get_for_person( $vendor_id );
+		$store_categories = wp_list_pluck( $cat_rows, 'slug' );
+		// If registry has no entries for this person, fall back to Dokan taxonomy.
+		if ( empty( $store_categories ) ) {
+			$_terms = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );
+			$store_categories = is_wp_error( $_terms ) ? array() : $_terms;
+		}
+	} else {
+		$store_categories = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );
+		if ( is_wp_error( $store_categories ) ) {
+			$store_categories = array();
+		}
+	}
+	$store_categories = array_map( 'strtolower', $store_categories );
+	$has_physical_category  = in_array( 'model', $store_categories, true ) || in_array( 'artist', $store_categories, true ) || in_array( 'actor', $store_categories, true );
 	$has_cameraman_category = in_array( 'cameraman', $store_categories, true );
 
 	$current_user_id = get_current_user_id();
@@ -440,20 +388,18 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 
 	// ========== CAMERAMAN EQUIPMENT & SKILLS SECTION ==========
 	$cameraman_options = get_cameraman_filter_options();
-	$cameraman_meta    = tm_category_field_meta( 'cameraman' );
-	$cameraman_fields  = [];
-	foreach ( (array) $cameraman_options as $field_key => $field_options ) {
-		$key   = sanitize_key( (string) $field_key );
-		$meta  = $cameraman_meta[ $key ] ?? [];
-		$label = $meta['label'] ?? ucwords( str_replace( '_', ' ', $key ) );
-		$icon  = $meta['icon'] ?? '';
-		$cameraman_fields[ $key ] = [
-			'label'   => $label,
-			'icon'    => $icon,
-			'value'   => get_user_meta( $vendor_id, $key, true ),
-			'options' => (array) $field_options,
-		];
-	}
+
+	$cameraman_fields = [
+		'camera_type'        => [ 'label' => 'Camera Type',        'icon' => '📷', 'value' => get_user_meta( $vendor_id, 'camera_type', true ),        'options' => $cameraman_options['camera_type'] ],
+		'experience_level'   => [ 'label' => 'Experience Level',   'icon' => '⭐', 'value' => get_user_meta( $vendor_id, 'experience_level', true ),   'options' => $cameraman_options['experience_level'] ],
+		'editing_software'   => [ 'label' => 'Editing Software',   'icon' => '🎬', 'value' => get_user_meta( $vendor_id, 'editing_software', true ),   'options' => $cameraman_options['editing_software'] ],
+		'specialization'     => [ 'label' => 'Specialization',     'icon' => '🎯', 'value' => get_user_meta( $vendor_id, 'specialization', true ),     'options' => $cameraman_options['specialization'] ],
+		'years_experience'   => [ 'label' => 'Years of Experience','icon' => '📅', 'value' => get_user_meta( $vendor_id, 'years_experience', true ),   'options' => $cameraman_options['years_experience'] ],
+		'equipment_ownership'=> [ 'label' => 'Equipment Ownership','icon' => '🎥', 'value' => get_user_meta( $vendor_id, 'equipment_ownership', true ),'options' => $cameraman_options['equipment_ownership'] ],
+		'lighting_equipment' => [ 'label' => 'Lighting Equipment', 'icon' => '💡', 'value' => get_user_meta( $vendor_id, 'lighting_equipment', true ), 'options' => $cameraman_options['lighting_equipment'] ],
+		'audio_equipment'    => [ 'label' => 'Audio Equipment',    'icon' => '🎤', 'value' => get_user_meta( $vendor_id, 'audio_equipment', true ),    'options' => $cameraman_options['audio_equipment'] ],
+		'drone_capability'   => [ 'label' => 'Drone/Aerial',       'icon' => '🚁', 'value' => get_user_meta( $vendor_id, 'drone_capability', true ),   'options' => $cameraman_options['drone_capability'] ],
+	];
 
 	$has_cameraman_values = false;
 	foreach ( $cameraman_fields as $attr ) {
@@ -508,38 +454,38 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
  * These fields appear for ALL vendors regardless of category
  * Priority 5 = appears before category-specific attributes (priority 10)
  */
-add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_info ) {
+add_action( 'ecomcine_person_settings_fields', function( $user_id, $profile_info ) {
 	?>
-	<div class="dokan-form-group demographic-availability-section">
-		<div class="dokan-w12">
+	<div class="ecomcine-form-group demographic-availability-section">
+		<div class="ecomcine-col-12">
 			<h3 style="margin-top: 30px; margin-bottom: 20px; font-size: 18px; border-bottom: 2px solid #f0ad4e; padding-bottom: 10px; color: #f0ad4e;">
 				<span class="dashicons dashicons-id-alt" style="font-size: 20px; margin-right: 5px;"></span>
-				<?php esc_html_e( 'Demographic & Availability', 'dokan' ); ?>
+				<?php esc_html_e( 'Demographic & Availability', 'ecomcine' ); ?>
 			</h3>
 		</div>
 	</div>
 
 	<!-- Birth Date -->
-	<div class="dokan-form-group">
-		<label class="dokan-w3 dokan-control-label" for="demo_birth_date">
+	<div class="ecomcine-form-group">
+		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_birth_date">
 			<span class="dashicons dashicons-calendar-alt"></span>
-			<?php esc_html_e( 'Birth Date', 'dokan' ); ?>
+			<?php esc_html_e( 'Birth Date', 'ecomcine' ); ?>
 		</label>
-		<div class="dokan-w5 dokan-text-left">
+		<div class="ecomcine-col-5 ecomcine-text-left">
 			<?php $current_birth_date = get_user_meta( $user_id, 'demo_birth_date', true ); ?>
-			<input type="date" id="demo_birth_date" name="demo_birth_date" class="dokan-form-control" value="<?php echo esc_attr( $current_birth_date ); ?>">
-			<p class="description"><?php esc_html_e( 'Age will be calculated automatically', 'dokan' ); ?></p>
+			<input type="date" id="demo_birth_date" name="demo_birth_date" class="ecomcine-form-control" value="<?php echo esc_attr( $current_birth_date ); ?>">
+			<p class="description"><?php esc_html_e( 'Age will be calculated automatically', 'ecomcine' ); ?></p>
 		</div>
 	</div>
 
 	<!-- Ethnicity -->
-	<div class="dokan-form-group">
-		<label class="dokan-w3 dokan-control-label" for="demo_ethnicity">
+	<div class="ecomcine-form-group">
+		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_ethnicity">
 			<span class="dashicons dashicons-admin-users"></span>
-			<?php esc_html_e( 'Ethnicity', 'dokan' ); ?>
+			<?php esc_html_e( 'Ethnicity', 'ecomcine' ); ?>
 		</label>
-		<div class="dokan-w5 dokan-text-left">
-			<select id="demo_ethnicity" name="demo_ethnicity[]" class="dokan-form-control" multiple size="5">
+		<div class="ecomcine-col-5 ecomcine-text-left">
+			<select id="demo_ethnicity" name="demo_ethnicity[]" class="ecomcine-form-control" multiple size="5">
 				<?php
 				$ethnicities = [
 					'caucasian'        => 'Caucasian',
@@ -560,18 +506,18 @@ add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_inf
 				}
 				?>
 			</select>
-			<p class="description"><?php esc_html_e( 'Hold CTRL (Windows) or CMD (Mac) to select multiple', 'dokan' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Hold CTRL (Windows) or CMD (Mac) to select multiple', 'ecomcine' ); ?></p>
 		</div>
 	</div>
 
 	<!-- Languages -->
-	<div class="dokan-form-group">
-		<label class="dokan-w3 dokan-control-label" for="demo_languages">
+	<div class="ecomcine-form-group">
+		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_languages">
 			<span class="dashicons dashicons-translation"></span>
-			<?php esc_html_e( 'Languages', 'dokan' ); ?>
+			<?php esc_html_e( 'Languages', 'ecomcine' ); ?>
 		</label>
-		<div class="dokan-w5 dokan-text-left">
-			<select id="demo_languages" name="demo_languages[]" class="dokan-form-control" multiple size="5">
+		<div class="ecomcine-col-5 ecomcine-text-left">
+			<select id="demo_languages" name="demo_languages[]" class="ecomcine-form-control" multiple size="5">
 				<?php
 				$languages = [
 					'english'    => 'English',
@@ -594,18 +540,18 @@ add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_inf
 				}
 				?>
 			</select>
-			<p class="description"><?php esc_html_e( 'Hold Ctrl (Cmd on Mac) to select multiple languages', 'dokan' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Hold Ctrl (Cmd on Mac) to select multiple languages', 'ecomcine' ); ?></p>
 		</div>
 	</div>
 
 	<!-- Availability -->
-	<div class="dokan-form-group">
-		<label class="dokan-w3 dokan-control-label" for="demo_availability">
+	<div class="ecomcine-form-group">
+		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_availability">
 			<span class="dashicons dashicons-clock"></span>
-			<?php esc_html_e( 'Availability', 'dokan' ); ?>
+			<?php esc_html_e( 'Availability', 'ecomcine' ); ?>
 		</label>
-		<div class="dokan-w5 dokan-text-left">
-			<select id="demo_availability" name="demo_availability" class="dokan-form-control">
+		<div class="ecomcine-col-5 ecomcine-text-left">
+			<select id="demo_availability" name="demo_availability" class="ecomcine-form-control">
 				<option value="">Select Availability</option>
 				<?php
 				$availability_options = [ 'part-time' => 'Part-time', 'full-time' => 'Full-time', 'on-demand' => 'On-demand' ];
@@ -619,13 +565,13 @@ add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_inf
 	</div>
 
 	<!-- Notice Time -->
-	<div class="dokan-form-group">
-		<label class="dokan-w3 dokan-control-label" for="demo_notice_time">
+	<div class="ecomcine-form-group">
+		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_notice_time">
 			<span class="dashicons dashicons-bell"></span>
-			<?php esc_html_e( 'Notice Time', 'dokan' ); ?>
+			<?php esc_html_e( 'Notice Time', 'ecomcine' ); ?>
 		</label>
-		<div class="dokan-w5 dokan-text-left">
-			<select id="demo_notice_time" name="demo_notice_time" class="dokan-form-control">
+		<div class="ecomcine-col-5 ecomcine-text-left">
+			<select id="demo_notice_time" name="demo_notice_time" class="ecomcine-form-control">
 				<option value="">Select Notice Time</option>
 				<?php
 				$notice_options = [ 'in_days' => 'in Days', 'in_weeks' => 'in Weeks', 'in_months' => 'in Months' ];
@@ -639,31 +585,31 @@ add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_inf
 	</div>
 
 	<!-- Can Travel -->
-	<div class="dokan-form-group">
-		<label class="dokan-w3 dokan-control-label" for="demo_can_travel">
+	<div class="ecomcine-form-group">
+		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_can_travel">
 			<span class="dashicons dashicons-airplane"></span>
-			<?php esc_html_e( 'Can Travel', 'dokan' ); ?>
+			<?php esc_html_e( 'Can Travel', 'ecomcine' ); ?>
 		</label>
-		<div class="dokan-w5 dokan-text-left">
+		<div class="ecomcine-col-5 ecomcine-text-left">
 			<?php $can_travel = get_user_meta( $user_id, 'demo_can_travel', true ); ?>
 			<div class="checkbox">
 				<label>
 					<input type="hidden" name="demo_can_travel" value="no">
 					<input type="checkbox" id="demo_can_travel" name="demo_can_travel" value="yes" <?php checked( $can_travel, 'yes' ); ?>>
-					<?php esc_html_e( 'Yes, I can travel for work', 'dokan' ); ?>
+					<?php esc_html_e( 'Yes, I can travel for work', 'ecomcine' ); ?>
 				</label>
 			</div>
 		</div>
 	</div>
 
 	<!-- Daily Rate -->
-	<div class="dokan-form-group">
-		<label class="dokan-w3 dokan-control-label" for="demo_daily_rate">
+	<div class="ecomcine-form-group">
+		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_daily_rate">
 			<span class="dashicons dashicons-money-alt"></span>
-			<?php esc_html_e( 'Daily Rate', 'dokan' ); ?>
+			<?php esc_html_e( 'Daily Rate', 'ecomcine' ); ?>
 		</label>
-		<div class="dokan-w5 dokan-text-left">
-			<select id="demo_daily_rate" name="demo_daily_rate" class="dokan-form-control">
+		<div class="ecomcine-col-5 ecomcine-text-left">
+			<select id="demo_daily_rate" name="demo_daily_rate" class="ecomcine-form-control">
 				<option value="">Select Daily Rate</option>
 				<?php
 				$rate_options = [ 'under_1k' => '<$1K', '1k_to_2k' => '$1K to $2K', '3k_to_5k' => '$3K to $5K', 'over_5k' => '>$5K' ];
@@ -677,13 +623,13 @@ add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_inf
 	</div>
 
 	<!-- Education -->
-	<div class="dokan-form-group">
-		<label class="dokan-w3 dokan-control-label" for="demo_education">
+	<div class="ecomcine-form-group">
+		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_education">
 			<span class="dashicons dashicons-welcome-learn-more"></span>
-			<?php esc_html_e( 'Education', 'dokan' ); ?>
+			<?php esc_html_e( 'Education', 'ecomcine' ); ?>
 		</label>
-		<div class="dokan-w5 dokan-text-left">
-			<select id="demo_education" name="demo_education" class="dokan-form-control">
+		<div class="ecomcine-col-5 ecomcine-text-left">
+			<select id="demo_education" name="demo_education" class="ecomcine-form-control">
 				<option value="">Select Education</option>
 				<?php
 				$education_options = [
@@ -713,41 +659,42 @@ add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_inf
  * Uses correct Dokan hook: dokan_settings_after_store_phone
  * Note: Physical Attributes are in the template file (store-form.php)
  */
-add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_info ) {
+add_action( 'ecomcine_person_settings_fields', function( $user_id, $profile_info ) {
 	$cameraman_options = get_cameraman_filter_options();
-	$cameraman_meta    = tm_category_field_meta( 'cameraman' );
 
 	// Section header
 	?>
-	<div class="dokan-form-group cameraman-section-header" data-category="cameraman" style="display:none;">
-		<div class="dokan-w12">
+	<div class="ecomcine-form-group cameraman-section-header" data-category="cameraman" style="display:none;">
+		<div class="ecomcine-col-12">
 			<h3 style="margin-top: 30px; margin-bottom: 20px; font-size: 18px; border-bottom: 2px solid #f05025; padding-bottom: 10px;">
-				🎬 <?php esc_html_e( 'Equipment & Skills', 'dokan' ); ?>
+				🎬 <?php esc_html_e( 'Equipment & Skills', 'ecomcine' ); ?>
 			</h3>
 		</div>
 	</div>
 	<?php
 
 	// Build each cameraman field generically
-	$cameraman_field_defs = [];
-	foreach ( (array) $cameraman_options as $field_key => $choices ) {
-		$key  = sanitize_key( (string) $field_key );
-		$meta = $cameraman_meta[ $key ] ?? [];
-		$cameraman_field_defs[ $key ] = [
-			'icon'  => $meta['icon'] ?? '',
-			'label' => $meta['label'] ?? ucwords( str_replace( '_', ' ', $key ) ),
-		];
-	}
+	$cameraman_field_defs = [
+		'camera_type'         => [ 'icon' => '📷', 'label' => 'Camera Type' ],
+		'experience_level'    => [ 'icon' => '⭐', 'label' => 'Experience Level' ],
+		'editing_software'    => [ 'icon' => '💻', 'label' => 'Editing Software' ],
+		'specialization'      => [ 'icon' => '🎬', 'label' => 'Specialization' ],
+		'years_experience'    => [ 'icon' => '📅', 'label' => 'Years of Experience' ],
+		'equipment_ownership' => [ 'icon' => '🎥', 'label' => 'Equipment Ownership' ],
+		'lighting_equipment'  => [ 'icon' => '💡', 'label' => 'Lighting Equipment' ],
+		'audio_equipment'     => [ 'icon' => '🎤', 'label' => 'Audio Equipment' ],
+		'drone_capability'    => [ 'icon' => '🚁', 'label' => 'Drone Capability' ],
+	];
 
 	foreach ( $cameraman_field_defs as $field_key => $field_def ) {
 		$current_value = get_user_meta( $user_id, $field_key, true );
 		?>
-		<div class="dokan-form-group <?php echo esc_attr( $field_key ); ?>" data-category="cameraman" style="display:none;">
-			<label class="dokan-w3 dokan-control-label" for="<?php echo esc_attr( $field_key ); ?>">
-				<?php echo esc_html( $field_def['icon'] . ' ' ); ?><?php esc_html_e( $field_def['label'], 'dokan' ); ?>
+		<div class="ecomcine-form-group <?php echo esc_attr( $field_key ); ?>" data-category="cameraman" style="display:none;">
+			<label class="ecomcine-col-3 ecomcine-control-label" for="<?php echo esc_attr( $field_key ); ?>">
+				<?php echo esc_html( $field_def['icon'] . ' ' ); ?><?php esc_html_e( $field_def['label'], 'ecomcine' ); ?>
 			</label>
-			<div class="dokan-w5">
-				<select class="dokan-form-control" name="<?php echo esc_attr( $field_key ); ?>" id="<?php echo esc_attr( $field_key ); ?>">
+			<div class="ecomcine-col-5">
+				<select class="ecomcine-form-control" name="<?php echo esc_attr( $field_key ); ?>" id="<?php echo esc_attr( $field_key ); ?>">
 					<?php
 					foreach ( $cameraman_options[ $field_key ] as $value => $label ) {
 						printf(
@@ -773,7 +720,7 @@ add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_inf
 /**
  * Save Physical Attributes & Cameraman Fields for Vendor Profile
  */
-add_action( 'dokan_store_profile_saved', function ( $store_id, $dokan_settings ) {
+add_action( 'ecomcine_person_profile_saved', function ( $store_id, $dokan_settings ) {
 	$store_id = (int) $store_id;
 	if ( ! $store_id ) return;
 
@@ -783,25 +730,11 @@ add_action( 'dokan_store_profile_saved', function ( $store_id, $dokan_settings )
 		'talent_shoe_size', 'talent_eye_color', 'talent_hair_color',
 	];
 
-	// Dynamic category custom fields from EcomCine registry (public profile fields).
-	$category_custom_fields = [];
-	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
-		$assigned = EcomCine_Person_Category_Registry::get_for_person( $store_id );
-		foreach ( (array) $assigned as $category ) {
-			$category_id = (int) ( $category['id'] ?? 0 );
-			if ( $category_id < 1 ) {
-				continue;
-			}
-			$fields = EcomCine_Person_Category_Registry::get_fields_for_category( $category_id, true );
-			foreach ( (array) $fields as $field ) {
-				$field_key = sanitize_key( (string) ( $field['field_key'] ?? '' ) );
-				if ( '' !== $field_key ) {
-					$category_custom_fields[] = $field_key;
-				}
-			}
-		}
-		$category_custom_fields = array_values( array_unique( $category_custom_fields ) );
-	}
+	// Cameraman fields
+	$cameraman_fields = [
+		'camera_type', 'experience_level', 'editing_software', 'specialization',
+		'years_experience', 'equipment_ownership', 'lighting_equipment', 'audio_equipment', 'drone_capability',
+	];
 
 	// Demographic & Availability fields
 	$demographic_fields = [
@@ -809,7 +742,7 @@ add_action( 'dokan_store_profile_saved', function ( $store_id, $dokan_settings )
 		'demo_notice_time', 'demo_can_travel', 'demo_daily_rate', 'demo_education',
 	];
 
-	foreach ( array_merge( $attributes, $category_custom_fields, $demographic_fields ) as $field ) {
+	foreach ( array_merge( $attributes, $cameraman_fields, $demographic_fields ) as $field ) {
 		if ( isset( $_POST[ $field ] ) ) {
 			$value = sanitize_text_field( wp_unslash( $_POST[ $field ] ) );
 			update_user_meta( $store_id, $field, $value );

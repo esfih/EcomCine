@@ -23,10 +23,8 @@ class THO_Compat_Profile_Meta_Provider implements THO_Profile_Meta_Provider {
 	];
 
 	public function get_vendor_profile_meta( int $vendor_id ): array {
-		$bio      = (string) get_user_meta( $vendor_id, 'dokan_profile_settings', true );
-		// Dokan stores biography inside the profile settings array.
-		$dokan    = maybe_unserialize( get_user_meta( $vendor_id, 'dokan_profile_settings', true ) );
-		$biography = is_array( $dokan ) ? ( $dokan['vendor_biography'] ?? '' ) : '';
+		$person_info = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $vendor_id ) : array();
+		$biography = isset( $person_info['bio'] ) ? (string) $person_info['bio'] : '';
 		if ( ! $biography ) {
 			$biography = (string) get_user_meta( $vendor_id, 'tm_vendor_biography', true );
 		}
@@ -37,9 +35,9 @@ class THO_Compat_Profile_Meta_Provider implements THO_Profile_Meta_Provider {
 			? $skills_raw
 			: ( $skills_raw ? array_filter( array_map( 'trim', explode( ',', (string) $skills_raw ) ) ) : [] );
 
-		$social = [];
+		$social = isset( $person_info['social'] ) && is_array( $person_info['social'] ) ? $person_info['social'] : [];
 		foreach ( [ 'linkedin', 'twitter', 'instagram', 'youtube', 'facebook' ] as $platform ) {
-			$val = (string) get_user_meta( $vendor_id, "tm_social_{$platform}", true );
+			$val = isset( $social[ $platform ] ) ? (string) $social[ $platform ] : (string) get_user_meta( $vendor_id, "tm_social_{$platform}", true );
 			$social[ $platform ] = $val ?: null;
 		}
 
@@ -68,8 +66,8 @@ class THO_Compat_Profile_Meta_Provider implements THO_Profile_Meta_Provider {
 	public function compute_completeness_score( int $vendor_id ): array {
 		$score         = 0;
 		$missing       = [];
-		$dokan         = maybe_unserialize( get_user_meta( $vendor_id, 'dokan_profile_settings', true ) );
-		$biography     = is_array( $dokan ) ? ( $dokan['vendor_biography'] ?? '' ) : '';
+		$person_info   = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $vendor_id ) : array();
+		$biography     = isset( $person_info['bio'] ) ? (string) $person_info['bio'] : '';
 		if ( ! $biography ) {
 			$biography = (string) get_user_meta( $vendor_id, 'tm_vendor_biography', true );
 		}

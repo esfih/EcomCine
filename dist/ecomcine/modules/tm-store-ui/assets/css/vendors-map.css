@@ -172,12 +172,12 @@ body:has(.tm-vendors-map-wrap) #tm-platform-content {
 	left: 0;
 	top: 0;
 	bottom: 0;
-	width: 190px;
+	width: 290px;
 	background: none;
 	border-right: none;
 	z-index: 100;
 	overflow-y: auto;
-	padding: 110px 10px 20px 20px;
+	padding: 130px 8px 20px 16px;
 	box-sizing: border-box;
 }
 
@@ -185,6 +185,42 @@ body:has(.tm-vendors-map-wrap) #tm-platform-content {
 .tm-vmap-cat-panel::-webkit-scrollbar        { width: 4px; }
 .tm-vmap-cat-panel::-webkit-scrollbar-track  { background: transparent; }
 .tm-vmap-cat-panel::-webkit-scrollbar-thumb  { background: rgba(212, 175, 55, 0.35); border-radius: 2px; }
+
+/* Country dropdown */
+.tm-vmap-country-select {
+	width: 100%;
+	background: rgba(212, 175, 55, 0.07);
+	border: 1px solid rgba(212, 175, 55, 0.30);
+	border-radius: 5px;
+	color: #D4AF37;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	padding: 7px 8px;
+	margin-bottom: 14px;
+	cursor: pointer;
+	outline: none;
+	appearance: none;
+	-webkit-appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23D4AF37'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 8px center;
+	padding-right: 24px;
+	box-sizing: border-box;
+	transition: border-color 0.15s, background 0.15s;
+}
+
+.tm-vmap-country-select:hover,
+.tm-vmap-country-select:focus {
+	border-color: #D4AF37;
+	background-color: rgba(212, 175, 55, 0.13);
+}
+
+.tm-vmap-country-select option {
+	background: #111;
+	color: #D4AF37;
+}
 
 .tm-vmap-cat-panel__title {
 	color: rgba(212, 175, 55, 0.55);
@@ -196,10 +232,10 @@ body:has(.tm-vendors-map-wrap) #tm-platform-content {
 	line-height: 1;
 }
 
-/* 2-column grid of category buttons */
+/* 3-column grid of category buttons */
 .tm-vmap-cats {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: 1fr 1fr 1fr;
 	gap: 7px;
 }
 
@@ -208,15 +244,15 @@ body:has(.tm-vendors-map-wrap) #tm-platform-content {
 	border: 1px solid rgba(212, 175, 55, 0.22);
 	border-radius: 5px;
 	color: #aaa;
-	font-size: 11px;
+	font-size: 9px;
 	font-weight: 600;
 	text-align: center;
-	padding: 8px 4px;
+	padding: 6px 2px;
 	cursor: pointer;
 	transition: background 0.15s, border-color 0.15s, color 0.15s;
 	line-height: 1.25;
 	text-transform: uppercase;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.02em;
 }
 
 .tm-vmap-cat-btn:hover {

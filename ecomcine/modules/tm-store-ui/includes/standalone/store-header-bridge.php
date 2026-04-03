@@ -25,8 +25,22 @@ if ( ! class_exists( 'TM_Standalone_Store_User', false ) ) {
 
 		public function get_shop_info(): array {
 			if ( null === $this->shop_info ) {
-				$info = get_user_meta( $this->vendor_id, 'dokan_profile_settings', true );
-				$this->shop_info = is_array( $info ) ? $info : array();
+				$info = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $this->vendor_id ) : array();
+				$geo  = function_exists( 'ecomcine_get_geo' ) ? ecomcine_get_geo( $this->vendor_id ) : array();
+				$this->shop_info = array(
+					'store_name'        => (string) ( $info['store_name'] ?? '' ),
+					'vendor_biography'  => (string) ( $info['bio'] ?? '' ),
+					'phone'             => (string) ( $info['phone'] ?? '' ),
+					'banner'            => (int) ( $info['banner_id'] ?? 0 ),
+					'gravatar'          => (int) ( $info['avatar_id'] ?? 0 ),
+					'address'           => isset( $info['address'] ) && is_array( $info['address'] ) ? $info['address'] : array(),
+					'social'            => isset( $info['social'] ) && is_array( $info['social'] ) ? $info['social'] : array(),
+					'location'          => (string) ( $geo['address'] ?? '' ),
+					'geolocation'       => array(
+						'latitude'  => (string) ( $geo['lat'] ?? '' ),
+						'longitude' => (string) ( $geo['lng'] ?? '' ),
+					),
+				);
 			}
 
 			return $this->shop_info;
@@ -42,7 +56,8 @@ if ( ! class_exists( 'TM_Standalone_Store_User', false ) ) {
 		}
 
 		public function get_shop_name(): string {
-			$name = (string) get_user_meta( $this->vendor_id, 'dokan_store_name', true );
+			$info = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $this->vendor_id ) : array();
+			$name = isset( $info['store_name'] ) ? (string) $info['store_name'] : '';
 			if ( '' !== trim( $name ) ) {
 				return $name;
 			}
@@ -263,8 +278,8 @@ if ( ! function_exists( 'dokan_current_datetime' ) ) {
 
 if ( ! function_exists( 'dokan_get_seller_short_address' ) ) {
 	function dokan_get_seller_short_address( $vendor_id, $full = false ): string {
-		$info = get_user_meta( absint( $vendor_id ), 'dokan_profile_settings', true );
-		if ( ! is_array( $info ) || empty( $info['address'] ) || ! is_array( $info['address'] ) ) {
+		$info = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( absint( $vendor_id ) ) : array();
+		if ( empty( $info['address'] ) || ! is_array( $info['address'] ) ) {
 			return '';
 		}
 

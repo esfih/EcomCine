@@ -32,11 +32,9 @@ add_action( 'admin_post_tm_recompute_vendor_flags', function() {
 	}
 	check_admin_referer( 'tm_recompute_vendor_flags' );
 
-	$seller_ids = get_users( [
-		'role'   => 'seller',
-		'fields' => 'ID',
-		'number' => -1,
-	] );
+	$seller_ids = function_exists( 'ecomcine_get_persons' )
+		? array_column( ecomcine_get_persons( [ 'fields' => 'ID', 'number' => -1 ] ), 'ID' )
+		: get_users( [ 'role' => 'seller', 'fields' => 'ID', 'number' => -1 ] );
 	foreach ( $seller_ids as $vid ) {
 		tm_update_completeness_flags( (int) $vid );
 	}
@@ -64,12 +62,9 @@ function tm_render_vendor_completeness_admin() {
 
 	$did_recompute = ! empty( $_GET['recomputed'] );
 
-	$sellers = get_users( [
-		'role'   => 'seller',
-		'fields' => 'all',
-		'number' => -1,
-		'orderby' => 'display_name',
-	] );
+	$sellers = function_exists( 'ecomcine_get_persons' )
+		? ecomcine_get_persons( [ 'fields' => 'all', 'number' => -1, 'orderby' => 'display_name' ] )
+		: get_users( [ 'role' => 'seller', 'fields' => 'all', 'number' => -1, 'orderby' => 'display_name' ] );
 
 	?>
 	<div class="wrap">
@@ -112,7 +107,7 @@ function tm_render_vendor_completeness_admin() {
 				<tr>
 					<th>Vendor (ID)</th>
 					<th>Category</th>
-					<th>Enabled<br><code>dokan_enable_selling</code></th>
+					<th>Enabled<br><code>ecomcine_enabled</code></th>
 					<th style="width:120px">L1 Flag<br><code>tm_l1_complete</code></th>
 					<th>L1 Score</th>
 					<th>Missing L1 Fields (live calc)</th>
@@ -122,16 +117,26 @@ function tm_render_vendor_completeness_admin() {
 			<tbody>
 			<?php foreach ( $sellers as $seller ) :
 				$vid        = (int) $seller->ID;
-				$enabled    = get_user_meta( $vid, 'dokan_enable_selling', true );
-				$l1_stored  = get_user_meta( $vid, 'tm_l1_complete', true );
-				$l2_stored  = get_user_meta( $vid, 'tm_l2_complete', true );
+			$enabled    = function_exists( 'ecomcine_is_person_enabled' ) ? ecomcine_is_person_enabled( $vid ) : false;
+			$l1_stored  = get_user_meta( $vid, 'tm_l1_complete', true );
+			$l2_stored  = get_user_meta( $vid, 'tm_l2_complete', true );
+			if ( function_exists( 'ecomcine_get_person_info' ) ) {
+				$person_info = ecomcine_get_person_info( $vid );
+				$shop_name   = ! empty( $person_info['store_name'] ) ? esc_html( $person_info['store_name'] ) : esc_html( $seller->display_name );
+			} elseif ( function_exists( 'dokan_get_store_info' ) ) {
 				$store_info = dokan_get_store_info( $vid );
 				$shop_name  = ! empty( $store_info['store_name'] ) ? esc_html( $store_info['store_name'] ) : esc_html( $seller->display_name );
+			} else {
+				$shop_name = esc_html( $seller->display_name );
+			}
 
+			if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+				$cat_rows = EcomCine_Person_Category_Registry::get_for_person( $vid );
+				$cat_list = ! empty( $cat_rows ) ? implode( ', ', wp_list_pluck( $cat_rows, 'name' ) ) : '—';
+			} else {
 				$v_terms  = wp_get_object_terms( $vid, 'store_category', [ 'fields' => 'names' ] );
 				$cat_list = ( is_array( $v_terms ) && ! is_wp_error( $v_terms ) ) ? implode( ', ', $v_terms ) : '—';
-
-				// Live calculation
+			}
 				$c = tm_vendor_completeness( $vid );
 				$l1_live     = $c ? $c['level1']['complete'] : null;
 				$l1_pct      = $c ? $c['level1']['pct'] : 0;
@@ -152,10 +157,10 @@ function tm_render_vendor_completeness_admin() {
 					</td>
 					<td><?php echo esc_html( $cat_list ); ?></td>
 					<td><?php
-						if ( $enabled === 'yes' ) {
+						if ( $enabled ) {
 							echo '<span class="tm-pass">✓ yes</span>';
 						} else {
-							echo '<span class="tm-fail">✗ ' . esc_html( $enabled ?: '(not set)' ) . '</span>';
+							echo '<span class="tm-fail">✗ no</span>';
 						}
 					?></td>
 					<td><?php

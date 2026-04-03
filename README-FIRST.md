@@ -31,10 +31,12 @@ WooCommerce, Dokan, and WooCommerce Bookings are legacy compatibility layers for
 
 | Folder | What it is | Committed? |
 |---|---|---|
+| `ecomcine/` | Single unified plugin — contains all modules under `ecomcine/modules/` | Yes |
 | `ecomcine/bundled-theme/` | Canonical minimal `ecomcine-base` theme shipped by the plugin | Yes |
-| `tm-media-player/` | Cinematic media player + showcase plugin | Yes |
-| `tm-account-panel/` | Front-end login/registration + talent onboarding plugin | Yes |
-| `tm-vendor-booking-modal/` | Frictionless booking/checkout modal plugin | Yes |
+| `ecomcine/modules/tm-media-player/` | Cinematic media player + showcase module | Yes |
+| `ecomcine/modules/tm-account-panel/` | Front-end login/registration + talent onboarding module | Yes |
+| `ecomcine/modules/tm-vendor-booking-modal/` | Frictionless booking/checkout modal module | Yes |
+| `ecomcine/modules/tm-store-ui/` | Cinematic store UI, filter bar, vendor profiles, shortcodes | Yes |
 | `dokan-category-attributes/` | Dynamic category-specific vendor attributes plugin | Yes |
 | `deps/` | Third-party plugin folders (Dokan Pro, WooCommerce, etc.) | **No** (gitignored) |
 | `db/` | Scrubbed dev seed SQL | `seed.sql` only |
@@ -214,9 +216,7 @@ Forbidden states (hard fail):
 The following runtime sources must resolve to Linux paths under `/home/<user>/dev/EcomCine`:
 
 - `ecomcine/bundled-theme/` -> `/var/www/html/wp-content/themes/ecomcine-base`
-- `tm-media-player/` -> `/var/www/html/wp-content/plugins/tm-media-player`
-- `tm-account-panel/` -> `/var/www/html/wp-content/plugins/tm-account-panel`
-- `tm-vendor-booking-modal/` -> `/var/www/html/wp-content/plugins/tm-vendor-booking-modal`
+- `ecomcine/` -> `/var/www/html/wp-content/plugins/ecomcine`
 - `dokan-category-attributes/` -> `/var/www/html/wp-content/plugins/dokan-category-attributes`
 - `deps/dokan-lite/` -> `/var/www/html/wp-content/plugins/dokan-lite`
 - `deps/dokan-pro/` -> `/var/www/html/wp-content/plugins/dokan-pro`

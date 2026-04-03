@@ -11,7 +11,9 @@ Read `README-FIRST.md` at the start of every meaningful response before taking a
 EcomCiné is a productized WordPress-native cinematic marketplace suite.
 Phase 1 is live at `castingagency.co`.
 
-Custom artifacts: `ecomcine/bundled-theme/` (`ecomcine-base` minimal theme), `tm-media-player/`, `tm-account-panel/`, `tm-vendor-booking-modal/`, `dokan-category-attributes/`.
+Custom artifacts: `ecomcine/` (single unified plugin containing all modules), `ecomcine/bundled-theme/` (`ecomcine-base` minimal theme), `dokan-category-attributes/`.
+
+All feature modules live under `ecomcine/modules/` — there are no separate standalone plugin folders.
 
 ---
 
@@ -22,7 +24,7 @@ Custom artifacts: `ecomcine/bundled-theme/` (`ecomcine-base` minimal theme), `tm
 | Project structure, goals, setup steps | `README-FIRST.md` |
 | Feature specs and product intent | `specs/` and `specs/app-features/` |
 | Theme PHP / template logic | `ecomcine/bundled-theme/` |
-| Plugin logic | `tm-*/` or `dokan-category-attributes/` |
+| Plugin logic | `ecomcine/modules/` or `dokan-category-attributes/` |
 | Docker / WP-CLI / container ops | `foundation/wp/` |
 | Shared workflow and AI-context rules | `foundation/core/` |
 | Technical architecture | `technical-documentation.md` |
@@ -61,6 +63,16 @@ See `New-Migrate-WP-Local-Setup.md` → "EcomCine — Re-Setup on a New Computer
 - `foundation/core/` contains reusable workflow, AI-context, and security guidance
 - `foundation/wp/` contains WordPress-specific runtime and packaging patterns
 - Never modify files in `foundation/` directly — they are managed as git subtrees
+
+---
+
+## No Dual Sources of Truth (Mandatory)
+
+- **Never create a second copy of a file, folder, or plugin** that already exists elsewhere in the repo unless the User explicitly requests it AND it is documented as an approved architecture decision in a `specs/app-features/` entry.
+- If implementing a feature requires modifying a module, modify it **in its single canonical location** — `ecomcine/modules/<module>/`.
+- Do not create `tm-*/` root-level plugin folders. These were legacy staging directories that have been deleted. The canonical location for all module code is `ecomcine/modules/`.
+- If a parity check reveals two copies of the same logical artifact have diverged, **stop and report it to the User before proceeding** — do not silently fix one without reconciling the other.
+- This rule applies to: PHP files, JS files, CSS files, templates, config files, and any other artifact that represents executable or deployable content.
 
 ---
 

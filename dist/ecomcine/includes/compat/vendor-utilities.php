@@ -236,11 +236,11 @@ if ( ! function_exists( 'tm_get_vendor_qr_svg_markup' ) ) {
 
 if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 	/**
-	 * Build vendor location display using Dokan geolocation data.
+	 * Build vendor location display using canonical EcomCine geolocation data.
 	 *
-	 * When dokan_geo_address contains raw lat/lng coordinates (e.g. from Mapbox
-	 * geocoding without a reverse-lookup), fall back to the address sub-array
-	 * inside dokan_profile_settings for a human-readable display.
+	 * When the stored geo address contains raw lat/lng coordinates (e.g. from
+	 * Mapbox geocoding without a reverse-lookup), fall back to the canonical
+	 * address sub-array for a human-readable display.
 	 */
 	function tm_get_vendor_geo_location_display( $vendor_id, $store_info = array(), $store_address = array() ) {
 		$vendor_id = (int) $vendor_id;
@@ -248,11 +248,9 @@ if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 			return '';
 		}
 
-		$geo_address = get_user_meta( $vendor_id, 'ecomcine_geo_address', true );
-		if ( '' === $geo_address ) {
-			// Dokan fallback.
-			$geo_address = (string) get_user_meta( $vendor_id, 'dokan_geo_address', true );
-		}
+		$geo         = function_exists( 'ecomcine_get_geo' ) ? ecomcine_get_geo( $vendor_id ) : array();
+		$info        = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $vendor_id ) : array();
+		$geo_address = isset( $geo['address'] ) ? (string) $geo['address'] : '';
 		if ( empty( $geo_address ) && ! empty( $store_info['location'] ) ) {
 			$geo_address = is_string( $store_info['location'] ) ? $store_info['location'] : '';
 		}
@@ -266,12 +264,9 @@ if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 
 		// Detect raw lat/lng string (e.g. "48.853495, 2.348392" or "30.173533,-95.504253").
 		// These cannot be shown as a human-readable address, so fall back to the
-		// structured address stored in dokan_profile_settings.
+		// structured canonical address array.
 		if ( preg_match( '/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/', trim( $geo_address ) ) ) {
-			// Grab the address array from profile settings (always an array, unlike
-			// the $store_address parameter which is a short-address string).
-			$dps           = get_user_meta( $vendor_id, 'dokan_profile_settings', true );
-			$addr          = is_array( $dps ) && ! empty( $dps['address'] ) ? (array) $dps['address'] : array();
+			$addr          = isset( $info['address'] ) && is_array( $info['address'] ) ? (array) $info['address'] : array();
 			$city          = trim( $addr['city']  ?? '' );
 			$state         = trim( $addr['state'] ?? '' );
 			$country_raw   = trim( $addr['country'] ?? '' );
@@ -314,10 +309,9 @@ if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 				}
 			}
 
-			// Fallback: profile_settings address array (more reliable than string parameter).
+			// Fallback: canonical address array.
 			if ( ! $country_code ) {
-				$dps       = get_user_meta( $vendor_id, 'dokan_profile_settings', true );
-				$addr_arr  = is_array( $dps ) && ! empty( $dps['address'] ) ? (array) $dps['address'] : array();
+				$addr_arr  = isset( $info['address'] ) && is_array( $info['address'] ) ? (array) $info['address'] : array();
 				$c_raw     = trim( $addr_arr['country'] ?? '' );
 				if ( strlen( $c_raw ) === 2 ) {
 					$country_code = strtoupper( $c_raw );

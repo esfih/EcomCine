@@ -144,6 +144,48 @@ if ( ! function_exists( 'ecomcine_is_person_enabled' ) ) {
 	}
 }
 
+if ( ! function_exists( 'ecomcine_get_person_status_flags' ) ) {
+	/**
+	 * Return featured / verified status for a person.
+	 *
+	 * Canonical keys are read first. Legacy Dokan keys remain a core-level
+	 * migration fallback so UI layers do not need to touch third-party meta.
+	 *
+	 * @param int $user_id User ID.
+	 * @return array{featured: bool, verified: bool}
+	 */
+	function ecomcine_get_person_status_flags( int $user_id ): array {
+		$featured_raw = get_user_meta( $user_id, 'ecomcine_is_featured', true );
+		if ( '' === (string) $featured_raw ) {
+			$featured_raw = get_user_meta( $user_id, 'ecomcine_featured', true );
+		}
+		if ( '' === (string) $featured_raw ) {
+			$featured_raw = get_user_meta( $user_id, 'dokan_feature_seller', true );
+		}
+
+		$verified_raw = get_user_meta( $user_id, 'ecomcine_is_verified', true );
+		if ( '' === (string) $verified_raw ) {
+			$verified_raw = get_user_meta( $user_id, 'ecomcine_verified', true );
+		}
+		if ( '' === (string) $verified_raw ) {
+			$verified_raw = get_user_meta( $user_id, 'dokan_store_verified', true );
+		}
+
+		$normalize = static function( $value ): bool {
+			if ( is_bool( $value ) ) {
+				return $value;
+			}
+
+			return in_array( strtolower( trim( (string) $value ) ), array( '1', 'yes', 'true', 'on' ), true );
+		};
+
+		return array(
+			'featured' => $normalize( $featured_raw ),
+			'verified' => $normalize( $verified_raw ),
+		);
+	}
+}
+
 // ── Person info ───────────────────────────────────────────────────────────────
 
 if ( ! function_exists( 'ecomcine_get_person_info' ) ) {
@@ -172,7 +214,7 @@ if ( ! function_exists( 'ecomcine_get_person_info' ) ) {
 
 		// Dokan fallback when own keys are empty.
 		$dps = null;
-		if ( '' === $store_name || '' === $bio ) {
+		if ( '' === $store_name || '' === $bio || '' === $phone || empty( $banner_id ) || empty( $avatar_id ) || empty( $address ) || empty( $social ) ) {
 			$raw = get_user_meta( $user_id, 'dokan_profile_settings', true );
 			$dps = is_array( $raw ) ? $raw : array();
 		}
@@ -184,10 +226,6 @@ if ( ! function_exists( 'ecomcine_get_person_info' ) ) {
 			$bio = $dps['vendor_biography'] ?? '';
 		}
 		if ( '' === $phone && $dps !== null ) {
-			if ( null === $dps ) {
-				$raw = get_user_meta( $user_id, 'dokan_profile_settings', true );
-				$dps = is_array( $raw ) ? $raw : array();
-			}
 			$phone = $dps['phone'] ?? '';
 		}
 		if ( ( '' === $banner_id || ! $banner_id ) && $dps !== null ) {
@@ -214,6 +252,214 @@ if ( ! function_exists( 'ecomcine_get_person_info' ) ) {
 		);
 	}
 }
+
+if ( ! function_exists( '_ecomcine_normalize_person_address' ) ) {
+	/**
+	 * Normalize a person address payload to EcomCine's canonical shape.
+	 *
+	 * @param mixed $address Raw address payload.
+	 * @return array<string,string>
+	 */
+	function _ecomcine_normalize_person_address( $address ): array {
+		$address = is_array( $address ) ? $address : array();
+
+		return array(
+			'street_1' => sanitize_text_field( (string) ( $address['street_1'] ?? '' ) ),
+			'street_2' => sanitize_text_field( (string) ( $address['street_2'] ?? '' ) ),
+			'city'     => sanitize_text_field( (string) ( $address['city'] ?? '' ) ),
+			'zip'      => sanitize_text_field( (string) ( $address['zip'] ?? '' ) ),
+			'country'  => sanitize_text_field( (string) ( $address['country'] ?? '' ) ),
+			'state'    => sanitize_text_field( (string) ( $address['state'] ?? '' ) ),
+		);
+	}
+}
+
+if ( ! function_exists( '_ecomcine_normalize_person_social' ) ) {
+	/**
+	 * Normalize a person social-links payload.
+	 *
+	 * @param mixed $social Raw social payload.
+	 * @return array<string,string>
+	 */
+	function _ecomcine_normalize_person_social( $social ): array {
+		if ( ! is_array( $social ) ) {
+			return array();
+		}
+
+		$normalized = array();
+		foreach ( $social as $key => $value ) {
+			$key = sanitize_key( (string) $key );
+			if ( '' === $key ) {
+				continue;
+			}
+
+			if ( is_scalar( $value ) ) {
+				$normalized[ $key ] = esc_url_raw( (string) $value );
+			}
+		}
+
+		return $normalized;
+	}
+}
+
+if ( ! function_exists( 'ecomcine_sync_person_canonical_meta' ) ) {
+	/**
+	 * Sync a person's legacy vendor meta into EcomCine-owned canonical fields.
+	 *
+	 * Canonical keys are always written. When legacy values are unavailable,
+	 * existing canonical values are preserved.
+	 *
+	 * @param int $user_id User ID.
+	 * @return array<string,mixed>
+	 */
+	function ecomcine_sync_person_canonical_meta( int $user_id ): array {
+		$user_id = absint( $user_id );
+		if ( ! $user_id || ! ecomcine_is_person_user( $user_id ) ) {
+			return array();
+		}
+
+		$dps = get_user_meta( $user_id, 'dokan_profile_settings', true );
+		$dps = is_array( $dps ) ? $dps : array();
+
+		$current_info = array(
+			'store_name' => (string) get_user_meta( $user_id, 'ecomcine_store_name', true ),
+			'bio'        => (string) get_user_meta( $user_id, 'ecomcine_bio', true ),
+			'phone'      => (string) get_user_meta( $user_id, 'ecomcine_phone', true ),
+			'banner_id'  => (int) get_user_meta( $user_id, 'ecomcine_banner_id', true ),
+			'avatar_id'  => (int) get_user_meta( $user_id, 'ecomcine_avatar_id', true ),
+			'address'    => _ecomcine_normalize_person_address( get_user_meta( $user_id, 'ecomcine_address', true ) ),
+			'social'     => _ecomcine_normalize_person_social( get_user_meta( $user_id, 'ecomcine_social', true ) ),
+		);
+
+		$legacy_store_name = sanitize_text_field( (string) ( $dps['store_name'] ?? '' ) );
+		$legacy_bio        = (string) ( $dps['vendor_biography'] ?? '' );
+		$legacy_phone      = sanitize_text_field( (string) ( $dps['phone'] ?? '' ) );
+		$legacy_banner_id  = absint( $dps['banner'] ?? 0 );
+		$legacy_avatar_id  = absint( $dps['gravatar'] ?? 0 );
+		$legacy_address    = _ecomcine_normalize_person_address( $dps['address'] ?? array() );
+		$legacy_social     = _ecomcine_normalize_person_social( $dps['social'] ?? array() );
+
+		$payload = array(
+			'ecomcine_store_name' => '' !== $legacy_store_name ? $legacy_store_name : $current_info['store_name'],
+			'ecomcine_bio'        => '' !== $legacy_bio ? wp_kses_post( $legacy_bio ) : $current_info['bio'],
+			'ecomcine_phone'      => '' !== $legacy_phone ? $legacy_phone : $current_info['phone'],
+			'ecomcine_banner_id'  => $legacy_banner_id > 0 ? $legacy_banner_id : $current_info['banner_id'],
+			'ecomcine_avatar_id'  => $legacy_avatar_id > 0 ? $legacy_avatar_id : $current_info['avatar_id'],
+			'ecomcine_address'    => ! empty( array_filter( $legacy_address ) ) ? $legacy_address : $current_info['address'],
+			'ecomcine_social'     => ! empty( $legacy_social ) ? $legacy_social : $current_info['social'],
+		);
+
+		$current_geo = array(
+			'address' => (string) get_user_meta( $user_id, 'ecomcine_geo_address', true ),
+			'lat'     => (string) get_user_meta( $user_id, 'ecomcine_geo_lat', true ),
+			'lng'     => (string) get_user_meta( $user_id, 'ecomcine_geo_lng', true ),
+		);
+
+		$legacy_geo_address = (string) get_user_meta( $user_id, 'dokan_geo_address', true );
+		if ( '' === $legacy_geo_address ) {
+			$legacy_geo_address = sanitize_text_field( (string) ( $dps['location'] ?? '' ) );
+		}
+
+		$legacy_geo_lat = (string) get_user_meta( $user_id, 'dokan_geo_latitude', true );
+		$legacy_geo_lng = (string) get_user_meta( $user_id, 'dokan_geo_longitude', true );
+		$legacy_geolocation = isset( $dps['geolocation'] ) && is_array( $dps['geolocation'] ) ? $dps['geolocation'] : array();
+		if ( '' === $legacy_geo_lat && isset( $legacy_geolocation['latitude'] ) ) {
+			$legacy_geo_lat = (string) $legacy_geolocation['latitude'];
+		}
+		if ( '' === $legacy_geo_lng && isset( $legacy_geolocation['longitude'] ) ) {
+			$legacy_geo_lng = (string) $legacy_geolocation['longitude'];
+		}
+
+		$payload['ecomcine_geo_address'] = '' !== $legacy_geo_address ? sanitize_text_field( $legacy_geo_address ) : $current_geo['address'];
+		$payload['ecomcine_geo_lat']     = '' !== $legacy_geo_lat ? (string) $legacy_geo_lat : $current_geo['lat'];
+		$payload['ecomcine_geo_lng']     = '' !== $legacy_geo_lng ? (string) $legacy_geo_lng : $current_geo['lng'];
+
+		$own_enabled   = (string) get_user_meta( $user_id, 'ecomcine_enabled', true );
+		$legacy_enable = (string) get_user_meta( $user_id, 'dokan_enable_selling', true );
+		if ( '' !== $legacy_enable ) {
+			$payload['ecomcine_enabled'] = 'yes' === $legacy_enable ? '1' : '0';
+		} else {
+			$payload['ecomcine_enabled'] = '' !== $own_enabled ? $own_enabled : '0';
+		}
+
+		foreach ( $payload as $meta_key => $meta_value ) {
+			update_user_meta( $user_id, $meta_key, $meta_value );
+		}
+
+		return $payload;
+	}
+}
+
+if ( ! function_exists( 'ecomcine_sync_all_persons_to_canonical_meta' ) ) {
+	/**
+	 * Sync all current person/vendor users into EcomCine-owned canonical meta.
+	 *
+	 * @return int Number of users synced.
+	 */
+	function ecomcine_sync_all_persons_to_canonical_meta(): int {
+		$user_ids = ecomcine_get_persons( array( 'fields' => 'ids', 'number' => -1 ) );
+		$synced   = 0;
+
+		foreach ( (array) $user_ids as $user_id ) {
+			if ( ! empty( ecomcine_sync_person_canonical_meta( (int) $user_id ) ) ) {
+				$synced++;
+			}
+		}
+
+		return $synced;
+	}
+}
+
+foreach ( array( 'added_user_meta', 'updated_user_meta' ) as $_ecomcine_sync_hook ) {
+	add_action(
+		$_ecomcine_sync_hook,
+		function( $meta_id, $user_id, $meta_key ) {
+			static $queued = array();
+
+			$watched = array(
+				'dokan_profile_settings',
+				'dokan_geo_address',
+				'dokan_geo_latitude',
+				'dokan_geo_longitude',
+				'dokan_enable_selling',
+			);
+
+			if ( ! in_array( $meta_key, $watched, true ) ) {
+				return;
+			}
+
+			$user_id = (int) $user_id;
+			if ( $user_id <= 0 || ! ecomcine_is_person_user( $user_id ) || ! empty( $queued[ $user_id ] ) ) {
+				return;
+			}
+
+			$queued[ $user_id ] = true;
+
+			if ( wp_doing_ajax() ) {
+				ecomcine_sync_person_canonical_meta( $user_id );
+				return;
+			}
+
+			add_action(
+				'shutdown',
+				function() use ( $user_id ) {
+					ecomcine_sync_person_canonical_meta( $user_id );
+				},
+				5
+			);
+		},
+		10,
+		3
+	);
+}
+
+add_action(
+	'user_register',
+	function( $user_id ) {
+		ecomcine_sync_person_canonical_meta( (int) $user_id );
+	},
+	25
+);
 
 // ── URL / page detection ──────────────────────────────────────────────────────
 
@@ -256,12 +502,12 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	}
 
 	/**
-	 * Resolve a person user ID from nicename slug.
+	 * Resolve a person user ID from nicename slug without public visibility checks.
 	 *
 	 * @param string $slug
 	 * @return int
 	 */
-	function ecomcine_resolve_person_user_id_by_slug( string $slug ): int {
+	function ecomcine_find_person_user_id_by_slug( string $slug ): int {
 		$slug = sanitize_title( $slug );
 		if ( '' === $slug ) {
 			return 0;
@@ -278,6 +524,23 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 		}
 
 		if ( function_exists( 'ecomcine_is_person_user' ) && ! ecomcine_is_person_user( $user_id ) ) {
+			return 0;
+		}
+
+		return $user_id;
+	}
+
+	/**
+	 * Resolve a person user ID from nicename slug.
+	 *
+	 * @param string $slug
+	 * @return int
+	 */
+	function ecomcine_resolve_person_user_id_by_slug( string $slug ): int {
+		$user_id = function_exists( 'ecomcine_find_person_user_id_by_slug' )
+			? ecomcine_find_person_user_id_by_slug( $slug )
+			: 0;
+		if ( $user_id <= 0 ) {
 			return 0;
 		}
 
@@ -369,8 +632,8 @@ add_filter( 'pre_get_document_title', function( string $title ): string {
 		return $title;
 	}
 
-	$user_id = function_exists( 'ecomcine_resolve_person_user_id_by_slug' )
-		? ecomcine_resolve_person_user_id_by_slug( $slug )
+	$user_id = function_exists( 'ecomcine_find_person_user_id_by_slug' )
+		? ecomcine_find_person_user_id_by_slug( $slug )
 		: 0;
 	if ( $user_id <= 0 ) {
 		return $title;
@@ -412,8 +675,8 @@ add_filter( 'template_include', function( string $template ): string {
 		return $template;
 	}
 
-	$user_id = function_exists( 'ecomcine_resolve_person_user_id_by_slug' )
-		? ecomcine_resolve_person_user_id_by_slug( $slug )
+	$user_id = function_exists( 'ecomcine_find_person_user_id_by_slug' )
+		? ecomcine_find_person_user_id_by_slug( $slug )
 		: 0;
 	if ( $user_id <= 0 ) {
 		global $wp_query;
@@ -427,6 +690,11 @@ add_filter( 'template_include', function( string $template ): string {
 	}
 
 	set_query_var( 'author', $user_id );
+	set_query_var(
+		'ecomcine_person_publicly_available',
+		( function_exists( 'ecomcine_is_person_enabled' ) ? ecomcine_is_person_enabled( $user_id ) : false )
+		&& ( function_exists( 'ecomcine_has_public_person_profile' ) ? ecomcine_has_public_person_profile( $user_id ) : false )
+	);
 	$GLOBALS['tm_showcase_page'] = true;
 
 	$person_template = defined( 'TM_STORE_UI_DIR' )
@@ -506,14 +774,28 @@ if ( ! function_exists( 'ecomcine_get_geo' ) ) {
 		$lng     = get_user_meta( $user_id, 'ecomcine_geo_lng', true );
 
 		// Dokan fallback.
+		$dps = null;
+		if ( '' === $address || '' === $lat || '' === $lng ) {
+			$raw = get_user_meta( $user_id, 'dokan_profile_settings', true );
+			$dps = is_array( $raw ) ? $raw : array();
+		}
 		if ( '' === $address ) {
 			$address = (string) get_user_meta( $user_id, 'dokan_geo_address', true );
+			if ( '' === $address && is_array( $dps ) ) {
+				$address = sanitize_text_field( (string) ( $dps['location'] ?? '' ) );
+			}
 		}
 		if ( '' === $lat ) {
 			$lat = (string) get_user_meta( $user_id, 'dokan_geo_latitude', true );
+			if ( '' === $lat && is_array( $dps ) && isset( $dps['geolocation']['latitude'] ) ) {
+				$lat = (string) $dps['geolocation']['latitude'];
+			}
 		}
 		if ( '' === $lng ) {
 			$lng = (string) get_user_meta( $user_id, 'dokan_geo_longitude', true );
+			if ( '' === $lng && is_array( $dps ) && isset( $dps['geolocation']['longitude'] ) ) {
+				$lng = (string) $dps['geolocation']['longitude'];
+			}
 		}
 
 		return array(

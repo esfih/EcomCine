@@ -22,7 +22,7 @@
  * NOTE: tm_social_metrics_status + tm_social_debug_dump will move to
  *       includes/social-metrics/ when the social engine is extracted.
  *
- * @package TM_Store_UI
+ * @package Astra Child
  */
 
 defined( 'ABSPATH' ) || exit;

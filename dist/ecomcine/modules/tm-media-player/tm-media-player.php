@@ -516,7 +516,10 @@ add_filter( 'template_include', function( $template ) {
 		|| has_shortcode( $queried->post_content, 'tm_talent_player' );
 	if ( ! $has_showcase ) { return $template; }
 	$GLOBALS['tm_showcase_page'] = true;
-	$forced = locate_template( 'template-talent-showcase-full.php' );
+	$forced = defined( 'TM_STORE_UI_SHOWCASE_FULL_TEMPLATE' ) ? TM_STORE_UI_SHOWCASE_FULL_TEMPLATE : '';
+	if ( ! $forced || ! file_exists( $forced ) ) {
+		$forced = locate_template( 'template-talent-showcase.php' );
+	}
 	return $forced ? $forced : $template;
 }, 99 );
 

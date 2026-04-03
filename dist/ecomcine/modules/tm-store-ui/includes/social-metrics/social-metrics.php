@@ -35,7 +35,7 @@
  *       in includes/vendor-profile/vendor-profile-ajax.php (admin-only panel).
  *       They will be consolidated here in a future pass.
  *
- * @package TM_Store_UI
+ * @package Astra Child
  */
 
 defined( 'ABSPATH' ) || exit;

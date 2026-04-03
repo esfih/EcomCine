@@ -18,7 +18,7 @@
  *   // $c['level1']['missing']  → string[] of human-readable field labels
  *   // $c['published']          → bool (dokan_enable_selling === 'yes')
  *
- * @package TM_Store_UI
+ * @package Astra Child
  */
 
 defined( 'ABSPATH' ) || exit;

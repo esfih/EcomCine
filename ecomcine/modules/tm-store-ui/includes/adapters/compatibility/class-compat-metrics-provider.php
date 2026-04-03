@@ -31,9 +31,11 @@ class THO_Compat_Metrics_Provider implements THO_Metrics_Provider {
 	];
 
 	public function compute_social_metrics( int $vendor_id ): array {
+		$person_info = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $vendor_id ) : array();
+		$social      = isset( $person_info['social'] ) && is_array( $person_info['social'] ) ? $person_info['social'] : array();
 		$links = [];
 		foreach ( self::PLATFORM_LABELS as $platform => $label ) {
-			$url = (string) get_user_meta( $vendor_id, "tm_social_{$platform}", true );
+			$url = isset( $social[ $platform ] ) ? (string) $social[ $platform ] : (string) get_user_meta( $vendor_id, "tm_social_{$platform}", true );
 			$links[] = [
 				'platform' => $platform,
 				'label'    => $label,
@@ -52,8 +54,8 @@ class THO_Compat_Metrics_Provider implements THO_Metrics_Provider {
 		$sections = [];
 		$missing  = [];
 
-		$dokan     = maybe_unserialize( get_user_meta( $vendor_id, 'dokan_profile_settings', true ) );
-		$biography = is_array( $dokan ) ? ( $dokan['vendor_biography'] ?? '' ) : '';
+		$person_info = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $vendor_id ) : array();
+		$biography = isset( $person_info['bio'] ) ? (string) $person_info['bio'] : '';
 		if ( ! $biography ) {
 			$biography = (string) get_user_meta( $vendor_id, 'tm_vendor_biography', true );
 		}

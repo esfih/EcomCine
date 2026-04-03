@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.22
+ * Version: 0.1.23
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.22' );
+define( 'ECOMCINE_VERSION', '0.1.23' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -253,6 +253,15 @@ add_action( 'init', function() {
 		delete_option( 'ecomcine_rewrite_flushed' );
 	}
 
+	// v0.1.23 — Backfill native person/category assignments from legacy sources.
+	if ( version_compare( $stored, '0.1.23', '<' ) ) {
+		if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			EcomCine_Person_Category_Registry::install();
+			EcomCine_Person_Category_Registry::seed_defaults();
+			EcomCine_Person_Category_Registry::migrate_from_store_category();
+		}
+	}
+
 	// v0.1.21 — Ensure ecomcine_person role exists and DB tables are installed.
 	if ( version_compare( $stored, '0.1.21', '<' ) ) {
 		ecomcine_register_person_role();
@@ -414,6 +423,7 @@ register_activation_hook( ECOMCINE_FILE, function() {
 	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
 		EcomCine_Person_Category_Registry::install();
 		EcomCine_Person_Category_Registry::seed_defaults();
+		EcomCine_Person_Category_Registry::migrate_from_store_category();
 	}
 } );
 

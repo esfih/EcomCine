@@ -46,48 +46,44 @@ function tm_vendor_completeness( int $vendor_id ) : ?array {
 		return null;
 	}
 
-	// ── Published state ────────────────────────────────────────────────────
-	$published = get_user_meta( $vendor_id, 'dokan_enable_selling', true ) === 'yes';
+	// ── Native person state ────────────────────────────────────────────────
+	$published = function_exists( 'ecomcine_is_person_enabled' ) ? ecomcine_is_person_enabled( $vendor_id ) : false;
+	$info      = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $vendor_id ) : array();
+	$geo       = function_exists( 'ecomcine_get_geo' ) ? ecomcine_get_geo( $vendor_id ) : array();
 
-	// ── Dokan profile settings (single meta read, reused everywhere) ───────
-	$ps = get_user_meta( $vendor_id, 'dokan_profile_settings', true );
-	if ( ! is_array( $ps ) ) {
-		$ps = [];
-	}
-
-	// ── Resolve store category IDs → slugs ─────────────────────────────────
-	$cat_ids = [];
-	if ( ! empty( $ps['dokan_category'] ) ) {
-		$cat_ids = (array) $ps['dokan_category'];
-	} elseif ( ! empty( $ps['categories'] ) ) {
-		$cat_ids = (array) $ps['categories'];
-	}
-	if ( empty( $cat_ids ) ) {
-		$meta_cats = get_user_meta( $vendor_id, 'dokan_store_categories', true );
-		if ( is_array( $meta_cats ) ) {
-			$cat_ids = $meta_cats;
+	// ── Resolve native category assignments → slugs ────────────────────────
+	$cat_slugs = array();
+	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+		$rows = EcomCine_Person_Category_Registry::get_for_person( $vendor_id );
+		foreach ( (array) $rows as $row ) {
+			$slug = isset( $row['slug'] ) ? sanitize_title( (string) $row['slug'] ) : '';
+			if ( '' !== $slug ) {
+				$cat_slugs[] = $slug;
+			}
 		}
 	}
-	if ( empty( $cat_ids ) ) {
-		$term_ids = wp_get_object_terms( $vendor_id, 'store_category', [ 'fields' => 'ids' ] );
-		if ( ! is_wp_error( $term_ids ) ) {
-			$cat_ids = $term_ids;
+	if ( empty( $cat_slugs ) ) {
+		global $wpdb;
+		$cats = $wpdb->prefix . 'ecomcine_categories';
+		$join = $wpdb->prefix . 'ecomcine_person_categories';
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT c.slug
+				 FROM {$cats} c
+				 INNER JOIN {$join} j ON j.category_id = c.id
+				 WHERE j.user_id = %d",
+				$vendor_id
+			)
+		);
+		foreach ( (array) $rows as $slug ) {
+			$slug = sanitize_title( (string) $slug );
+			if ( '' !== $slug ) {
+				$cat_slugs[] = $slug;
+			}
 		}
 	}
-	// Normalize: any source may contain WP_Term objects, integer IDs, or string IDs.
-	// absint() cannot handle WP_Term objects, so extract term_id first.
-	$cat_ids = array_map( function( $item ) {
-		return ( $item instanceof WP_Term ) ? $item->term_id : $item;
-	}, (array) $cat_ids );
-	$cat_ids = array_values( array_filter( array_map( 'absint', $cat_ids ) ) );
-
-	$cat_slugs = [];
-	foreach ( $cat_ids as $tid ) {
-		$term = get_term( $tid, 'store_category' );
-		if ( $term && ! is_wp_error( $term ) ) {
-			$cat_slugs[] = $term->slug;
-		}
-	}
+	$cat_slugs = array_values( array_unique( $cat_slugs ) );
 
 	// ── LEVEL 1: Basic Profile ─────────────────────────────────────────────
 	// $l1 = [ 'Human Label' => bool (satisfied?) ]
@@ -96,37 +92,26 @@ function tm_vendor_completeness( int $vendor_id ) : ?array {
 	// --- Identity ---
 
 	// Talent Name
-	$shop_name = '';
-	if ( function_exists( 'dokan' ) && dokan()->vendor ) {
-		$v = dokan()->vendor->get( $vendor_id );
-		if ( $v ) {
-			$shop_name = (string) $v->get_shop_name();
-		}
-	}
+	$shop_name = isset( $info['store_name'] ) ? trim( (string) $info['store_name'] ) : '';
 	$l1['Talent Name'] = $shop_name !== '';
 
-	// Profile Photo (stored as attachment ID in dokan_profile_settings['gravatar'])
-	$l1['Profile Photo'] = ! empty( $ps['gravatar'] );
+	$l1['Profile Photo'] = ! empty( $info['avatar_id'] );
 
-	// Banner Image (stored as attachment ID in dokan_profile_settings['banner'])
-	$l1['Banner Image'] = ! empty( $ps['banner'] );
+	$l1['Banner Image'] = ! empty( $info['banner_id'] );
 
 	// Location (city text OR geolocation coordinates)
-	$has_loc = ! empty( $ps['location'] );
-	if ( ! $has_loc && ! empty( $ps['geolocation'] ) && is_array( $ps['geolocation'] ) ) {
-		$geo     = $ps['geolocation'];
-		$has_loc = ! empty( $geo['city'] )
-		        || ( ! empty( $geo['latitude'] ) && ! empty( $geo['longitude'] ) );
-	}
+	$address = isset( $info['address'] ) && is_array( $info['address'] ) ? $info['address'] : array();
+	$has_loc = ! empty( $geo['address'] )
+		|| ! empty( $address['city'] )
+		|| ( ! empty( $geo['lat'] ) && ! empty( $geo['lng'] ) );
 	$l1['Location'] = $has_loc;
 
-	// Category (at least one store_category term assigned)
-	$l1['Category'] = ! empty( $cat_ids );
+	$l1['Category'] = ! empty( $cat_slugs );
 
 	// --- Contact ---
 
 	// Phone  (profile_settings['phone'], or our tm_contact_phones / tm_contact_phone_main meta)
-	$has_phone = ! empty( $ps['phone'] );
+	$has_phone = ! empty( $info['phone'] );
 	if ( ! $has_phone ) {
 		$phones    = get_user_meta( $vendor_id, 'tm_contact_phones', true );
 		$has_phone = is_array( $phones ) && ! empty( array_filter( $phones ) );
@@ -239,7 +224,7 @@ function tm_vendor_completeness( int $vendor_id ) : ?array {
 	}
 
 	// (c) All 4 social URLs set (stored in dokan_profile_settings['social']).
-	$_social_data  = isset( $ps['social'] ) && is_array( $ps['social'] ) ? $ps['social'] : [];
+	$_social_data  = isset( $info['social'] ) && is_array( $info['social'] ) ? $info['social'] : [];
 	$_social_keys  = [ 'youtube', 'instagram', 'facebook', 'linkedin' ];
 	$social_count  = 0;
 	foreach ( $_social_keys as $_sk ) {
@@ -309,7 +294,9 @@ foreach ( [ 'added_user_meta', 'updated_user_meta' ] as $_tm_completeness_hook )
 	add_action( $_tm_completeness_hook, function( $meta_id, $user_id, $meta_key ) {
 		static $queued = [];
 		$_watched = [
-			'dokan_profile_settings',
+			'ecomcine_enabled', 'ecomcine_store_name', 'ecomcine_bio', 'ecomcine_phone',
+			'ecomcine_banner_id', 'ecomcine_avatar_id', 'ecomcine_address', 'ecomcine_social',
+			'ecomcine_geo_address', 'ecomcine_geo_lat', 'ecomcine_geo_lng',
 			'tm_contact_email_main', 'tm_contact_emails', 'tm_contact_email',
 			'tm_contact_phone_main', 'tm_contact_phones',
 			'demo_birth_date', 'demo_ethnicity', 'demo_languages', 'demo_availability',
@@ -339,9 +326,8 @@ foreach ( [ 'added_user_meta', 'updated_user_meta' ] as $_tm_completeness_hook )
 	}, 10, 3 );
 }
 
-// Set initial flags when a new vendor account is created.
-add_action( 'dokan_new_seller_created', function( $vendor_id ) {
-	tm_update_completeness_flags( absint( $vendor_id ) );
+add_action( 'user_register', function( $user_id ) {
+	tm_update_completeness_flags( absint( $user_id ) );
 }, 20 );
 
 // =============================================================================
@@ -363,7 +349,7 @@ add_action( 'init', function() {
 
 	// Find sellers who are missing the tm_l1_complete flag entirely.
 	$unflagged_ids = get_users( [
-		'role'       => 'seller',
+		'role__in'   => array( 'seller', 'ecomcine_person' ),
 		'fields'     => 'ID',
 		'number'     => -1,
 		'meta_query' => [

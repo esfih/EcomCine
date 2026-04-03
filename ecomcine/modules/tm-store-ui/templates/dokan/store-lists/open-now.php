@@ -14,13 +14,9 @@ defined( 'ABSPATH' ) || exit;
 $is_verified = isset( $_GET['verified'] ) && $_GET['verified'] === 'yes';
 ?>
 
-<!-- DEBUG: Verified filter template loaded -->
-<!-- DEBUG: Verified parameter in URL: <?php echo $is_verified ? 'YES' : 'NO'; ?> -->
-<!-- DEBUG: $_GET['verified'] value: <?php echo isset( $_GET['verified'] ) ? esc_html( $_GET['verified'] ) : 'NOT SET'; ?> -->
-
 <div class="open-now item">
     <label for="verified">
-        <?php esc_html_e( 'Verified', 'dokan' ); ?>:
+        <?php esc_html_e( 'Verified', 'tm-store-ui' ); ?>:
     </label>
     <input type="checkbox" class="dokan-toogle-checkbox" id="verified" name="verified" value="yes" <?php checked( $is_verified, true ); ?>>
 </div>

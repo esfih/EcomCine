@@ -1008,9 +1008,10 @@ jQuery(document).ready(function($) {
 
 		// Bottom tabs click handler - toggle open/closed
 		// Sole authority: vendor-store.js (theme). player.js has no tab handlers.
-		$(".bottom-tab-item").on("click", function(e) {
+		// Delegated via $(document) so it survives talent DOM replacement during
+		// showcase rotation. Namespace prevents accumulation on re-init.
+		$(document).off("click.tm-bottom-tab").on("click.tm-bottom-tab", ".bottom-tab-item", function(e) {
 			e.preventDefault();
-			e.stopPropagation();
 			
 			var $clickedTab = $(this);
 			var targetId = $clickedTab.data("target");

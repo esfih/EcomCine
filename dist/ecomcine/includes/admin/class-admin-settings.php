@@ -115,35 +115,188 @@ class EcomCine_Admin_Settings {
 	}
 
 	/**
-	 * Render basic categories list for onboarding pages.
+	 * Render native EcomCine categories for onboarding and category landing pages.
 	 */
 	public static function shortcode_categories() {
-		$taxonomy = taxonomy_exists( 'product_cat' ) ? 'product_cat' : ( taxonomy_exists( 'category' ) ? 'category' : '' );
-		if ( '' === $taxonomy ) {
-			return '<p>No category taxonomy is available yet.</p>';
-		}
-
-		$terms = get_terms(
-			array(
-				'taxonomy'   => $taxonomy,
-				'hide_empty' => false,
-				'number'     => 30,
-			)
-		);
-
-		if ( is_wp_error( $terms ) || empty( $terms ) ) {
+		if ( ! class_exists( 'EcomCine_Person_Category_Registry' ) ) {
 			return '<p>No categories found yet.</p>';
 		}
 
-		$html = '<ul class="ecomcine-term-list ecomcine-term-list--categories">';
-		foreach ( $terms as $term ) {
-			$link = get_term_link( $term );
-			if ( is_wp_error( $link ) ) {
+		$categories = EcomCine_Person_Category_Registry::get_all();
+		$grid_settings = self::get_category_grid_settings();
+
+		if ( empty( $categories ) ) {
+			return '<p>No categories found yet.</p>';
+		}
+
+		$talents_page = get_page_by_path( 'talents', OBJECT, 'page' );
+		$talents_url  = $talents_page instanceof WP_Post ? get_permalink( $talents_page ) : home_url( '/talents/' );
+		$grid_rows = max( 1, min( 12, (int) ( $grid_settings['rows'] ?? 2 ) ) );
+		$grid_columns = max( 1, min( 6, (int) ( $grid_settings['columns'] ?? 4 ) ) );
+		$card_gap = max( 0, min( 80, (int) ( $grid_settings['card_gap'] ?? 18 ) ) );
+		$border_width = max( 0, min( 20, (int) ( $grid_settings['border_width'] ?? 1 ) ) );
+		$card_radius = max( 0, min( 80, (int) ( $grid_settings['card_radius'] ?? 24 ) ) );
+		$border_style = sanitize_key( (string) ( $grid_settings['border_style'] ?? 'solid' ) );
+		$border_color = sanitize_hex_color( (string) ( $grid_settings['border_color'] ?? '#D6C3A5' ) );
+		if ( ! in_array( $border_style, array( 'none', 'solid', 'dotted', 'dashed', 'double' ), true ) ) {
+			$border_style = 'solid';
+		}
+		if ( ! $border_color ) {
+			$border_color = '#D6C3A5';
+		}
+		$card_background_color = sanitize_hex_color( (string) ( $grid_settings['card_background_color'] ?? '#FFF8F0' ) );
+		if ( ! $card_background_color ) {
+			$card_background_color = '#FFF8F0';
+		}
+		$card_background_hover_color = sanitize_hex_color( (string) ( $grid_settings['card_background_hover_color'] ?? $card_background_color ) );
+		if ( ! $card_background_hover_color ) {
+			$card_background_hover_color = $card_background_color;
+		}
+		$title_color = sanitize_hex_color( (string) ( $grid_settings['title_color'] ?? '#111827' ) );
+		if ( ! $title_color ) {
+			$title_color = '#111827';
+		}
+		$cat_sort_key = isset( $_GET['ecomcine_cat_order'] ) ? sanitize_key( wp_unslash( $_GET['ecomcine_cat_order'] ) ) : 'name_az';
+		if ( ! in_array( $cat_sort_key, array( 'name_az', 'name_za' ), true ) ) {
+			$cat_sort_key = 'name_az';
+		}
+		if ( 'name_za' === $cat_sort_key ) {
+			usort( $categories, function( $a, $b ) {
+				return strcmp( strtolower( (string) ( $b['name'] ?? '' ) ), strtolower( (string) ( $a['name'] ?? '' ) ) );
+			} );
+		} else {
+			usort( $categories, function( $a, $b ) {
+				return strcmp( strtolower( (string) ( $a['name'] ?? '' ) ), strtolower( (string) ( $b['name'] ?? '' ) ) );
+			} );
+		}
+		$per_page = max( 1, $grid_rows * $grid_columns );
+		$total_categories = count( $categories );
+		$total_pages = max( 1, (int) ceil( $total_categories / $per_page ) );
+		$current_page = isset( $_GET['ecomcine_category_page'] ) ? absint( wp_unslash( $_GET['ecomcine_category_page'] ) ) : 1;
+		$current_page = max( 1, min( $total_pages, $current_page ) );
+		$visible_categories = array_slice( $categories, ( $current_page - 1 ) * $per_page, $per_page );
+		$showcase_page = get_page_by_path( 'showcase', OBJECT, 'page' );
+		$showcase_url  = $showcase_page instanceof WP_Post ? get_permalink( $showcase_page ) : home_url( '/showcase/' );
+		$showcase_ids  = array();
+		if ( function_exists( 'tm_store_ui_collect_person_ids_for_listing' ) ) {
+			$showcase_ids = array_values( array_filter( array_map( 'intval', (array) tm_store_ui_collect_person_ids_for_listing() ) ) );
+		} elseif ( function_exists( 'ecomcine_get_persons' ) ) {
+			$people = ecomcine_get_persons( array( 'fields' => 'ids', 'number' => -1 ) );
+			foreach ( (array) $people as $person_id ) {
+				$person_id = (int) $person_id;
+				if ( $person_id < 1 ) {
+					continue;
+				}
+				if ( function_exists( 'ecomcine_is_person_enabled' ) && ! ecomcine_is_person_enabled( $person_id ) ) {
+					continue;
+				}
+				$showcase_ids[] = $person_id;
+			}
+		}
+		$showcase_ids = array_values( array_unique( $showcase_ids ) );
+		$showcase_cta_url = ! empty( $showcase_ids ) ? add_query_arg( 'tm_ids', implode( ',', $showcase_ids ), $showcase_url ) : '';
+		$prev_page_url = $current_page > 1 ? add_query_arg( 'ecomcine_category_page', $current_page - 1, remove_query_arg( 'ecomcine_category_page' ) ) : '';
+		$next_page_url = $current_page < $total_pages ? add_query_arg( 'ecomcine_category_page', $current_page + 1, remove_query_arg( 'ecomcine_category_page' ) ) : '';
+
+		$style = '<style>
+		.ecomcine-category-grid{display:grid;gap:' . esc_html( (string) $card_gap ) . 'px;grid-template-columns:repeat(' . esc_html( (string) $grid_columns ) . ',minmax(0,1fr));margin:0;padding:0 20px;list-style:none;}
+		.ecomcine-category-card{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:190px;padding:24px 22px;border:' . esc_html( (string) $border_width ) . 'px ' . esc_html( $border_style ) . ' ' . esc_html( $border_color ) . ';border-radius:' . esc_html( (string) $card_radius ) . 'px;background:' . esc_html( $card_background_color ) . ';color:#111827;text-decoration:none;overflow:hidden;text-align:center;transition:transform .18s ease;}
+		.ecomcine-category-card:hover,.ecomcine-category-card:focus-visible{transform:translateY(-3px);background:' . esc_html( $card_background_hover_color ) . ';outline:none;}
+		.ecomcine-category-card__icon{display:inline-flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:22px;background:#111827;color:#fff;box-shadow:0 10px 24px rgba(17,24,39,.18);}
+		.ecomcine-category-card__icon img{display:block;max-height:100%;max-width:100%;object-fit:contain;}
+		.ecomcine-category-card__icon .tm-icon{width:30px;height:30px;}
+		.ecomcine-category-card__title{margin:0;font-size:1.05rem;line-height:1.25;font-weight:700;letter-spacing:-.02em;max-width:14ch;color:' . esc_html( $title_color ) . ';}
+		.tm-card-arrow{position:static;z-index:auto;width:42px;height:42px;background:rgba(0,0,0,0.6);border:2px solid rgba(212,175,55,0.5);border-radius:50%;color:#D4AF37;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background 0.2s,border-color 0.2s,transform 0.15s;box-shadow:0 2px 14px rgba(0,0,0,0.55);flex-shrink:0;text-decoration:none;}
+		.tm-card-arrow svg{width:20px;height:20px;pointer-events:none;}
+		.tm-card-arrow:hover:not([disabled]){background:rgba(212,175,55,0.18);border-color:#D4AF37;transform:scale(1.12);}
+		.tm-card-arrow[disabled]{opacity:0.18;cursor:default;pointer-events:none;}
+		#tm-pager-bar{margin-top:60px;margin-bottom:20px;z-index:20;display:flex;justify-content:center;align-items:center;gap:10px;}
+		#tm-pager-bar>.tm-card-arrow:first-child{margin-right:25px;}
+		#tm-pager-bar>.tm-card-arrow:last-child{margin-left:25px;}
+		#tm-sort-wrap{position:relative;}
+		#tm-sort-btn{display:flex;align-items:center;justify-content:center;width:42px;height:42px;background:rgba(0,0,0,0.6);border:1px solid rgba(212,175,55,0.5);border-radius:4px;color:#D4AF37;cursor:pointer;padding:0;transition:background 0.2s,border-color 0.2s;box-shadow:0 2px 14px rgba(0,0,0,0.55);}
+		#tm-sort-btn svg{width:18px;height:18px;pointer-events:none;}
+		#tm-sort-btn:hover,#tm-sort-btn.is-open{background:rgba(212,175,55,0.15);border-color:#D4AF37;}
+		#tm-sort-dropdown{display:none;position:absolute;bottom:calc(100% + 8px);left:0;min-width:165px;background:#111;border:1px solid rgba(212,175,55,0.4);border-radius:4px;list-style:none;margin:0;padding:4px 0;z-index:30;box-shadow:0 4px 20px rgba(0,0,0,0.7);}
+		#tm-sort-dropdown.is-open{display:block;}
+		#tm-sort-dropdown li{padding:10px 16px;font-size:11px;letter-spacing:0.07em;text-transform:uppercase;color:rgba(212,175,55,0.7);cursor:pointer;transition:background 0.15s,color 0.15s;white-space:nowrap;}
+		#tm-sort-dropdown li:hover{background:rgba(212,175,55,0.1);color:#D4AF37;}
+		#tm-sort-dropdown li.selected{color:#D4AF37;font-weight:600;}
+		#tm-sort-dropdown li.selected::before{content:"\2713\00a0";}
+		#tm-showcase-btn{display:inline-flex;align-items:center;height:42px;padding:0 22px;background:transparent;border:1px solid #D4AF37;border-radius:4px;color:#D4AF37;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;white-space:nowrap;cursor:pointer;transition:background 0.2s,color 0.2s;box-shadow:0 2px 14px rgba(0,0,0,0.55);}
+		#tm-showcase-btn:hover{background:#D4AF37;color:#000;}
+		@media (max-width: 900px){.ecomcine-category-grid{grid-template-columns:repeat(' . esc_html( (string) min( 2, $grid_columns ) ) . ',minmax(0,1fr));}}
+		@media (max-width: 640px){.ecomcine-category-grid{grid-template-columns:1fr;}.ecomcine-category-card{min-height:168px;padding:20px 18px;border-radius:20px;}.ecomcine-category-card__icon{width:64px;height:64px;border-radius:20px;}#tm-pager-bar{gap:12px;margin-top:22px;}#tm-showcase-btn{width:100%;}}
+		</style>';
+
+		$html = $style . '<ul class="ecomcine-category-grid ecomcine-term-list ecomcine-term-list--categories">';
+		foreach ( $visible_categories as $category ) {
+			$slug = sanitize_title( (string) ( $category['slug'] ?? '' ) );
+			$name = trim( (string) ( $category['name'] ?? '' ) );
+			if ( '' === $slug || '' === $name ) {
 				continue;
 			}
-			$html .= '<li><a href="' . esc_url( $link ) . '">' . esc_html( $term->name ) . '</a></li>';
+
+			$link = add_query_arg( 'ecomcine_person_category', $slug, $talents_url );
+			$icon = '';
+			$icon_url = EcomCine_Person_Category_Registry::get_category_icon_url( $category );
+			if ( '' !== $icon_url ) {
+				$icon = '<img src="' . esc_url( $icon_url ) . '" alt="" />';
+			}
+			$icon_key = EcomCine_Person_Category_Registry::sanitize_icon_key( (string) ( $category['icon_key'] ?? '' ) );
+			if ( '' === $icon && '' !== $icon_key && class_exists( 'TM_Icons' ) ) {
+				$icon = TM_Icons::svg( $icon_key, '', $name );
+			}
+			if ( '' === $icon && class_exists( 'TM_Icons' ) ) {
+				$icon = TM_Icons::svg( 'circle-user', '', $name );
+			}
+
+			$html .= '<li>';
+			$html .= '<a class="ecomcine-category-card" href="' . esc_url( $link ) . '">';
+			$html .= '<span class="ecomcine-category-card__icon">' . $icon . '</span>';
+			$html .= '<h3 class="ecomcine-category-card__title">' . esc_html( $name ) . '</h3>';
+			$html .= '</a>';
+			$html .= '</li>';
 		}
 		$html .= '</ul>';
+		if ( $total_pages > 1 || '' !== $showcase_cta_url ) {
+			$sort_options = array(
+				'name_az' => 'Name A \u2192 Z',
+				'name_za' => 'Name Z \u2192 A',
+			);
+			$html .= '<div id="tm-pager-bar">';
+			// Prev arrow
+			if ( '' !== $prev_page_url ) {
+				$html .= '<a class="tm-card-arrow" rel="prev" href="' . esc_url( $prev_page_url ) . '" aria-label="' . esc_attr__( 'Previous categories page', 'ecomcine' ) . '"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></a>';
+			}
+			// Sort button + dropdown
+			$html .= '<div id="tm-sort-wrap">';
+			$html .= '<button id="tm-sort-btn" aria-label="' . esc_attr__( 'Sort order', 'ecomcine' ) . '" type="button">';
+			$html .= '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="9" y2="18"/></svg>';
+			$html .= '</button>';
+			$html .= '<ul id="tm-sort-dropdown">';
+			foreach ( $sort_options as $val => $label ) {
+				$sort_url      = add_query_arg( 'ecomcine_cat_order', $val, remove_query_arg( array( 'ecomcine_cat_order', 'ecomcine_category_page' ) ) );
+				$sel_class     = $val === $cat_sort_key ? ' class="selected"' : '';
+				$html .= '<li data-value="' . esc_attr( $val ) . '" data-url="' . esc_url( $sort_url ) . '"' . $sel_class . '>' . esc_html( html_entity_decode( $label, ENT_QUOTES, 'UTF-8' ) ) . '</li>';
+			}
+			$html .= '</ul>';
+			$html .= '</div>';
+			// Showcase CTA
+			if ( '' !== $showcase_cta_url ) {
+				$showcase_count = count( $showcase_ids );
+				$html .= '<a id="tm-showcase-btn" href="' . esc_url( $showcase_cta_url ) . '">';
+				$html .= '&#9654;&#8201;' . esc_html( sprintf( _n( 'Showcase this %d talent', 'Showcase these %d talents', $showcase_count, 'ecomcine' ), $showcase_count ) );
+				$html .= '</a>';
+			}
+			// Next arrow
+			if ( '' !== $next_page_url ) {
+				$html .= '<a class="tm-card-arrow" rel="next" href="' . esc_url( $next_page_url ) . '" aria-label="' . esc_attr__( 'Next categories page', 'ecomcine' ) . '"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></a>';
+			}
+			$html .= '</div>';
+			// Inline JS: sort dropdown toggle (vanilla, no jQuery dependency)
+			$html .= '<script>(function(){var btn=document.getElementById("tm-sort-btn"),drop=document.getElementById("tm-sort-dropdown");if(!btn||!drop)return;btn.addEventListener("click",function(e){e.stopPropagation();drop.classList.toggle("is-open");btn.classList.toggle("is-open");});drop.querySelectorAll("li[data-url]").forEach(function(li){li.addEventListener("click",function(e){e.stopPropagation();window.location.href=li.dataset.url;});});document.addEventListener("click",function(){drop.classList.remove("is-open");btn.classList.remove("is-open");});})();</script>';
+		}
 
 		return $html;
 	}
@@ -297,19 +450,27 @@ class EcomCine_Admin_Settings {
 		} elseif ( ! wp_mkdir_p( $dest_dir ) ) {
 			$error_code = 'dest_mkdir';
 		} else {
-			// Always sync all bundled files to the installed theme directory so that
-			// plugin updates (new templates, revised CSS) are applied on each click.
+			// Always sync the full bundled theme tree so plugin updates apply to
+			// all theme assets, templates, and helper directories.
 			$copy_ok  = true;
-			$iterator = new DirectoryIterator( $bundled_src );
+			$iterator = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator( $bundled_src, FilesystemIterator::SKIP_DOTS ),
+				RecursiveIteratorIterator::SELF_FIRST
+			);
 			foreach ( $iterator as $file_info ) {
-				if ( $file_info->isDot() || $file_info->isDir() ) {
+				$relative = ltrim( str_replace( $bundled_src, '', $file_info->getPathname() ), DIRECTORY_SEPARATOR );
+				$target   = $dest_dir . DIRECTORY_SEPARATOR . $relative;
+
+				if ( $file_info->isDir() ) {
+					if ( ! wp_mkdir_p( $target ) ) {
+						$copy_ok    = false;
+						$error_code = 'dest_mkdir';
+						break;
+					}
 					continue;
 				}
-				$ext = strtolower( $file_info->getExtension() );
-				if ( ! in_array( $ext, array( 'php', 'css' ), true ) ) {
-					continue;
-				}
-				if ( ! copy( $file_info->getPathname(), $dest_dir . DIRECTORY_SEPARATOR . $file_info->getFilename() ) ) {
+
+				if ( ! wp_mkdir_p( dirname( $target ) ) || ! copy( $file_info->getPathname(), $target ) ) {
 					$copy_ok    = false;
 					$error_code = 'copy_fail';
 					break;
@@ -551,6 +712,18 @@ class EcomCine_Admin_Settings {
 				'rows'    => 2,
 				'columns' => 4,
 			),
+			'categories_grid' => array(
+				'rows'         => 2,
+				'columns'      => 4,
+				'card_gap'     => 18,
+				'card_radius'  => 24,
+				'border_width' => 1,
+				'border_style' => 'solid',
+				'border_color' => '#D6C3A5',
+				'card_background_color' => '#FFF8F0',
+				'card_background_hover_color' => '#FFF8F0',
+				'title_color' => '#111827',
+			),
 			'features' => array(
 				'media_player'  => true,
 				'account_panel' => true,
@@ -587,6 +760,10 @@ class EcomCine_Admin_Settings {
 		$settings['persons_grid'] = wp_parse_args(
 			isset( $stored['persons_grid'] ) && is_array( $stored['persons_grid'] ) ? $stored['persons_grid'] : array(),
 			$defaults['persons_grid']
+		);
+		$settings['categories_grid'] = wp_parse_args(
+			isset( $stored['categories_grid'] ) && is_array( $stored['categories_grid'] ) ? $stored['categories_grid'] : array(),
+			$defaults['categories_grid']
 		);
 		$settings['style_tokens'] = wp_parse_args(
 			isset( $stored['style_tokens'] ) && is_array( $stored['style_tokens'] ) ? $stored['style_tokens'] : array(),
@@ -710,6 +887,18 @@ class EcomCine_Admin_Settings {
 	}
 
 	/**
+	 * Get category grid settings.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public static function get_category_grid_settings(): array {
+		$settings = self::get_settings();
+		return isset( $settings['categories_grid'] ) && is_array( $settings['categories_grid'] )
+			? $settings['categories_grid']
+			: self::defaults()['categories_grid'];
+	}
+
+	/**
 	 * Register option and sanitization callback.
 	 */
 	public static function register_settings() {
@@ -787,6 +976,34 @@ class EcomCine_Admin_Settings {
 
 			$sanitized['persons_grid']['rows']    = max( 1, min( 12, $rows ) );
 			$sanitized['persons_grid']['columns'] = max( 1, min( 6, $cols ) );
+		}
+
+		if ( isset( $input['categories_grid'] ) && is_array( $input['categories_grid'] ) ) {
+			$rows         = isset( $input['categories_grid']['rows'] ) ? absint( $input['categories_grid']['rows'] ) : (int) $defaults['categories_grid']['rows'];
+			$cols         = isset( $input['categories_grid']['columns'] ) ? absint( $input['categories_grid']['columns'] ) : (int) $defaults['categories_grid']['columns'];
+			$card_gap     = isset( $input['categories_grid']['card_gap'] ) ? absint( $input['categories_grid']['card_gap'] ) : (int) $defaults['categories_grid']['card_gap'];
+			$card_radius  = isset( $input['categories_grid']['card_radius'] ) ? absint( $input['categories_grid']['card_radius'] ) : (int) $defaults['categories_grid']['card_radius'];
+			$border_width = isset( $input['categories_grid']['border_width'] ) ? absint( $input['categories_grid']['border_width'] ) : (int) $defaults['categories_grid']['border_width'];
+			$border_style = isset( $input['categories_grid']['border_style'] ) ? sanitize_key( $input['categories_grid']['border_style'] ) : (string) $defaults['categories_grid']['border_style'];
+			$border_color = isset( $input['categories_grid']['border_color'] ) ? sanitize_hex_color( $input['categories_grid']['border_color'] ) : '';
+			$card_background_color = isset( $input['categories_grid']['card_background_color'] ) ? sanitize_hex_color( $input['categories_grid']['card_background_color'] ) : '';
+			$card_background_hover_color = isset( $input['categories_grid']['card_background_hover_color'] ) ? sanitize_hex_color( $input['categories_grid']['card_background_hover_color'] ) : '';
+			$title_color = isset( $input['categories_grid']['title_color'] ) ? sanitize_hex_color( $input['categories_grid']['title_color'] ) : '';
+
+			if ( ! in_array( $border_style, array( 'none', 'solid', 'dotted', 'dashed', 'double' ), true ) ) {
+				$border_style = $defaults['categories_grid']['border_style'];
+			}
+
+			$sanitized['categories_grid']['rows']         = max( 1, min( 12, $rows ) );
+			$sanitized['categories_grid']['columns']      = max( 1, min( 6, $cols ) );
+			$sanitized['categories_grid']['card_gap']     = max( 0, min( 80, $card_gap ) );
+			$sanitized['categories_grid']['card_radius']  = max( 0, min( 80, $card_radius ) );
+			$sanitized['categories_grid']['border_width'] = max( 0, min( 20, $border_width ) );
+			$sanitized['categories_grid']['border_style'] = $border_style;
+			$sanitized['categories_grid']['border_color'] = $border_color ? $border_color : $defaults['categories_grid']['border_color'];
+			$sanitized['categories_grid']['card_background_color'] = $card_background_color ? $card_background_color : $defaults['categories_grid']['card_background_color'];
+			$sanitized['categories_grid']['card_background_hover_color'] = $card_background_hover_color ? $card_background_hover_color : $defaults['categories_grid']['card_background_hover_color'];
+			$sanitized['categories_grid']['title_color'] = $title_color ? $title_color : $defaults['categories_grid']['title_color'];
 		}
 
 		$style_keys = array_keys( $defaults['style_tokens'] );
@@ -946,7 +1163,7 @@ class EcomCine_Admin_Settings {
 				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=settings' ) ); ?>"
 				   class="nav-tab <?php echo 'settings' === $active_tab ? 'nav-tab-active' : ''; ?>">Settings</a>
 			<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=categories' ) ); ?>"
-			   class="nav-tab <?php echo 'categories' === $active_tab ? 'nav-tab-active' : ''; ?>">Talent Categories</a>
+			   class="nav-tab <?php echo 'categories' === $active_tab ? 'nav-tab-active' : ''; ?>">Categories</a>
 			<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=persons-grid' ) ); ?>"
 			   class="nav-tab <?php echo 'persons-grid' === $active_tab ? 'nav-tab-active' : ''; ?>">Persons Grid</a>
 			<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=licensing' ) ); ?>"

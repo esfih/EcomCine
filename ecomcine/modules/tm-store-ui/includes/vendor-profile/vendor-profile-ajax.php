@@ -46,26 +46,26 @@ if ( ! function_exists( 'tm_ajax_send_json_success' ) ) {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Fix 3: Suppress Dokan Pro's address-change echo during AJAX
-// Dokan Pro's vendor-verification Dashboard class hooks `update_user_meta`
-// (fires BEFORE the DB write) and unconditionally echoes an HTML warning div
-// whenever dokan_profile_settings is written with a changed address. On AJAX
-// this HTML goes into the output buffer and corrupts the JSON response.
-// We bracket that window with ob_start / ob_end_clean so the echo is silently
-// discarded, leaving the buffer clean for our JSON response.
-// ─────────────────────────────────────────────────────────────────────────────
-if ( wp_doing_ajax() ) {
-	add_action( 'update_user_meta', function( $meta_id, $user_id, $meta_key ) {
-		if ( $meta_key === 'dokan_profile_settings' ) {
-			ob_start(); // capture anything echoed by hooks before the DB write
+if ( ! function_exists( 'tm_vendor_profile_get_person_info' ) ) {
+	function tm_vendor_profile_get_person_info( int $user_id ): array {
+		return function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $user_id ) : array();
+	}
+}
+
+if ( ! function_exists( 'tm_vendor_profile_get_person_geo' ) ) {
+	function tm_vendor_profile_get_person_geo( int $user_id ): array {
+		return function_exists( 'ecomcine_get_geo' ) ? ecomcine_get_geo( $user_id ) : array();
+	}
+}
+
+if ( ! function_exists( 'tm_vendor_profile_get_person_category_ids' ) ) {
+	function tm_vendor_profile_get_person_category_ids( int $user_id ): array {
+		if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			return array_values( array_filter( array_map( 'absint', wp_list_pluck( (array) EcomCine_Person_Category_Registry::get_for_person( $user_id ), 'id' ) ) ) );
 		}
-	}, 1, 3 );
-	add_action( 'update_user_meta', function( $meta_id, $user_id, $meta_key ) {
-		if ( $meta_key === 'dokan_profile_settings' && ob_get_level() > 0 ) {
-			ob_end_clean(); // discard – e.g. Dokan's address-verification warning
-		}
-	}, 999, 3 );
+
+		return array();
+	}
 }
 
 /**
@@ -93,10 +93,10 @@ add_action( 'wp_ajax_vendor_save_attribute', function() {
 	$old_value = null;
 	if ( strpos( $field, 'social_' ) === 0 ) {
 		$social_key = str_replace( 'social_', '', $field );
-		$profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-		$old_value = isset( $profile_settings['social'][ $social_key ] ) ? $profile_settings['social'][ $social_key ] : '';
+		$person_info = tm_vendor_profile_get_person_info( $user_id );
+		$old_value = isset( $person_info['social'][ $social_key ] ) ? $person_info['social'][ $social_key ] : '';
 	} elseif ( $field === 'store_categories' ) {
-		$old_value = wp_get_object_terms( $user_id, 'store_category', [ 'fields' => 'ids' ] );
+		$old_value = tm_vendor_profile_get_person_category_ids( $user_id );
 	} else {
 		$old_value = get_user_meta( $user_id, $field, true );
 	}
@@ -119,7 +119,7 @@ add_action( 'wp_ajax_vendor_save_attribute', function() {
 		tm_ajax_send_json_error( ['message' => 'Invalid field'], 400 );
 	}
 	
-	// Special handling for social URLs - save to dokan_profile_settings['social']
+	// Special handling for social URLs - save to canonical EcomCine social meta.
 	if ( strpos( $field, 'social_' ) === 0 ) {
 		$social_key = str_replace( 'social_', '', $field );
 		$normalize_social_url = function( $value ) use ( $social_key ) {
@@ -215,23 +215,17 @@ add_action( 'wp_ajax_vendor_save_attribute', function() {
 			tm_ajax_send_json_error( [ 'message' => 'Please enter a valid Instagram profile URL.' ], 400 );
 		}
 		
-		// Get current profile settings
-		$profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-		if ( ! is_array( $profile_settings ) ) {
-			$profile_settings = [];
-		}
-		if ( ! isset( $profile_settings['social'] ) || ! is_array( $profile_settings['social'] ) ) {
-			$profile_settings['social'] = [];
-		}
+		$person_info = tm_vendor_profile_get_person_info( $user_id );
+		$social_links = isset( $person_info['social'] ) && is_array( $person_info['social'] ) ? $person_info['social'] : array();
 		
 		// Save or delete URL
 		if ( empty( $url ) ) {
-			unset( $profile_settings['social'][ $social_key ] );
+			unset( $social_links[ $social_key ] );
 		} else {
-			$profile_settings['social'][ $social_key ] = $url;
+			$social_links[ $social_key ] = $url;
 		}
 		
-		update_user_meta( $user_id, 'dokan_profile_settings', $profile_settings );
+		update_user_meta( $user_id, 'ecomcine_social', $social_links );
 
 		if ( $did_change ) {
 			update_user_meta( $user_id, 'tm_social_active_fetch_platform', $social_key );
@@ -310,15 +304,9 @@ add_action( 'wp_ajax_vendor_save_attribute', function() {
 			tm_ajax_send_json_error( [ 'message' => $result->get_error_message() ], 500 );
 		}
 
-		$profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-		if ( ! is_array( $profile_settings ) ) {
-			$profile_settings = [];
+		if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			EcomCine_Person_Category_Registry::set_person_categories( $user_id, $term_ids );
 		}
-		$profile_settings['categories'] = $term_ids;
-		$profile_settings['dokan_category'] = $term_ids;
-		update_user_meta( $user_id, 'dokan_profile_settings', $profile_settings );
-
-		update_user_meta( $user_id, 'dokan_store_categories', $term_ids );
 
 		// Log admin changes
 		tm_log_admin_vendor_edit( $user_id, $field, 'updated', $old_value, $term_ids );
@@ -861,14 +849,7 @@ add_action( 'wp_ajax_vendor_update_avatar', function() {
 		tm_ajax_send_json_error( ['message' => 'Invalid image'], 400 );
 	}
 	
-	// Save to dokan profile settings
-	$profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-	if ( ! is_array( $profile_settings ) ) {
-		$profile_settings = [];
-	}
-	
-	$profile_settings['gravatar'] = $avatar_id;
-	update_user_meta( $user_id, 'dokan_profile_settings', $profile_settings );
+	update_user_meta( $user_id, 'ecomcine_avatar_id', $avatar_id );
 	
 	// Get new avatar URL
 	$avatar_url = wp_get_attachment_image_url( $avatar_id, 'full' );
@@ -902,13 +883,7 @@ add_action( 'wp_ajax_vendor_update_banner', function() {
 		tm_ajax_send_json_error( [ 'message' => 'Invalid image' ], 400 );
 	}
 
-	$profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-	if ( ! is_array( $profile_settings ) ) {
-		$profile_settings = [];
-	}
-
-	$profile_settings['banner'] = $banner_id;
-	update_user_meta( $user_id, 'dokan_profile_settings', $profile_settings );
+	update_user_meta( $user_id, 'ecomcine_banner_id', $banner_id );
 
 	$banner_url = wp_get_attachment_image_url( $banner_id, 'full' );
 
@@ -962,15 +937,9 @@ add_action( 'wp_ajax_vendor_update_media_playlist', function() {
 			: '[playlist type="' . $playlist_type . '" ids="' . $ids_csv . '"]';
 	}
 
-	$profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-	if ( ! is_array( $profile_settings ) ) {
-		$profile_settings = [];
-	}
-
-	$bio = '';
-	if ( ! empty( $profile_settings['vendor_biography'] ) ) {
-		$bio = (string) $profile_settings['vendor_biography'];
-	} else {
+	$person_info = tm_vendor_profile_get_person_info( $user_id );
+	$bio = isset( $person_info['bio'] ) ? (string) $person_info['bio'] : '';
+	if ( '' === $bio ) {
 		$bio = (string) get_user_meta( $user_id, 'vendor_biography', true );
 	}
 
@@ -1026,8 +995,7 @@ add_action( 'wp_ajax_vendor_update_media_playlist', function() {
 		$bio = $bio === '' ? $shortcode : $bio . "\n\n" . $shortcode;
 	}
 
-	$profile_settings['vendor_biography'] = $bio;
-	update_user_meta( $user_id, 'dokan_profile_settings', $profile_settings );
+	update_user_meta( $user_id, 'ecomcine_bio', $bio );
 	update_user_meta( $user_id, 'vendor_biography', $bio );
 
 	tm_ajax_send_json_success( [
@@ -1060,20 +1028,10 @@ add_action( 'wp_ajax_vendor_update_store_name', function() {
 	}
 	
 	// Capture old value for logging
-	$old_profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-	$old_store_name = isset( $old_profile_settings['store_name'] ) ? $old_profile_settings['store_name'] : get_user_meta( $user_id, 'dokan_store_name', true );
+	$person_info = tm_vendor_profile_get_person_info( $user_id );
+	$old_store_name = isset( $person_info['store_name'] ) ? (string) $person_info['store_name'] : '';
 	
-	// Update store name in dokan profile settings
-	$profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-	if ( ! is_array( $profile_settings ) ) {
-		$profile_settings = [];
-	}
-	
-	$profile_settings['store_name'] = $store_name;
-	update_user_meta( $user_id, 'dokan_profile_settings', $profile_settings );
-	
-	// Also update dokan_store_name meta directly
-	update_user_meta( $user_id, 'dokan_store_name', $store_name );
+	update_user_meta( $user_id, 'ecomcine_store_name', $store_name );
 	
 	// Log admin action if applicable
 	tm_log_admin_vendor_edit( $user_id, 'store_name', 'updated', $old_store_name, $store_name );
@@ -1168,15 +1126,9 @@ add_action( 'wp_ajax_vendor_update_contact_info', function() {
 		update_user_meta( $user_id, 'tm_contact_phone_main', $contact_phone_main );
 	}
 
-	$profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-	if ( ! is_array( $profile_settings ) ) {
-		$profile_settings = [];
-	}
 	if ( $has_phones ) {
-		$profile_settings['phone'] = $contact_phone_main;
-		update_user_meta( $user_id, 'dokan_store_phone', $contact_phone_main );
+		update_user_meta( $user_id, 'ecomcine_phone', $contact_phone_main );
 	}
-	update_user_meta( $user_id, 'dokan_profile_settings', $profile_settings );
 
 	$contact_emails_saved = get_user_meta( $user_id, 'tm_contact_emails', true );
 	$contact_email_main_saved = get_user_meta( $user_id, 'tm_contact_email_main', true );
@@ -1231,64 +1183,50 @@ add_action( 'wp_ajax_vendor_update_location', function() {
 	}
 	
 	// Capture old value for admin change logging
-	$old_location = get_user_meta( $user_id, 'dokan_geo_address', true );
+	$old_geo = tm_vendor_profile_get_person_geo( $user_id );
+	$old_location = isset( $old_geo['address'] ) ? (string) $old_geo['address'] : '';
 	
 	// Parse location data if provided (from Mapbox)
 	$location_obj = ! empty( $location_data ) ? json_decode( stripslashes( $location_data ), true ) : null;
 	
-	// Update dokan_geo_address
-	update_user_meta( $user_id, 'dokan_geo_address', $geo_address );
-	
-	// Update dokan profile settings location
-	$profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-	if ( ! is_array( $profile_settings ) ) {
-		$profile_settings = [];
-	}
-	
-	$profile_settings['location'] = $geo_address;
+	update_user_meta( $user_id, 'ecomcine_geo_address', $geo_address );
+	$person_info = tm_vendor_profile_get_person_info( $user_id );
+	$address = isset( $person_info['address'] ) && is_array( $person_info['address'] ) ? $person_info['address'] : array();
 	
 	// If we have coordinates from Mapbox, save them
 	if ( $location_obj && isset( $location_obj['center'] ) ) {
-		$profile_settings['geolocation'] = [
-			'latitude' => floatval( $location_obj['center'][1] ),
-			'longitude' => floatval( $location_obj['center'][0] )
-		];
+		update_user_meta( $user_id, 'ecomcine_geo_lat', floatval( $location_obj['center'][1] ) );
+		update_user_meta( $user_id, 'ecomcine_geo_lng', floatval( $location_obj['center'][0] ) );
 	}
 	
 	// Parse address components if available
 	if ( $location_obj && isset( $location_obj['context'] ) ) {
-		$address = [];
+		$parsed_address = [];
 		foreach ( $location_obj['context'] as $component ) {
 			if ( strpos( $component['id'], 'place' ) !== false ) {
-				$address['city'] = $component['text'];
+				$parsed_address['city'] = $component['text'];
 			} elseif ( strpos( $component['id'], 'region' ) !== false ) {
-				$address['state'] = $component['text'];
+				$parsed_address['state'] = $component['text'];
 			} elseif ( strpos( $component['id'], 'country' ) !== false ) {
-				$address['country'] = $component['short_code'];
+				$parsed_address['country'] = $component['short_code'];
 			} elseif ( strpos( $component['id'], 'postcode' ) !== false ) {
-				$address['zip'] = $component['text'];
+				$parsed_address['zip'] = $component['text'];
 			}
 		}
-		if ( ! empty( $address ) ) {
-			if ( ! isset( $profile_settings['address'] ) || ! is_array( $profile_settings['address'] ) ) {
-				$profile_settings['address'] = [];
-			}
-			$profile_settings['address'] = array_merge( $profile_settings['address'], $address );
+		if ( ! empty( $parsed_address ) ) {
+			$address = array_merge( $address, $parsed_address );
 		}
 	}
-	
-	update_user_meta( $user_id, 'dokan_profile_settings', $profile_settings );
+	if ( ! empty( $address ) ) {
+		update_user_meta( $user_id, 'ecomcine_address', $address );
+	}
 
-	// ── Write the standalone geo meta keys the vendors map reads ─────────────
-	// dokan_geo_latitude / dokan_geo_longitude are separate user meta entries
-	// (set by Dokan Geolocation module). dokan_profile_settings['geolocation']
-	// is a different store used by Dokan Pro's address UI — we need both.
 	if ( $location_obj && isset( $location_obj['center'] ) && count( $location_obj['center'] ) === 2 ) {
 		// Coordinates came straight from the Mapbox geocoder result — use them.
 		$lat_new = floatval( $location_obj['center'][1] );
 		$lng_new = floatval( $location_obj['center'][0] );
-		update_user_meta( $user_id, 'dokan_geo_latitude',  $lat_new );
-		update_user_meta( $user_id, 'dokan_geo_longitude', $lng_new );
+		update_user_meta( $user_id, 'ecomcine_geo_lat',  $lat_new );
+		update_user_meta( $user_id, 'ecomcine_geo_lng', $lng_new );
 	} else {
 		// No coordinates provided (user typed a free-text address without
 		// selecting from the autocomplete dropdown). Re-geocode server-side
@@ -1311,8 +1249,8 @@ add_action( 'wp_ajax_vendor_update_location', function() {
 				if ( ! empty( $geocode_body['features'][0]['center'] ) ) {
 					$lat_new = floatval( $geocode_body['features'][0]['center'][1] );
 					$lng_new = floatval( $geocode_body['features'][0]['center'][0] );
-					update_user_meta( $user_id, 'dokan_geo_latitude',  $lat_new );
-					update_user_meta( $user_id, 'dokan_geo_longitude', $lng_new );
+					update_user_meta( $user_id, 'ecomcine_geo_lat',  $lat_new );
+					update_user_meta( $user_id, 'ecomcine_geo_lng', $lng_new );
 				}
 			}
 		}
@@ -1324,7 +1262,7 @@ add_action( 'wp_ajax_vendor_update_location', function() {
 	// Get formatted display
 	$geo_display = '';
 	if ( function_exists( 'tm_get_vendor_geo_location_display' ) ) {
-		$geo_display = tm_get_vendor_geo_location_display( $user_id, $profile_settings, $profile_settings['address'] ?? [] );
+		$geo_display = tm_get_vendor_geo_location_display( $user_id, array( 'location' => $geo_address ), $address );
 	}
 	
 	tm_ajax_send_json_success( [
@@ -1372,13 +1310,11 @@ add_filter( 'ajax_query_attachments_args', function( $args ) {
 	] );
 
 	// Include profile media IDs to ensure banner/avatar show up
-	$profile_settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
 	$profile_ids = [];
-	if ( is_array( $profile_settings ) ) {
-		foreach ( [ 'banner', 'gravatar', 'banner_video' ] as $key ) {
-			if ( ! empty( $profile_settings[ $key ] ) ) {
-				$profile_ids[] = (int) $profile_settings[ $key ];
-			}
+	$person_info = tm_vendor_profile_get_person_info( $user_id );
+	foreach ( array( 'banner_id', 'avatar_id', 'banner_video' ) as $key ) {
+		if ( ! empty( $person_info[ $key ] ) ) {
+			$profile_ids[] = (int) $person_info[ $key ];
 		}
 	}
 
@@ -1398,12 +1334,11 @@ add_filter( 'ajax_query_attachments_args', function( $args ) {
 // =============================================================================
 
 /**
- * AJAX Handler: Publish vendor store (set dokan_enable_selling = yes).
+ * AJAX Handler: Publish or unpublish a canonical person profile.
  *
  * Requirements (publish):
- *  - Vendor must be authenticated via tm_can_edit_vendor_profile().
+ *  - Vendor/person must be authenticated via tm_can_edit_vendor_profile().
  *  - Level 1 completeness must be 100% (all basic + demographic + category fields).
- *  - Uses Dokan's Vendor::make_active() so Dokan's own hooks fire as expected.
  * Unpublish has no completeness requirement — vendor owner or admin can always
  * remove a live profile from the marketplace.
  *
@@ -1423,23 +1358,14 @@ add_action( 'wp_ajax_tm_vendor_publish', function() {
 		tm_ajax_send_json_error( [ 'message' => 'Unauthorized' ], 403 );
 	}
 
-	// Must be a Dokan vendor
-	if ( ! function_exists( 'dokan_is_user_seller' ) || ! dokan_is_user_seller( $vendor_id ) ) {
-		tm_ajax_send_json_error( [ 'message' => 'Not a valid vendor account.' ], 400 );
+	// Must resolve to a real user/person account.
+	if ( ! $vendor_id || ! get_userdata( $vendor_id ) ) {
+		tm_ajax_send_json_error( [ 'message' => 'Not a valid person account.' ], 400 );
 	}
 
 	// ── UNPUBLISH ──────────────────────────────────────────────────────────────
 	if ( 'unpublish' === $action_type ) {
-		if ( function_exists( 'dokan' ) && dokan()->vendor ) {
-			$vendor_obj = dokan()->vendor->get( $vendor_id );
-			if ( $vendor_obj && method_exists( $vendor_obj, 'make_inactive' ) ) {
-				$vendor_obj->make_inactive();
-			} else {
-				update_user_meta( $vendor_id, 'dokan_enable_selling', 'no' );
-			}
-		} else {
-			update_user_meta( $vendor_id, 'dokan_enable_selling', 'no' );
-		}
+		update_user_meta( $vendor_id, 'ecomcine_enabled', '0' );
 		tm_ajax_send_json_success( [
 			'message'    => 'Store taken offline.',
 			'vendor_id'  => $vendor_id,
@@ -1472,17 +1398,7 @@ add_action( 'wp_ajax_tm_vendor_publish', function() {
 	}
 
 	// Publish using Dokan API so Dokan's own action hooks fire
-	if ( function_exists( 'dokan' ) && dokan()->vendor ) {
-		$vendor_obj = dokan()->vendor->get( $vendor_id );
-		if ( $vendor_obj ) {
-			$vendor_obj->make_active();
-		} else {
-			// Fallback: direct meta update
-			update_user_meta( $vendor_id, 'dokan_enable_selling', 'yes' );
-		}
-	} else {
-		update_user_meta( $vendor_id, 'dokan_enable_selling', 'yes' );
-	}
+	update_user_meta( $vendor_id, 'ecomcine_enabled', '1' );
 
 	// Clear the pre-onboard flag so the vendor is treated as a normal live vendor
 	delete_user_meta( $vendor_id, 'tm_preonboard' );

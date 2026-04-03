@@ -170,6 +170,7 @@ High-level outcomes:
 - 2026-03-27 (Phase 4 Build): Added billing seed clone scripts `scripts/licensing/extract-wmos-billing-seed.php` and `scripts/licensing/import-billing-seed.php` plus runbook `specs/Phase4-WMOS-FluentCart-Parity.md` for product/order/license migration continuity.
 - 2026-03-27 (Phase 4 Validation): PASS on diagnostics + health checks; licensing snapshot returns active/local-default/soft baseline.
 - 2026-03-27 (Phase 4 Validation): PASS on distribution packaging; generated `dist/ecomcine-0.1.0.tar.gz` and matching manifest with SHA-256 checksum (tar fallback used because `zip` binary is unavailable in host runtime).
+- 2026-04-03 (Architecture): Standalone plugin consolidation complete. Deleted root-level `tm-store-ui/`, `tm-media-player/`, `tm-account-panel/`, `tm-vendor-booking-modal/` folders. All module code now lives solely in `ecomcine/modules/`. `ecomcine_load_legacy_module()` and `ecomcine_is_plugin_slug_active()` replaced with `ecomcine_load_module()` + feature flags. No dual sources of truth. Docker-compose volume mounts and README-FIRST inventory updated to reflect single canonical location.
 
 ## Working Rule
 

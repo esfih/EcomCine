@@ -36,7 +36,7 @@
  * 4. Add the field name to the JS apply-filter handler (section 5) so the
  *    value is included in the redirect URL.
  *
- * @package TM_Store_UI
+ * @package Astra Child
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -500,14 +500,12 @@ add_action( 'wp_footer', function() {
 	$all_ids     = array_values( array_map( 'intval', wp_list_pluck( $all_sellers['users'], 'ID' ) ) );
 	$total       = count( $all_ids );
 
-	// Resolve showcase page URL.
-	$showcase_pages = get_pages( [
-		'meta_key'   => '_wp_page_template',
-		'meta_value' => 'template-talent-showcase-full.php',
-		'number'     => 1,
-	] );
-	$showcase_url = $showcase_pages
-		? esc_url( get_permalink( $showcase_pages[0]->ID ) )
+	// Resolve showcase page URL — use get_page_by_path so we get the canonical
+	// permalink regardless of which page template is assigned (avoids a 301
+	// redirect on installs where the showcase page is the static front page).
+	$_sc_page     = get_page_by_path( 'showcase', OBJECT, 'page' );
+	$showcase_url = $_sc_page instanceof WP_Post
+		? esc_url( get_permalink( $_sc_page ) )
 		: esc_url( home_url( '/showcase/' ) );
 
 	echo '<script>window.tmShowcaseData=' . wp_json_encode( [
@@ -609,15 +607,15 @@ add_action( 'wp_footer', function() {
 				}
 			});
 
-			// -- Single-select category list (excludes level box) ─────────────────
-			$('.store-lists-category .category-box:not(.tm-level-box) ul li')
+			// -- Single-select category list (excludes level and country boxes) ─────────────────
+			$('.store-lists-category .category-box:not(.tm-level-box, .tm-country-box) ul li')
 				.off('click')
 				.on('click', function(e) {
 					e.preventDefault();
 					var $this       = $(this);
 					var wasSelected = $this.hasClass('selected');
 
-					$('.store-lists-category .category-box:not(.tm-level-box) ul li').removeClass('selected dokan-btn-theme');
+					$('.store-lists-category .category-box:not(.tm-level-box, .tm-country-box) ul li').removeClass('selected dokan-btn-theme');
 
 					if ( wasSelected ) {
 						$('.store-lists-category .category-items:not(.tm-level-items)').text('Select a category');
@@ -633,7 +631,36 @@ add_action( 'wp_footer', function() {
 						.addClass('dashicons-arrow-down-alt2')
 						.removeClass('dashicons-arrow-up-alt2');
 				});
+			// -- Country filter item selection ────────────────────────────────────
+			$('.tm-country-box ul li').off('click').on('click', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				var $li         = $(this);
+				var wasSelected = $li.hasClass('selected');
 
+				$('.tm-country-box ul li').removeClass('selected');
+
+				if ( wasSelected ) {
+					$('#ecomcine-country-filter').val('');
+					$('.tm-country-items').text('');
+				} else {
+					$li.addClass('selected');
+					$('#ecomcine-country-filter').val( $li.data('value') );
+					$('.tm-country-items').text( $li.text().trim() );
+				}
+				$('.tm-country-box').slideUp();
+			});
+
+			// Restore country state from URL
+			var selectedCountry = urlParams.get('country');
+			if ( selectedCountry ) {
+				var $cntItem = $('.tm-country-box ul li[data-value="' + selectedCountry + '"]');
+				if ( $cntItem.length ) {
+					$cntItem.addClass('selected');
+					$('.tm-country-items').text( $cntItem.text().trim() );
+					$('#ecomcine-country-filter').val( selectedCountry );
+				}
+			}
 			// -- Profile Level item selection ─────────────────────────────────────
 			$('.tm-level-box ul li').off('click').on('click', function(e) {
 				e.preventDefault();
@@ -731,6 +758,14 @@ add_action( 'wp_footer', function() {
 					params.set('profile_level', profileLevelVal);
 				} else {
 					params.delete('profile_level');
+				}
+
+				// Country
+				var countryVal = $('#ecomcine-country-filter').val();
+				if ( countryVal ) {
+					params.set('country', countryVal);
+				} else {
+					params.delete('country');
 				}
 
 				// Search

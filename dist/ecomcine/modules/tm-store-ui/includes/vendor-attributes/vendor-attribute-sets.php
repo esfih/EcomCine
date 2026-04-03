@@ -20,7 +20,7 @@
  * 4. Add store-listing filter template in dokan/store-lists/ and wire into
  *    store-lists-hooks.php (filter partials hook + filter_dokan_seller_listing_args).
  *
- * @package TM_Store_UI
+ * @package Astra Child
  */
 
 defined( 'ABSPATH' ) || exit;

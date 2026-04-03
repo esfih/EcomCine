@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
 class EcomCine_Person_Category_Registry {
 
 	const DB_VERSION_KEY = 'ecomcine_category_db_version';
-	const DB_VERSION     = '2';
+	const DB_VERSION     = '4';
 
 	// ── Schema ──────────────────────────────────────────────────────────────
 
@@ -38,6 +38,9 @@ class EcomCine_Person_Category_Registry {
 			name         VARCHAR(200)    NOT NULL DEFAULT '',
 			slug         VARCHAR(200)    NOT NULL DEFAULT '',
 			description  TEXT            NOT NULL,
+			icon_key     VARCHAR(100)    NOT NULL DEFAULT '',
+			icon_attachment_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			icon_url     TEXT            NOT NULL,
 			sort_order   INT             NOT NULL DEFAULT 0,
 			created_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
@@ -87,14 +90,20 @@ class EcomCine_Person_Category_Registry {
 	 * @param string $slug
 	 * @param string $description
 	 * @param int    $sort_order
+	 * @param string $icon_key
+	 * @param int    $icon_attachment_id
+	 * @param string $icon_url
 	 * @return int|false New row ID or false on failure.
 	 */
-	public static function create( string $name, string $slug, string $description = '', int $sort_order = 0 ) {
+	public static function create( string $name, string $slug, string $description = '', int $sort_order = 0, string $icon_key = '', int $icon_attachment_id = 0, string $icon_url = '' ) {
 		self::ensure_schema();
 		global $wpdb;
 
 		$name = sanitize_text_field( $name );
 		$slug = sanitize_title( $slug );
+		$icon_key = self::sanitize_icon_key( $icon_key );
+		$icon_attachment_id = absint( $icon_attachment_id );
+		$icon_url = self::sanitize_icon_url( $icon_url );
 
 		if ( '' === $name || '' === $slug ) {
 			return false;
@@ -106,9 +115,12 @@ class EcomCine_Person_Category_Registry {
 				'name'        => $name,
 				'slug'        => $slug,
 				'description' => sanitize_textarea_field( $description ),
+				'icon_key'    => $icon_key,
+				'icon_attachment_id' => $icon_attachment_id,
+				'icon_url'    => $icon_url,
 				'sort_order'  => (int) $sort_order,
 			),
-			array( '%s', '%s', '%s', '%d' )
+			array( '%s', '%s', '%s', '%s', '%d', '%s', '%d' )
 		);
 
 		return $result ? (int) $wpdb->insert_id : false;
@@ -129,7 +141,7 @@ class EcomCine_Person_Category_Registry {
 			return false;
 		}
 
-		$allowed = array( 'name', 'slug', 'description', 'sort_order' );
+		$allowed = array( 'name', 'slug', 'description', 'icon_key', 'icon_attachment_id', 'icon_url', 'sort_order' );
 		$data    = array();
 		$formats = array();
 
@@ -142,6 +154,15 @@ class EcomCine_Person_Category_Registry {
 				$formats[]    = '%d';
 			} elseif ( 'slug' === $key ) {
 				$data[ $key ] = sanitize_title( $fields[ $key ] );
+				$formats[]    = '%s';
+			} elseif ( 'icon_key' === $key ) {
+				$data[ $key ] = self::sanitize_icon_key( (string) $fields[ $key ] );
+				$formats[]    = '%s';
+			} elseif ( 'icon_attachment_id' === $key ) {
+				$data[ $key ] = absint( $fields[ $key ] );
+				$formats[]    = '%d';
+			} elseif ( 'icon_url' === $key ) {
+				$data[ $key ] = self::sanitize_icon_url( (string) $fields[ $key ] );
 				$formats[]    = '%s';
 			} elseif ( 'description' === $key ) {
 				$data[ $key ] = sanitize_textarea_field( $fields[ $key ] );
@@ -181,9 +202,34 @@ class EcomCine_Person_Category_Registry {
 			return false;
 		}
 
+		$category = self::get_category( $id );
+		if ( ! $category ) {
+			return false;
+		}
+
+		$join_table         = $wpdb->prefix . 'ecomcine_person_categories';
+		$fields_table       = $wpdb->prefix . 'ecomcine_category_fields';
+		$repair_user_ids    = array();
+		$is_numeric_legacy  = ctype_digit( trim( (string) $category['slug'] ) ) || ctype_digit( trim( (string) $category['name'] ) );
+
+		if ( $is_numeric_legacy ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$repair_user_ids = array_map(
+				'intval',
+				(array) $wpdb->get_col( $wpdb->prepare( "SELECT user_id FROM {$join_table} WHERE category_id = %d", $id ) )
+			);
+		}
+
 		// Remove assignments first.
 		$wpdb->delete(
-			$wpdb->prefix . 'ecomcine_person_categories',
+			$join_table,
+			array( 'category_id' => $id ),
+			array( '%d' )
+		);
+
+		// Remove attached field definitions too so deletes do not leave orphans.
+		$wpdb->delete(
+			$fields_table,
 			array( 'category_id' => $id ),
 			array( '%d' )
 		);
@@ -194,13 +240,17 @@ class EcomCine_Person_Category_Registry {
 			array( '%d' )
 		);
 
+		if ( false !== $result && $is_numeric_legacy && ! empty( $repair_user_ids ) ) {
+			self::repair_person_categories_from_legacy( $repair_user_ids, true );
+		}
+
 		return false !== $result;
 	}
 
 	/**
 	 * Return all categories ordered by sort_order, then name.
 	 *
-	 * @return array[]  Each element: { id, name, slug, description, sort_order }
+	 * @return array[]  Each element: { id, name, slug, description, icon_key, icon_attachment_id, icon_url, sort_order }
 	 */
 	public static function get_all(): array {
 		self::ensure_schema();
@@ -208,7 +258,7 @@ class EcomCine_Person_Category_Registry {
 
 		$table = $wpdb->prefix . 'ecomcine_categories';
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$rows = $wpdb->get_results( "SELECT id, name, slug, description, sort_order FROM {$table} ORDER BY sort_order ASC, name ASC", ARRAY_A );
+		$rows = $wpdb->get_results( "SELECT id, name, slug, description, icon_key, icon_attachment_id, icon_url, sort_order FROM {$table} ORDER BY sort_order ASC, name ASC", ARRAY_A );
 
 		return is_array( $rows ) ? $rows : array();
 	}
@@ -226,7 +276,7 @@ class EcomCine_Person_Category_Registry {
 		$slug  = sanitize_title( $slug );
 		$table = $wpdb->prefix . 'ecomcine_categories';
 		$row   = $wpdb->get_row(
-			$wpdb->prepare( "SELECT id, name, slug, description, sort_order FROM {$table} WHERE slug = %s LIMIT 1", $slug ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->prepare( "SELECT id, name, slug, description, icon_key, icon_attachment_id, icon_url, sort_order FROM {$table} WHERE slug = %s LIMIT 1", $slug ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			ARRAY_A
 		);
 
@@ -249,7 +299,7 @@ class EcomCine_Person_Category_Registry {
 
 		$table = $wpdb->prefix . 'ecomcine_categories';
 		$row   = $wpdb->get_row(
-			$wpdb->prepare( "SELECT id, name, slug, description, sort_order FROM {$table} WHERE id = %d LIMIT 1", $id ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->prepare( "SELECT id, name, slug, description, icon_key, icon_attachment_id, icon_url, sort_order FROM {$table} WHERE id = %d LIMIT 1", $id ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			ARRAY_A
 		);
 
@@ -579,6 +629,10 @@ class EcomCine_Person_Category_Registry {
 			);
 		}
 
+		if ( function_exists( 'tm_update_completeness_flags' ) ) {
+			tm_update_completeness_flags( $user_id );
+		}
+
 		return true;
 	}
 
@@ -630,7 +684,11 @@ class EcomCine_Person_Category_Registry {
 			ARRAY_A
 		);
 
-		return is_array( $rows ) ? $rows : array();
+		if ( is_array( $rows ) && ! empty( $rows ) ) {
+			return $rows;
+		}
+
+		return self::get_registry_rows_for_person_from_legacy( $user_id, false );
 	}
 
 	/**
@@ -656,7 +714,84 @@ class EcomCine_Person_Category_Registry {
 			$wpdb->prepare( "SELECT user_id FROM {$join} WHERE category_id = %d", (int) $cat['id'] )
 		);
 
-		return array_map( 'intval', (array) $ids );
+		$ids = array_map( 'intval', (array) $ids );
+		if ( ! empty( $ids ) ) {
+			return $ids;
+		}
+
+		$users = function_exists( 'ecomcine_get_persons' )
+			? ecomcine_get_persons( array( 'fields' => array( 'ID' ) ) )
+			: get_users( array( 'role__in' => array( 'seller', 'ecomcine_person', 'vendor' ), 'number' => -1, 'fields' => array( 'ID' ) ) );
+
+		$fallback_ids = array();
+		foreach ( (array) $users as $user ) {
+			$user_id = (int) ( is_object( $user ) ? $user->ID : $user );
+			if ( $user_id < 1 ) {
+				continue;
+			}
+
+			foreach ( self::get_for_person( $user_id ) as $row ) {
+				$row_slug = isset( $row['slug'] ) ? sanitize_title( (string) $row['slug'] ) : '';
+				if ( $row_slug === $cat['slug'] ) {
+					$fallback_ids[] = $user_id;
+					break;
+				}
+			}
+		}
+
+		return array_values( array_unique( $fallback_ids ) );
+	}
+
+	/**
+	 * Repair person assignments from legacy Dokan/native category sources.
+	 *
+	 * @param int[]|null $user_ids Optional target users; all persons when null.
+	 * @param bool       $create_missing_categories Whether readable missing categories should be created.
+	 * @return int Number of persons repaired.
+	 */
+	public static function repair_person_categories_from_legacy( ?array $user_ids = null, bool $create_missing_categories = true ): int {
+		self::ensure_schema();
+
+		if ( null === $user_ids ) {
+			$users = function_exists( 'ecomcine_get_persons' )
+				? ecomcine_get_persons( array( 'fields' => array( 'ID' ) ) )
+				: get_users( array( 'role__in' => array( 'seller', 'ecomcine_person', 'vendor' ), 'number' => -1, 'fields' => array( 'ID' ) ) );
+
+			$user_ids = array();
+			foreach ( (array) $users as $user ) {
+				$user_ids[] = (int) ( is_object( $user ) ? $user->ID : $user );
+			}
+		}
+
+		$repaired = 0;
+		foreach ( array_values( array_unique( array_map( 'intval', (array) $user_ids ) ) ) as $user_id ) {
+			if ( $user_id < 1 ) {
+				continue;
+			}
+
+			$rows = self::get_registry_rows_for_person_from_legacy( $user_id, $create_missing_categories );
+			$cat_ids = array_values(
+				array_unique(
+					array_filter(
+						array_map(
+							static function( array $row ): int {
+								return isset( $row['id'] ) ? (int) $row['id'] : 0;
+							},
+							$rows
+						)
+					)
+				)
+			);
+
+			if ( empty( $cat_ids ) ) {
+				continue;
+			}
+
+			self::set_person_categories( $user_id, $cat_ids );
+			$repaired++;
+		}
+
+		return $repaired;
 	}
 
 	// ── Seed default categories ───────────────────────────────────────────────
@@ -680,21 +815,84 @@ class EcomCine_Person_Category_Registry {
 		}
 
 		$defaults = array(
-			array( 'Actor',             'actor',              '', 1 ),
-			array( 'Model',             'model',              '', 2 ),
-			array( 'TV Host',           'tv-host',            '', 3 ),
-			array( 'Athlete',           'athlete',            '', 4 ),
-			array( 'Musician',          'musician',           '', 5 ),
-			array( 'Director',          'director',           '', 6 ),
-			array( 'Photographer',      'photographer',       '', 7 ),
-			array( 'Voiceover Artist',  'voiceover-artist',   '', 8 ),
-			array( 'Stunt Performer',   'stunt-performer',    '', 9 ),
-			array( 'Production Crew',   'production-crew',    '', 10 ),
+			array( 'Actor',             'actor',              '', 1,  'user' ),
+			array( 'Model',             'model',              '', 2,  'star' ),
+			array( 'TV Host',           'tv-host',            '', 3,  'comment-dots' ),
+			array( 'Athlete',           'athlete',            '', 4,  'thumbs-up' ),
+			array( 'Musician',          'musician',           '', 5,  'music' ),
+			array( 'Director',          'director',           '', 6,  'film' ),
+			array( 'Photographer',      'photographer',       '', 7,  'camera' ),
+			array( 'Voiceover Artist',  'voiceover-artist',   '', 8,  'volume-high' ),
+			array( 'Stunt Performer',   'stunt-performer',    '', 9,  'rocket' ),
+			array( 'Production Crew',   'production-crew',    '', 10, 'briefcase' ),
 		);
 
-		foreach ( $defaults as [ $name, $slug, $desc, $order ] ) {
-			self::create( $name, $slug, $desc, $order );
+		foreach ( $defaults as [ $name, $slug, $desc, $order, $icon_key ] ) {
+			self::create( $name, $slug, $desc, $order, $icon_key );
 		}
+	}
+
+	/**
+	 * Sanitize category icon keys against the internal SVG registry.
+	 *
+	 * @param string $icon_key Raw icon key.
+	 * @return string
+	 */
+	public static function sanitize_icon_key( string $icon_key ): string {
+		$icon_key = sanitize_key( $icon_key );
+
+		if ( '' === $icon_key ) {
+			return '';
+		}
+
+		if ( class_exists( 'TM_Icons' ) && method_exists( 'TM_Icons', 'normalize_name' ) ) {
+			$icon_key = TM_Icons::normalize_name( $icon_key );
+		}
+
+		if ( class_exists( 'TM_Icons' ) && method_exists( 'TM_Icons', 'has_icon' ) && ! TM_Icons::has_icon( $icon_key ) ) {
+			return '';
+		}
+
+		return $icon_key;
+	}
+
+	/**
+	 * Sanitize uploaded category icon URL.
+	 *
+	 * @param string $icon_url Raw URL.
+	 * @return string
+	 */
+	public static function sanitize_icon_url( string $icon_url ): string {
+		$icon_url = trim( esc_url_raw( $icon_url ) );
+		if ( '' === $icon_url ) {
+			return '';
+		}
+
+		$extension = strtolower( (string) pathinfo( wp_parse_url( $icon_url, PHP_URL_PATH ) ?? '', PATHINFO_EXTENSION ) );
+		$allowed   = array( 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif' );
+		if ( '' !== $extension && ! in_array( $extension, $allowed, true ) ) {
+			return '';
+		}
+
+		return $icon_url;
+	}
+
+	/**
+	 * Resolve the preferred image URL for a category.
+	 *
+	 * @param array $category Category row.
+	 * @return string
+	 */
+	public static function get_category_icon_url( array $category ): string {
+		$attachment_id = isset( $category['icon_attachment_id'] ) ? absint( $category['icon_attachment_id'] ) : 0;
+		if ( $attachment_id > 0 ) {
+			$attachment_url = wp_get_attachment_url( $attachment_id );
+			if ( is_string( $attachment_url ) && '' !== $attachment_url ) {
+				return esc_url_raw( $attachment_url );
+			}
+		}
+
+		return self::sanitize_icon_url( (string) ( $category['icon_url'] ?? '' ) );
 	}
 
 	// ── Legacy Dokan taxonomy sync ────────────────────────────────────────────
@@ -708,39 +906,268 @@ class EcomCine_Person_Category_Registry {
 	 * @return int Number of persons migrated.
 	 */
 	public static function migrate_from_store_category(): int {
-		self::ensure_schema();
-		if ( ! taxonomy_exists( 'store_category' ) ) {
-			return 0;
+		return self::repair_person_categories_from_legacy( null, true );
+	}
+
+	/**
+	 * Resolve registry category rows for a person from legacy Dokan/native sources.
+	 *
+	 * @param int  $user_id Person ID.
+	 * @param bool $create_missing_categories Whether readable missing slugs should be created.
+	 * @return array[]
+	 */
+	private static function get_registry_rows_for_person_from_legacy( int $user_id, bool $create_missing_categories ): array {
+		$legacy_map = self::get_legacy_category_map_for_person( $user_id );
+		if ( empty( $legacy_map ) ) {
+			return array();
 		}
 
-		$migrated = 0;
-		$users    = get_users( array( 'role' => 'seller', 'number' => -1, 'fields' => array( 'ID' ) ) );
+		$rows = array();
+		foreach ( $legacy_map as $slug => $name ) {
+			$slug = sanitize_title( (string) $slug );
+			$name = trim( (string) $name );
 
-		foreach ( $users as $user ) {
-			$uid   = (int) ( is_object( $user ) ? $user->ID : $user );
-			$terms = wp_get_object_terms( $uid, 'store_category', array( 'fields' => 'slugs' ) );
-			if ( is_wp_error( $terms ) || empty( $terms ) ) {
+			if ( '' === $slug || '' === $name || ctype_digit( $slug ) ) {
 				continue;
 			}
 
-			$cat_ids = array();
-			foreach ( $terms as $term_slug ) {
-				if ( 'uncategorized' === $term_slug ) {
-					continue;
-				}
-				$cat = self::get_by_slug( $term_slug );
-				if ( $cat ) {
-					$cat_ids[] = (int) $cat['id'];
-				}
+			$category = self::get_by_slug( $slug );
+			if ( ! $category && $create_missing_categories && ! ctype_digit( $name ) ) {
+				self::create( $name, $slug, '', self::get_next_sort_order() );
+				$category = self::get_by_slug( $slug );
 			}
 
-			if ( ! empty( $cat_ids ) ) {
-				self::set_person_categories( $uid, $cat_ids );
-				$migrated++;
+			if ( $category ) {
+				$rows[ $slug ] = $category;
+				continue;
+			}
+
+			$rows[ $slug ] = array(
+				'id'          => 0,
+				'name'        => $name,
+				'slug'        => $slug,
+				'description' => '',
+				'sort_order'  => 9999,
+			);
+		}
+
+		usort(
+			$rows,
+			static function( array $left, array $right ): int {
+				$left_order  = isset( $left['sort_order'] ) ? (int) $left['sort_order'] : 9999;
+				$right_order = isset( $right['sort_order'] ) ? (int) $right['sort_order'] : 9999;
+				if ( $left_order === $right_order ) {
+					return strcmp( (string) ( $left['name'] ?? '' ), (string) ( $right['name'] ?? '' ) );
+				}
+				return $left_order <=> $right_order;
+			}
+		);
+
+		return array_values( $rows );
+	}
+
+	/**
+	 * Collect legacy category slug => label pairs from taxonomy and profile meta.
+	 *
+	 * @param int $user_id Person ID.
+	 * @return array<string,string>
+	 */
+	private static function get_legacy_category_map_for_person( int $user_id ): array {
+		$legacy_map = array();
+
+		if ( taxonomy_exists( 'store_category' ) ) {
+			$terms = wp_get_object_terms( $user_id, 'store_category', array( 'fields' => 'all' ) );
+			if ( ! is_wp_error( $terms ) ) {
+				foreach ( (array) $terms as $term ) {
+					list( $slug, $name ) = self::normalize_legacy_category_item( $term );
+					if ( '' !== $slug && '' !== $name ) {
+						$legacy_map[ $slug ] = $name;
+					}
+				}
 			}
 		}
 
-		return $migrated;
+		$profile = get_user_meta( $user_id, 'dokan_profile_settings', true );
+		$legacy  = array();
+		if ( is_array( $profile ) ) {
+			foreach ( array( 'categories', 'dokan_category', 'store_categories', 'ecomcine_person_categories' ) as $key ) {
+				if ( ! empty( $profile[ $key ] ) ) {
+					$legacy = array_merge( $legacy, (array) $profile[ $key ] );
+				}
+			}
+		}
+
+		$legacy = array_merge( $legacy, (array) get_user_meta( $user_id, 'dokan_store_categories', true ) );
+
+		foreach ( $legacy as $item ) {
+			list( $slug, $name ) = self::normalize_legacy_category_item( $item );
+			if ( '' !== $slug && '' !== $name ) {
+				$legacy_map[ $slug ] = $name;
+			}
+		}
+
+		return $legacy_map;
+	}
+
+	/**
+	 * Normalize a legacy category token into a readable slug/name pair.
+	 *
+	 * @param mixed $item Legacy token, term, array, numeric ID, or slug string.
+	 * @return array{0:string,1:string}
+	 */
+	private static function normalize_legacy_category_item( $item ): array {
+		$slug = '';
+		$name = '';
+		$legacy_numeric_id = 0;
+
+		if ( $item instanceof WP_Term ) {
+			$legacy_numeric_id = (int) $item->term_id;
+			$slug = (string) $item->slug;
+			$name = (string) $item->name;
+		} elseif ( is_array( $item ) ) {
+			if ( isset( $item['slug'] ) || isset( $item['name'] ) ) {
+				$legacy_numeric_id = isset( $item['term_id'] ) ? (int) $item['term_id'] : 0;
+				$slug = isset( $item['slug'] ) ? (string) $item['slug'] : '';
+				$name = isset( $item['name'] ) ? (string) $item['name'] : '';
+			} elseif ( isset( $item['term_id'] ) && taxonomy_exists( 'store_category' ) ) {
+				$legacy_numeric_id = (int) $item['term_id'];
+				$term = get_term( (int) $item['term_id'], 'store_category' );
+				if ( $term instanceof WP_Term ) {
+					$slug = (string) $term->slug;
+					$name = (string) $term->name;
+				}
+			}
+		} elseif ( is_numeric( $item ) && taxonomy_exists( 'store_category' ) ) {
+			$legacy_numeric_id = (int) $item;
+			$term = get_term( (int) $item, 'store_category' );
+			if ( $term instanceof WP_Term ) {
+				$slug = (string) $term->slug;
+				$name = (string) $term->name;
+			}
+		} elseif ( is_numeric( $item ) ) {
+			$legacy_numeric_id = (int) $item;
+		} elseif ( is_scalar( $item ) ) {
+			$slug = sanitize_title( (string) $item );
+			$name = ucwords( str_replace( '-', ' ', $slug ) );
+		}
+
+		if ( $legacy_numeric_id > 0 && '' === $slug ) {
+			$mapped = self::get_legacy_numeric_category_crosswalk();
+			if ( isset( $mapped[ $legacy_numeric_id ] ) ) {
+				$slug = (string) ( $mapped[ $legacy_numeric_id ]['slug'] ?? '' );
+				$name = (string) ( $mapped[ $legacy_numeric_id ]['name'] ?? '' );
+			}
+		}
+
+		$slug = sanitize_title( $slug );
+		$name = trim( sanitize_text_field( $name ) );
+
+		if ( 'uncategorized' === $slug || '' === $slug ) {
+			return array( '', '' );
+		}
+
+		if ( '' === $name ) {
+			$name = ucwords( str_replace( '-', ' ', $slug ) );
+		}
+
+		if ( ctype_digit( $slug ) || ctype_digit( $name ) ) {
+			$category = ctype_digit( $slug ) ? self::get_category( (int) $slug ) : null;
+			if ( ! $category && ctype_digit( $name ) ) {
+				$category = self::get_category( (int) $name );
+			}
+			if ( is_array( $category ) ) {
+				$resolved_slug = isset( $category['slug'] ) ? sanitize_title( (string) $category['slug'] ) : '';
+				$resolved_name = isset( $category['name'] ) ? trim( (string) $category['name'] ) : '';
+				if ( '' !== $resolved_slug && '' !== $resolved_name && ! ctype_digit( $resolved_slug ) && ! ctype_digit( $resolved_name ) ) {
+					return array( $resolved_slug, $resolved_name );
+				}
+			}
+		}
+
+		if ( ctype_digit( $slug ) ) {
+			return array( '', '' );
+		}
+
+		return array( $slug, $name );
+	}
+
+	/**
+	 * Return the next sort order for newly-created categories.
+	 *
+	 * @return int
+	 */
+	private static function get_next_sort_order(): int {
+		global $wpdb;
+		$table = $wpdb->prefix . 'ecomcine_categories';
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$current = (int) $wpdb->get_var( "SELECT COALESCE(MAX(sort_order), 0) FROM {$table}" );
+		return $current + 1;
+	}
+
+	/**
+	 * Build a legacy numeric category ID => readable slug/name crosswalk from
+	 * vendor profile payloads that still contain structured category objects.
+	 *
+	 * @return array<int,array{name:string,slug:string}>
+	 */
+	private static function get_legacy_numeric_category_crosswalk(): array {
+		static $crosswalk = null;
+		if ( is_array( $crosswalk ) ) {
+			return $crosswalk;
+		}
+
+		$crosswalk = array();
+		$users = get_users(
+			array(
+				'number'   => -1,
+				'role__in' => array( 'seller', 'ecomcine_person', 'vendor' ),
+				'fields'   => array( 'ID' ),
+			)
+		);
+
+		foreach ( (array) $users as $user ) {
+			$user_id = (int) ( is_object( $user ) ? $user->ID : $user );
+			$profile = get_user_meta( $user_id, 'dokan_profile_settings', true );
+			if ( ! is_array( $profile ) || empty( $profile['categories'] ) || empty( $profile['dokan_category'] ) ) {
+				continue;
+			}
+
+			$categories = array_values( (array) $profile['categories'] );
+			$dokan_ids  = array_values( array_map( 'intval', (array) $profile['dokan_category'] ) );
+
+			foreach ( $categories as $index => $category ) {
+				$legacy_id = 0;
+				$slug      = '';
+				$name      = '';
+
+				if ( $category instanceof WP_Term ) {
+					$legacy_id = (int) $category->term_id;
+					$slug      = (string) $category->slug;
+					$name      = (string) $category->name;
+				} elseif ( is_array( $category ) ) {
+					$legacy_id = isset( $category['term_id'] ) ? (int) $category['term_id'] : 0;
+					$slug      = isset( $category['slug'] ) ? (string) $category['slug'] : '';
+					$name      = isset( $category['name'] ) ? (string) $category['name'] : '';
+				}
+
+				if ( $legacy_id < 1 && isset( $dokan_ids[ $index ] ) ) {
+					$legacy_id = (int) $dokan_ids[ $index ];
+				}
+
+				$slug = sanitize_title( $slug );
+				$name = trim( sanitize_text_field( $name ) );
+				if ( $legacy_id < 1 || '' === $slug || '' === $name || 'uncategorized' === $slug ) {
+					continue;
+				}
+
+				$crosswalk[ $legacy_id ] = array(
+					'name' => $name,
+					'slug' => $slug,
+				);
+			}
+		}
+
+		return $crosswalk;
 	}
 
 	/**
