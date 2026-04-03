@@ -7,9 +7,6 @@
  * Shows available demo packs fetched from the remote manifest at
  * ECOMCINE_DEMO_MANIFEST_URL (https://ecomcine.com/demos/manifest.json).
  * Each pack can be imported with one click via AJAX.
- *
- * Falls back to the local bundled demo (ecomcine/demo/) when present,
- * which is only included in development/local builds.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -18,7 +15,6 @@ class EcomCine_Demo_Data_Page {
 
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_submenu' ), 20 );
-		add_action( 'wp_ajax_ecomcine_import_demo',        array( __CLASS__, 'ajax_import_demo' ) );
 		add_action( 'wp_ajax_ecomcine_import_demo_remote', array( __CLASS__, 'ajax_import_demo_remote' ) );
 	}
 
@@ -54,14 +50,6 @@ class EcomCine_Demo_Data_Page {
 			}
 		}
 
-		// ── Local bundle (dev / offline fallback) ──────────────────────────────
-		$local_json    = ECOMCINE_DIR . 'demo/vendor-data.json';
-		$has_local     = file_exists( $local_json );
-		$local_count   = 0;
-		if ( $has_local ) {
-			$payload = json_decode( (string) file_get_contents( $local_json ), true ); // phpcs:ignore
-			$local_count = (int) ( $payload['vendor_count'] ?? 0 );
-		}
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'EcomCine — Demo Data', 'ecomcine' ); ?></h1>
@@ -112,24 +100,7 @@ class EcomCine_Demo_Data_Page {
 				</div>
 			<?php endif; ?>
 
-			<?php // ── Local fallback ─────────────────────────────────────────────────── ?>
-			<?php if ( $has_local ) : ?>
-				<h2 style="margin-top:30px;"><?php esc_html_e( 'Local Bundled Demo', 'ecomcine' ); ?></h2>
-				<p class="description">
-					<?php echo esc_html( sprintf(
-						/* translators: %d number of vendors */
-						__( 'A local demo bundle with %d vendor profiles is available (development build).', 'ecomcine' ),
-						$local_count
-					) ); ?>
-				</p>
-				<p>
-					<button id="ecomcine-install-demo-btn" class="button"
-						data-nonce="<?php echo esc_attr( $nonce ); ?>">
-						<?php esc_html_e( 'Import Local Demo', 'ecomcine' ); ?>
-					</button>
-				</p>
-				<div id="ecomcine-demo-result" style="margin-top:12px;"></div>
-			<?php elseif ( ! is_array( $manifest ) || empty( $manifest['packs'] ) ) : ?>
+			<?php if ( ! is_array( $manifest ) || empty( $manifest['packs'] ) ) : ?>
 				<div class="notice notice-info inline" style="margin-top:20px;">
 					<p><?php esc_html_e( 'No demo packs available. Upload demo content to ecomcine.com/demos/ and update the manifest.', 'ecomcine' ); ?></p>
 				</div>
@@ -196,53 +167,9 @@ class EcomCine_Demo_Data_Page {
 				});
 			});
 
-			// ── Local demo import ─────────────────────────────────────────────
-			var localBtn = document.getElementById('ecomcine-install-demo-btn');
-			if (localBtn) {
-				localBtn.addEventListener('click', function () {
-					localBtn.disabled = true;
-					localBtn.textContent = <?php echo json_encode( __( 'Installing…', 'ecomcine' ) ); ?>;
-					var body = new URLSearchParams({
-						action: 'ecomcine_import_demo',
-						nonce:  localBtn.dataset.nonce,
-					});
-					fetch(ajaxUrl, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-						body: body.toString(),
-					})
-					.then(function (r) { return r.json(); })
-					.then(function (data) {
-						var resultEl = document.getElementById('ecomcine-demo-result');
-						localBtn.disabled = false;
-						localBtn.textContent = <?php echo json_encode( __( 'Import Local Demo', 'ecomcine' ) ); ?>;
-						if (data.success) {
-							var d = data.data;
-							resultEl.innerHTML = '<div class="notice notice-success inline"><p><strong><?php esc_html_e( 'Done!', 'ecomcine' ); ?></strong> '
-								+ d.imported + ' <?php esc_html_e( 'vendors created,', 'ecomcine' ); ?> '
-								+ d.updated  + ' <?php esc_html_e( 'updated.', 'ecomcine' ); ?></p></div>';
-						} else {
-							resultEl.innerHTML = '<div class="notice notice-error inline"><p>'
-								+ (data.data || '<?php esc_html_e( 'Import failed.', 'ecomcine' ); ?>') + '</p></div>';
-						}
-					});
-				});
-			}
 		})();
 		</script>
 		<?php
-	}
-
-	/** AJAX: local bundled import. */
-	public static function ajax_import_demo() {
-		check_ajax_referer( 'ecomcine_demo_import', 'nonce' );
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( 'Insufficient permissions.', 403 );
-		}
-		if ( ! class_exists( 'EcomCine_Demo_Importer', false ) ) {
-			wp_send_json_error( 'Demo importer class not loaded.', 500 );
-		}
-		wp_send_json_success( EcomCine_Demo_Importer::run() );
 	}
 
 	/** AJAX: remote zip import. */

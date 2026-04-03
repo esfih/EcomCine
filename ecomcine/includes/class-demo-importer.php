@@ -4,21 +4,18 @@
  *
  * Imports demo vendor profiles into the current WordPress installation.
  *
- * Data source priority:
- *   1. Local  — ecomcine/demo/vendor-data.json + ecomcine/demo/media/ (dev/local use)
- *   2. Remote — fetched from the URL in the manifest at ECOMCINE_DEMO_MANIFEST_URL
- *               (production: https://ecomcine.com/demos/manifest.json)
+ * Imports demo vendor profiles into the current WordPress installation.
  *
- * Remote demo packs are downloaded into a temporary WP uploads sub-directory,
- * used for import, then cleaned up.
+ * Demo packs are fetched from the remote manifest at ECOMCINE_DEMO_MANIFEST_URL
+ * (https://raw.githubusercontent.com/esfih/EcomCine/main/demos/manifest.json), downloaded as a zip to a temporary
+ * WP uploads sub-directory, used for import, then cleaned up.
  *
  * Upsert behaviour: if a vendor username already exists the profile meta and media
  * are updated in-place rather than skipped.
  *
  * Entry points:
- *   EcomCine_Demo_Importer::run()           → result array (local source)
- *   EcomCine_Demo_Importer::run_remote($url)→ result array (remote zip URL)
- *   EcomCine_Demo_Importer::run_cli()       → echoes summary (WP-CLI eval)
+ *   EcomCine_Demo_Importer::run_remote($url) → result array (remote zip URL)
+ *   EcomCine_Demo_Importer::fetch_manifest() → decoded manifest array or null
  *
  * Catalog ID: data.vendors.import.demo
  */
@@ -27,49 +24,12 @@ defined( 'ABSPATH' ) || exit;
 
 /** Manifest URL — override via wp-config.php define or filter. */
 if ( ! defined( 'ECOMCINE_DEMO_MANIFEST_URL' ) ) {
-	define( 'ECOMCINE_DEMO_MANIFEST_URL', 'https://ecomcine.com/demos/manifest.json' );
+	define( 'ECOMCINE_DEMO_MANIFEST_URL', 'https://raw.githubusercontent.com/esfih/EcomCine/main/demos/manifest.json' );
 }
 
 class EcomCine_Demo_Importer {
 
 	// ── Public API ────────────────────────────────────────────────────────────
-
-	/**
-	 * Run from local bundled demo data (dev / offline use).
-	 * Falls back gracefully when the local demo directory is absent.
-	 *
-	 * @return array { imported: int, updated: int, errors: string[], log: string[] }
-	 */
-	public static function run(): array {
-		$demo_dir  = ECOMCINE_DIR . 'demo';
-		$json_path = $demo_dir . '/vendor-data.json';
-
-		$result = self::empty_result();
-
-		if ( ! file_exists( $json_path ) ) {
-			$result['errors'][] = 'Local demo data not found (ecomcine/demo/vendor-data.json). Use the remote import instead.';
-			return $result;
-		}
-
-		$raw     = file_get_contents( $json_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions
-		$payload = json_decode( $raw, true );
-
-		if ( ! is_array( $payload ) || empty( $payload['vendors'] ) ) {
-			$result['errors'][] = 'vendor-data.json is empty or malformed.';
-			return $result;
-		}
-
-		foreach ( $payload['vendors'] as $vendor_data ) {
-			$outcome = self::import_vendor( $vendor_data, $demo_dir . '/media', $result );
-			if ( 'imported' === $outcome ) {
-				$result['imported']++;
-			} elseif ( 'updated' === $outcome ) {
-				$result['updated']++;
-			}
-		}
-
-		return $result;
-	}
 
 	/**
 	 * Run from a remote demo pack zip URL.
@@ -166,10 +126,21 @@ class EcomCine_Demo_Importer {
 	}
 
 	/**
-	 * CLI entry point: echoes a summary line for WP-CLI eval.
+	 * CLI entry point: imports the first available remote pack (or a specific zip URL).
+	 * Usage via WP-CLI: wp eval 'EcomCine_Demo_Importer::run_remote_cli();'
+	 *
+	 * @param string $zip_url Optional. If empty, fetches the manifest and uses the first pack.
 	 */
-	public static function run_cli(): void {
-		$result = self::run();
+	public static function run_remote_cli( string $zip_url = '' ): void {
+		if ( empty( $zip_url ) ) {
+			$manifest = self::fetch_manifest();
+			if ( ! $manifest || empty( $manifest['packs'][0]['zip_url'] ) ) {
+				echo "[demo-import] ERROR: Could not fetch manifest or no packs found.\n";
+				return;
+			}
+			$zip_url = $manifest['packs'][0]['zip_url'];
+		}
+		$result = self::run_remote( $zip_url );
 		echo "[demo-import] DONE: {$result['imported']} vendors created, {$result['updated']} updated.\n";
 		foreach ( $result['errors'] as $err ) {
 			echo "[demo-import] ERROR: {$err}\n";

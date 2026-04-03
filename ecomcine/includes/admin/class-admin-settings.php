@@ -19,7 +19,6 @@ class EcomCine_Admin_Settings {
 		add_action( 'init', array( __CLASS__, 'register_bootstrap_shortcodes' ) );
 		add_action( 'admin_post_ecomcine_create_bootstrap_pages', array( __CLASS__, 'handle_create_bootstrap_pages' ) );
 		add_action( 'admin_post_ecomcine_install_activate_theme', array( __CLASS__, 'handle_install_activate_theme' ) );
-		add_action( 'admin_post_ecomcine_import_demo_data', array( __CLASS__, 'handle_import_demo_data' ) );
 	}
 
 	/**
@@ -508,201 +507,6 @@ class EcomCine_Admin_Settings {
 	}
 
 	/**
-	 * Admin action: import 9 demo vendor/talent profiles.
-	 *
-	 * Creates WP users with the Dokan seller role, sets store profile meta,
-	 * attempts to sideload banner and avatar images, and seeds each vendor's
-	 * biography with a demo video playlist shortcode so they appear in the
-	 * talent showcase. Safe to call repeatedly — skips existing usernames.
-	 */
-	public static function handle_import_demo_data() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You are not allowed to perform this action.', 'ecomcine' ) );
-		}
-
-		check_admin_referer( 'ecomcine_import_demo_data' );
-
-		$demo_data_file = ECOMCINE_DIR . 'runtime/demo-data.php';
-		if ( ! file_exists( $demo_data_file ) ) {
-			wp_safe_redirect( add_query_arg(
-				array(
-					'page'               => 'ecomcine-settings',
-					'tab'                => 'settings',
-					'ecomcine_demo_done' => 1,
-					'ecomcine_demo_count' => 0,
-					'ecomcine_demo_error' => 'data_missing',
-				),
-				admin_url( 'admin.php' )
-			) );
-			exit;
-		}
-
-		$profiles = require $demo_data_file;
-
-		// Obtain or create a shared demo video attachment.
-		$demo_video_id = (int) get_option( 'ecomcine_demo_video_id', 0 );
-		if ( ! $demo_video_id || ! get_post( $demo_video_id ) ) {
-			$demo_video_id = self::create_demo_video_attachment();
-			if ( $demo_video_id > 0 ) {
-				update_option( 'ecomcine_demo_video_id', $demo_video_id );
-			}
-		}
-
-		// Ensure media sideload helpers are available.
-		if ( ! function_exists( 'media_sideload_image' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/media.php';
-		}
-		if ( ! function_exists( 'download_url' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-		}
-		if ( ! function_exists( 'wp_read_image_metadata' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/image.php';
-		}
-
-		$created = 0;
-
-		foreach ( $profiles as $profile ) {
-			$username = sanitize_user( (string) $profile['username'], true );
-			if ( username_exists( $username ) ) {
-				continue;
-			}
-
-			$email = sanitize_email( (string) $profile['email'] );
-			if ( email_exists( $email ) ) {
-				continue;
-			}
-
-			$user_id = wp_create_user(
-				$username,
-				wp_generate_password( 24, true, true ),
-				$email
-			);
-
-			if ( is_wp_error( $user_id ) ) {
-				continue;
-			}
-
-			// Set seller role (Dokan vendor).
-			$user = new WP_User( (int) $user_id );
-			$user->set_role( 'seller' );
-
-			// Sideload banner image.
-			$banner_id = 0;
-			if ( ! empty( $profile['banner_url'] ) ) {
-				$sideloaded = media_sideload_image( (string) $profile['banner_url'], (int) $user_id, sanitize_text_field( (string) $profile['display_name'] ) . ' banner', 'id' );
-				if ( ! is_wp_error( $sideloaded ) ) {
-					$banner_id = (int) $sideloaded;
-				}
-			}
-
-			// Sideload avatar image.
-			$gravatar_id = 0;
-			if ( ! empty( $profile['avatar_url'] ) ) {
-				$sideloaded = media_sideload_image( (string) $profile['avatar_url'], (int) $user_id, sanitize_text_field( (string) $profile['display_name'] ) . ' avatar', 'id' );
-				if ( ! is_wp_error( $sideloaded ) ) {
-					$gravatar_id = (int) $sideloaded;
-				}
-			}
-
-			// Build biography content with playlist shortcode.
-			$bio = sanitize_textarea_field( (string) $profile['bio'] );
-			if ( $demo_video_id > 0 ) {
-				$bio .= "\n\n[playlist type=\"video\" ids=\"{$demo_video_id}\"]";
-			}
-
-			wp_update_user( array(
-				'ID'           => (int) $user_id,
-				'display_name' => sanitize_text_field( (string) $profile['display_name'] ),
-				'user_url'     => '',
-			) );
-
-			// Dokan vendor profile meta.
-			$store_name = sanitize_text_field( (string) $profile['store_name'] );
-			$city       = sanitize_text_field( (string) $profile['city'] );
-
-			// Store biography in the Dokan profile settings array (primary source for
-			// TMP_Compat_Media_Source_Provider::get_biography() via dokan_get_store_info()).
-			// Also store as standalone user meta as a fallback.
-			update_user_meta( (int) $user_id, 'vendor_biography', $bio );
-
-			update_user_meta( (int) $user_id, 'dokan_profile_settings', array(
-				'store_name'              => $store_name,
-				'vendor_biography'        => $bio,
-				'social'                  => array( 'fb' => '', 'twitter' => '', 'linkedin' => '', 'youtube' => '' ),
-				'payment'                 => array(),
-				'phone'                   => '',
-				'show_email'              => 'no',
-				'address'                 => array(
-					'street_1' => '',
-					'street_2' => '',
-					'city'     => $city,
-					'zip'      => '',
-					'country'  => 'US',
-					'state'    => '',
-				),
-				'location'                => $city,
-				'banner'                  => $banner_id,
-				'gravatar'                => $gravatar_id,
-				'show_more_tplt'          => 'yes',
-				'enable_tnc'              => 'off',
-				'store_ppp'               => 10,
-				'dokan_store_time_enabled' => 'no',
-				'dokan_store_open_notice'  => '',
-				'dokan_store_close_notice' => '',
-			) );
-
-			update_user_meta( (int) $user_id, 'dokan_enable_seller', 'yes' );
-			update_user_meta( (int) $user_id, '_store_name', $store_name );
-
-			$created++;
-		}
-
-		wp_safe_redirect( add_query_arg(
-			array(
-				'page'               => 'ecomcine-settings',
-				'tab'                => 'settings',
-				'ecomcine_demo_done' => 1,
-				'ecomcine_demo_count' => $created,
-			),
-			admin_url( 'admin.php' )
-		) );
-		exit;
-	}
-
-	/**
-	 * Create a stub WP attachment post pointing to a CC0 demo video clip.
-	 *
-	 * The video is Big Buck Bunny from Wikimedia Commons (CC-BY 3.0 Blender Foundation).
-	 * This gives vendors a real external video URL so the [playlist] shortcode renders.
-	 *
-	 * @return int Attachment post ID, or 0 on failure.
-	 */
-	private static function create_demo_video_attachment(): int {
-		// CC0 / CC-BY 3.0 — Big Buck Bunny, Blender Foundation via Wikimedia Commons.
-		$video_url = 'https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.480p.webm';
-		$title     = 'Demo Reel — EcomCine Sample (Big Buck Bunny)';
-
-		$attachment_id = wp_insert_post( array(
-			'post_title'     => $title,
-			'post_type'      => 'attachment',
-			'post_status'    => 'inherit',
-			'post_mime_type' => 'video/webm',
-			'guid'           => $video_url,
-			'post_content'   => '',
-			'post_excerpt'   => '',
-		) );
-
-		if ( is_wp_error( $attachment_id ) || ! $attachment_id ) {
-			return 0;
-		}
-
-		// Store the source URL so wp_get_attachment_url() returns the external link.
-		update_post_meta( (int) $attachment_id, '_wp_attached_file', $video_url );
-
-		return (int) $attachment_id;
-	}
-
-	/**
 	 * Default settings payload.
 	 */
 	public static function defaults() {
@@ -1124,8 +928,6 @@ class EcomCine_Admin_Settings {
 		$updated_pages = isset( $_GET['ecomcine_updated'] ) ? absint( $_GET['ecomcine_updated'] ) : 0;
 		$theme_slug = isset( $_GET['ecomcine_theme_slug'] ) ? sanitize_key( wp_unslash( $_GET['ecomcine_theme_slug'] ) ) : '';
 		$theme_error = isset( $_GET['ecomcine_theme_error'] ) ? sanitize_key( wp_unslash( $_GET['ecomcine_theme_error'] ) ) : '';
-		$demo_count = isset( $_GET['ecomcine_demo_count'] ) ? absint( $_GET['ecomcine_demo_count'] ) : 0;
-		$demo_error = isset( $_GET['ecomcine_demo_error'] ) ? sanitize_key( wp_unslash( $_GET['ecomcine_demo_error'] ) ) : '';
 		?>
 		<div class="wrap">
 			<h1>EcomCine</h1>
@@ -1146,18 +948,6 @@ class EcomCine_Admin_Settings {
 				</p></div>
 			<?php endif; ?>
 
-			<?php if ( isset( $_GET['ecomcine_demo_done'] ) && '' === $demo_error ) : ?>
-				<div class="notice notice-success is-dismissible"><p>
-					<?php echo esc_html( sprintf( 'Demo data import complete. %d vendor profile(s) created.', $demo_count ) ); ?>
-					<?php if ( 0 === $demo_count ) : ?>
-						All demo vendors already exist (usernames taken).
-					<?php endif; ?>
-				</p></div>
-			<?php elseif ( isset( $_GET['ecomcine_demo_done'] ) ) : ?>
-				<div class="notice notice-error is-dismissible"><p>
-					<?php echo esc_html( sprintf( 'Demo data import failed (%s).', $demo_error ) ); ?>
-				</p></div>
-			<?php endif; ?>
 
 			<nav class="nav-tab-wrapper" style="margin-bottom:0;">
 				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=settings' ) ); ?>"
@@ -1294,13 +1084,8 @@ class EcomCine_Admin_Settings {
 							<input type="hidden" name="action" value="ecomcine_install_activate_theme" />
 							<?php submit_button( 'Install + Activate Theme', 'secondary', 'submit', false, array( 'onclick' => "return confirm('Install (if needed) and activate the recommended theme now?');" ) ); ?>
 						</form>
-						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block; margin-left:10px;">
-							<?php wp_nonce_field( 'ecomcine_import_demo_data' ); ?>
-							<input type="hidden" name="action" value="ecomcine_import_demo_data" />
-							<?php submit_button( 'Import Demo Data', 'secondary', 'submit', false, array( 'onclick' => "return confirm('Create 9 demo vendor/talent profiles? Existing demo usernames will be skipped. This also creates a shared demo video attachment.');" ) ); ?>
-						</form>
 					</p>
-					<p class="description">Pages: Showcase [tm_talent_showcase], Talents [ecomcine-stores], Categories [ecomcine_categories], Locations [ecomcine_locations]. &nbsp;|&nbsp; Demo Data: creates 9 vendor profiles with bios, banners, avatars, and a shared demo video so they appear in the showcase.</p>
+					<p class="description">Creates baseline pages: Showcase [tm_talent_showcase], Talents [ecomcine-stores], Categories [ecomcine_categories], Locations [ecomcine_locations]. To import demo vendor profiles, use <a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-demo-data' ) ); ?>">EcomCine &rarr; Demo Data</a>.</p>
 				</div>
 
 				<form method="post" action="options.php">

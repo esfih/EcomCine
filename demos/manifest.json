@@ -1,0 +1,15 @@
+{
+  "version": "1",
+  "packs": [
+    {
+      "id": "topdoctorchannel",
+      "name": "TopDoctorChannel",
+      "description": "18 sample talent profiles (models, actors, cameramen) with photos and video reels.",
+      "vendor_count": 18,
+      "version": "1.0.0",
+      "release_tag": "demos-v1.0.0",
+      "preview_image": "https://raw.githubusercontent.com/esfih/EcomCine/main/demos/topdoctorchannel/preview.jpg",
+      "zip_url": "https://github.com/esfih/EcomCine/releases/download/demos-v1.0.0/topdoctorchannel-demo-pack.zip"
+    }
+  ]
+}

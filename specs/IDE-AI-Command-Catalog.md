@@ -719,21 +719,23 @@ Guardrail:
 
 ### Demo Data
 
-`id`: `data.vendors.export.demo`
-- goal: Export 32 demo vendor profiles (user data + all relevant usermeta + media files) from localhost:8180 into `ecomcine/demo/` for plugin bundling
-- command: `./scripts/wp.sh php scripts/export-demo-vendors.php`
-- args: none
-- success: exit `0`; output contains `[demo-export] DONE`; `ecomcine/demo/vendor-data.json` exists and `ecomcine/demo/media/` is populated
-- failure: non-zero; inspect output for missing attachment paths or file-system permission errors
-- failure_class: `data`
+`id`: `demos.release`
+- goal: Build demo pack zip(s) from `demos/<pack-id>/`, create a versioned GitHub Release, upload zips as release assets, and update `demos/manifest.json` with new URLs
+- command: `./scripts/build-demos-release.sh <version> [--push]`
+- args:
+  - `<version>` — required; semver string e.g. `1.0.1`
+  - `--push` — optional; if omitted performs a dry run (no upload, no manifest write)
+- success: exit `0`; dry run prints manifest preview; `--push` prints `SUCCESS` and lists next git steps
+- failure: non-zero; check `gh` auth (`gh auth status`), `jq`/`zip` availability, and that `demos/<pack-id>/vendor-data.json` exists
+- failure_class: `tooling`
 - remediation_type: `source-fix`
 
 `id`: `data.vendors.import.demo`
-- goal: Import bundled demo vendor data into current WordPress instance via EcomCine importer class
-- command: `./scripts/wp.sh wp eval 'EcomCine_Demo_Importer::run_cli();'`
-- args: none
+- goal: Import the first remote demo pack into the current WordPress instance via EcomCine importer (fetches manifest from GitHub, downloads zip, imports vendors)
+- command: `./scripts/wp.sh wp eval 'EcomCine_Demo_Importer::run_remote_cli();'`
+- args: optional zip URL as first argument: `EcomCine_Demo_Importer::run_remote_cli("https://...");`
 - success: exit `0`; output contains `[demo-import] DONE` with vendor count
-- failure: non-zero; check class autoload, plugin activation state, and demo JSON integrity
+- failure: non-zero; check class autoload, plugin activation state, manifest reachability, and zip URL validity
 - failure_class: `data`
 - remediation_type: `source-fix`
 
