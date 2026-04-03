@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.25
+ * Version: 0.1.26
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.25' );
+define( 'ECOMCINE_VERSION', '0.1.26' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -93,6 +93,7 @@ $required_files = array(
 	'includes/licensing/class-offer-catalog.php',
 	'includes/licensing/class-licensing.php',
 	'includes/compat/vendor-utilities.php',
+	'includes/migrations/class-ecomcine-dokan-data-migration.php',
 );
 
 foreach ( $required_files as $required_file ) {
@@ -222,6 +223,18 @@ add_action( 'init', function() {
 	// Always re-deploy debug infrastructure on every version bump so that
 	// plugin updates (which skip the activation hook) also provision the files.
 	ecomcine_deploy_debug_infrastructure();
+
+	// v0.1.26 — Migrate Dokan-era vendor meta to EcomCine canonical keys and
+	//            recalculate L1 completeness from actual profile data.
+	//
+	// Covers three gaps on legacy installs:
+	//   (a) dokan_geo_latitude/longitude → ecomcine_geo_lat/lng (then delete legacy)
+	//   (b) dokan_enable_selling='yes'   → ecomcine_enabled='1' (when not already set)
+	//   (c) tm_l1_complete recalculated via tm_vendor_completeness() using
+	//       the now-canonical meta, correcting the v0.1.13 blind back-fill.
+	if ( version_compare( $stored, '0.1.26', '<' ) && class_exists( 'EcomCine_Dokan_Data_Migration', false ) ) {
+		EcomCine_Dokan_Data_Migration::run();
+	}
 
 	// v0.1.22 — Flush rewrite rules for EcomCine person routes + standalone grid/listing wiring.
 	if ( version_compare( $stored, '0.1.22', '<' ) ) {

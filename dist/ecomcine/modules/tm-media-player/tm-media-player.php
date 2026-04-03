@@ -534,8 +534,8 @@ if ( ! class_exists( 'TM_Media_Player_Assets' ) ) :
 class TM_Media_Player_Assets {
 
 	/** JS + CSS version strings — bump to bust browser caches. */
-	const JS_VERSION  = '2.0.3';
-	const CSS_VERSION = '1.8.1';
+	const JS_VERSION  = '2.0.4';
+	const CSS_VERSION = '1.8.2';
 
 	/** CDN URLs for Mapbox (loaded on-demand for editable profile pages). */
 	const MAPBOX_VERSION   = '2.15.0';

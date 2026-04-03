@@ -115,3 +115,35 @@ Do not:
 - ship cosmetic patches as final fixes
 - treat warning suppression as source remediation
 - bypass command contracts with ad-hoc terminal execution
+
+## Data-Normalization Rule (Mandatory)
+
+The plugin is the single authority over business logic and data contracts.
+Client WordPress databases (live site, staging, legacy installs) may contain
+legacy or third-party data that does not conform to EcomCine's canonical meta
+keys (e.g. Dokan-era vendors lacking `ecomcine_enabled`, `ecomcine_geo_lat`,
+`tm_l1_complete`).
+
+**The correct response is ALWAYS to migrate the data, never to weaken the
+plugin's query or filtering logic to accommodate it.**
+
+Specifically prohibited responses to legacy data:
+
+- Relaxing a WP_User_Query `meta_query` to add an OR fallback for a legacy
+  third-party meta key (e.g. accepting `dokan_geo_latitude` in place of the
+  canonical `ecomcine_geo_lat`).
+- Removing a business-logic gate (e.g. L1 completeness, published status) from
+  a shortcode filter because legacy data does not have the required meta.
+- Adding conditional `isset` / fallback branches in shortcode or template PHP
+  to silently accept legacy data structures.
+
+**Required response to legacy data:**
+
+1. Identify each legacy meta key and its canonical EcomCine equivalent.
+2. Create a numbered version-gated migration block in `ecomcine/ecomcine.php`
+   (the `init` hook upgrade path, pattern established from v0.1.13 onwards).
+3. The migration block must: read the legacy key, write the canonical key,
+   delete the legacy key, and be idempotent (skip if canonical key already set).
+4. If the migration is also useful as an on-demand admin tool, expose it via
+   `wp_ajax_` and add a catalog entry in `specs/IDE-AI-Command-Catalog.md`.
+5. Plugin query and filter logic must remain strict against canonical keys only.

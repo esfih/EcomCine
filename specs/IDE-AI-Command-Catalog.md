@@ -165,6 +165,25 @@ Each command contract defines:
 - failure_class: `contract`
 - remediation_type: `source-fix`
 
+### Dokan → EcomCine Data Migration
+
+> Run this on any WordPress install that has Dokan-era vendors (i.e. vendors
+> whose user-meta was written by Dokan before the EcomCine canonical meta keys
+> existed). The migration is also executed automatically on first activation of
+> any EcomCine version ≥ 0.1.26, but can be re-run manually at any time.
+>
+> **Never** relax plugin query or filtering logic to accommodate missing meta.
+> If vendor data is missing EcomCine canonical meta, run this migration.
+
+`id`: `wp.data.migration.dokan`
+- goal: Migrate all Dokan-era vendor meta to EcomCine canonical keys (geo, enabled, L1 completeness)
+- command: `./scripts/wp.sh wp eval 'if(class_exists("EcomCine_Dokan_Data_Migration",false)){$r=EcomCine_Dokan_Data_Migration::run();echo json_encode($r);}'`
+- args: none
+- success: exit `0`; JSON output with `migrated`, `skipped`, `errors` keys; `errors` array empty
+- failure: non-zero, or `errors` array non-empty; inspect error messages for per-user failures
+- failure_class: `data`
+- remediation_type: `source-fix`
+
 ### CPT Migration (Default-WP Cutover)
 
 `id`: `migrate.tap.cpt`

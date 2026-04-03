@@ -50,6 +50,7 @@ function tm_store_ui_template_include( $template ) {
 		|| has_shortcode( $content, 'ecomcine-stores' )
 		|| has_shortcode( $content, 'ecomcine_categories' )
 		|| has_shortcode( $content, 'ecomcine_locations' )
+		|| has_shortcode( $content, 'vendors_map' )
 	);
 
 	$is_platform = 'tm-store-ui/page-platform' === $stored_tpl

@@ -16,14 +16,19 @@ if ( ! function_exists( 'tm_store_ui_collect_person_ids_for_listing' ) ) {
 			return false;
 		}
 
-		// Gate on published/enabled status only. L1 completeness is a profile
-		// quality indicator, not a listing visibility gate — existing vendors
-		// may not have tm_l1_complete set, which would wrongly hide them.
-		if ( function_exists( 'ecomcine_is_person_enabled' ) ) {
-			return ecomcine_is_person_enabled( $user_id );
+		if ( function_exists( 'tm_vendor_completeness' ) ) {
+			$completeness = tm_vendor_completeness( $user_id );
+			if ( is_array( $completeness ) ) {
+				$published = ! empty( $completeness['published'] );
+				$l1_done   = ! empty( $completeness['level1']['complete'] );
+				return $published && $l1_done;
+			}
 		}
 
-		return 'yes' === strtolower( trim( (string) get_user_meta( $user_id, 'dokan_enable_selling', true ) ) );
+		$published = 'yes' === strtolower( trim( (string) get_user_meta( $user_id, 'dokan_enable_selling', true ) ) );
+		$l1_done   = '1' === trim( (string) get_user_meta( $user_id, 'tm_l1_complete', true ) );
+
+		return $published && $l1_done;
 	}
 
 	function tm_store_ui_collect_person_ids_for_listing(): array {
