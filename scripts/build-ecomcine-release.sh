@@ -21,6 +21,8 @@ rsync -a --delete \
   --exclude '.DS_Store' \
   --exclude 'node_modules/' \
   --exclude 'dist/' \
+  --exclude 'demo/media/' \
+  --exclude 'demo/vendor-data.json' \
   "$PLUGIN_DIR/" "$STAGE_DIR/"
 
 VERSION="$(grep -E '^ \* Version:' "$STAGE_DIR/ecomcine.php" | head -n1 | sed -E 's/^ \* Version:[[:space:]]*//')"
