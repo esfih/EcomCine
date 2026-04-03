@@ -64,6 +64,12 @@ class EcomCine_Demo_Importer {
 		}
 
 		// ── Unzip ─────────────────────────────────────────────────────────────
+		// WP_Filesystem must be initialised before unzip_file() is called.
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		WP_Filesystem();
+
 		$unzip = unzip_file( $zip_path, $tmp_dir );
 		if ( is_wp_error( $unzip ) ) {
 			$result['errors'][] = 'Unzip failed: ' . $unzip->get_error_message();

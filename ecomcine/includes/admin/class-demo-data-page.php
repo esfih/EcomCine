@@ -70,22 +70,24 @@ class EcomCine_Demo_Data_Page {
 						$pack_desc     = sanitize_text_field( $pack['description'] ?? '' );
 						$pack_url      = esc_url_raw( $pack['zip_url'] ?? '' );
 						$pack_count    = (int) ( $pack['vendor_count'] ?? 0 );
-						$pack_preview  = esc_url( $pack['preview_image'] ?? '' );
+						$pack_size_mb  = (int) ( $pack['disk_size_mb'] ?? 0 );
 						$pack_id       = sanitize_key( $pack['id'] ?? sanitize_title( $pack_name ) );
 						if ( empty( $pack_url ) ) continue;
 					?>
 					<div class="ecomcine-demo-pack-card" style="border:1px solid #ccd0d4;border-radius:4px;padding:16px;max-width:280px;background:#fff;">
-						<?php if ( $pack_preview ) : ?>
-							<img src="<?php echo esc_url( $pack_preview ); ?>" alt="<?php echo esc_attr( $pack_name ); ?>"
-								style="width:100%;height:140px;object-fit:cover;border-radius:3px;margin-bottom:10px;">
-						<?php endif; ?>
 						<strong><?php echo esc_html( $pack_name ); ?></strong>
 						<?php if ( $pack_desc ) : ?>
 							<p style="margin:6px 0 10px;color:#555;font-size:13px;"><?php echo esc_html( $pack_desc ); ?></p>
 						<?php endif; ?>
-						<?php if ( $pack_count ) : ?>
+						<?php if ( $pack_count || $pack_size_mb ) : ?>
 							<p style="margin:0 0 10px;font-size:12px;color:#777;">
-								<?php echo esc_html( sprintf( _n( '%d vendor profile', '%d vendor profiles', $pack_count, 'ecomcine' ), $pack_count ) ); ?>
+								<?php if ( $pack_count ) : ?>
+									<?php echo esc_html( sprintf( _n( '%d vendor profile', '%d vendor profiles', $pack_count, 'ecomcine' ), $pack_count ) ); ?>
+								<?php endif; ?>
+								<?php if ( $pack_count && $pack_size_mb ) : ?>&nbsp;&middot;&nbsp;<?php endif; ?>
+								<?php if ( $pack_size_mb ) : ?>
+									<?php echo esc_html( sprintf( __( '~%d MB disk space required', 'ecomcine' ), $pack_size_mb ) ); ?>
+								<?php endif; ?>
 							</p>
 						<?php endif; ?>
 						<button class="button button-primary ecomcine-import-remote-btn"
