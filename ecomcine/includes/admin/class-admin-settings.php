@@ -357,27 +357,32 @@ class EcomCine_Admin_Settings {
 				'title'     => 'Showcase',
 				'slug'      => 'showcase',
 				'shortcode' => '[tm_talent_showcase]',
+				'template'  => 'tm-store-ui/template-talent-showcase',
 			),
 			array(
 				'title'     => 'Talents',
 				'slug'      => 'talents',
 				'shortcode' => '[ecomcine-stores]',
+				'template'  => 'tm-store-ui/page-platform',
 			),
 			array(
 				'title'     => 'Categories',
 				'slug'      => 'categories',
 				'shortcode' => '[ecomcine_categories]',
+				'template'  => 'tm-store-ui/page-platform',
 			),
 			array(
 				'title'     => 'Locations',
 				'slug'      => 'locations',
-				'shortcode' => '[ecomcine_locations]',
+				'shortcode' => '[vendors_map]',
+				'template'  => 'tm-store-ui/page-platform',
 			),
 		);
 
 		$created = 0;
 		$updated = 0;
 		foreach ( $pages as $page ) {
+			$template = $page['template'] ?? 'tm-store-ui/page-platform';
 			$post = get_page_by_path( $page['slug'], OBJECT, 'page' );
 			if ( $post ) {
 				$content = is_string( $post->post_content ) ? $post->post_content : '';
@@ -390,6 +395,8 @@ class EcomCine_Admin_Settings {
 					);
 					$updated++;
 				}
+				// Always ensure the correct page template is set.
+				update_post_meta( (int) $post->ID, '_wp_page_template', $template );
 				continue;
 			}
 
@@ -404,6 +411,7 @@ class EcomCine_Admin_Settings {
 			);
 
 			if ( ! is_wp_error( $new_id ) && $new_id > 0 ) {
+				update_post_meta( $new_id, '_wp_page_template', $template );
 				$created++;
 			}
 		}
