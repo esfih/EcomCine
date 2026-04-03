@@ -208,19 +208,15 @@ function tm_get_vendor_store_content_payload( $vendor_id ) {
 	}
 	try {
 		set_query_var( 'author', $vendor_id );
-		// locate_template() returns '' when the active theme has no dokan/ folder.
-		// include '' throws ValueError in PHP 8+, so fall back to the plugin-bundled copy.
-		$_tpl = locate_template( 'dokan/store-header.php' );
-		if ( ! $_tpl ) {
-			$_tpl = defined( 'TM_STORE_UI_DIR' )
-				? TM_STORE_UI_DIR . 'templates/dokan/store-header.php'
-				: ECOMCINE_DIR . 'modules/tm-store-ui/templates/dokan/store-header.php';
-		}
-		if ( ! file_exists( $_tpl ) ) {
-			return new WP_Error( 'template_missing', 'store-header.php not found', array( 'path' => $_tpl ) );
+		// Resolve store-header template: plugin copy takes priority, then theme.
+		$_store_header = defined( 'TM_STORE_UI_DIR' )
+			? TM_STORE_UI_DIR . 'templates/dokan/store-header.php'
+			: locate_template( 'dokan/store-header.php' );
+		if ( ! $_store_header || ! file_exists( $_store_header ) ) {
+			$_store_header = locate_template( 'dokan/store-header.php' );
 		}
 		ob_start();
-		include $_tpl;
+		if ( $_store_header ) { include $_store_header; }
 		$html = ob_get_clean();
 		// Strip UTF-8 BOM (EF BB BF) that some template files prepend to output.
 		// Without this jQuery treats the response as a parse error and fires the AJAX
@@ -491,19 +487,24 @@ if ( ! shortcode_exists( 'tm_talent_player' ) ) {
 
 add_filter( 'body_class', function( $classes ) {
 	if ( tm_is_showcase_page() ) {
-		if ( ! in_array( 'dokan-store', $classes, true ) )    { $classes[] = 'dokan-store'; }
-		if ( ! in_array( 'tm-showcase-page', $classes, true ) ) { $classes[] = 'tm-showcase-page'; }
+		// Dual-emit: ecomcine-person-profile is the canonical EcomCine class;
+		// dokan-store is kept for backward-compat with player.css legacy selectors.
+		if ( ! in_array( 'ecomcine-person-profile', $classes, true ) ) { $classes[] = 'ecomcine-person-profile'; }
+		if ( ! in_array( 'dokan-store', $classes, true ) )             { $classes[] = 'dokan-store'; }
+		if ( ! in_array( 'tm-showcase-page', $classes, true ) )        { $classes[] = 'tm-showcase-page'; }
 	}
 	return $classes;
 }, 20 );
 
-add_filter( 'astra_header_display', function( $display ) {
-	return tm_is_showcase_page() ? false : $display;
-}, 20 );
-
-add_filter( 'astra_footer_display', function( $display ) {
-	return tm_is_showcase_page() ? false : $display;
-}, 20 );
+// Theme-agnostic header/footer suppression via EcomCine globals.
+// A thin theme-compat layer (ecomcine/includes/theme-compat/) translates these
+// globals into each theme's native suppression mechanism.
+add_action( 'template_redirect', function() {
+	if ( tm_is_showcase_page() ) {
+		$GLOBALS['ecomcine_suppress_header'] = true;
+		$GLOBALS['ecomcine_suppress_footer'] = true;
+	}
+}, 1 );
 
 add_filter( 'template_include', function( $template ) {
 	if ( is_admin() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
@@ -516,6 +517,7 @@ add_filter( 'template_include', function( $template ) {
 		|| has_shortcode( $queried->post_content, 'tm_talent_player' );
 	if ( ! $has_showcase ) { return $template; }
 	$GLOBALS['tm_showcase_page'] = true;
+	// Plugin path takes priority over theme locate_template.
 	$forced = defined( 'TM_STORE_UI_SHOWCASE_FULL_TEMPLATE' ) ? TM_STORE_UI_SHOWCASE_FULL_TEMPLATE : '';
 	if ( ! $forced || ! file_exists( $forced ) ) {
 		$forced = locate_template( 'template-talent-showcase.php' );
@@ -584,6 +586,15 @@ class TM_Media_Player_Assets {
 
 	public static function handle_enqueue() {
 		if ( self::is_dashboard() ) { return; }
+		$should_enqueue = ! empty( $GLOBALS['tm_showcase_page'] );
+		if ( ! $should_enqueue && function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
+			$should_enqueue = true;
+		}
+
+		if ( ! $should_enqueue ) {
+			return;
+		}
+
 		// Showcase pages call enqueue_for_showcase() directly from the template before
 		// get_header(). If we let handle_enqueue() also run here it would call
 		// enqueue_for_profile() (because set_query_var('author',...) makes dokan_is_store_page()
@@ -592,7 +603,7 @@ class TM_Media_Player_Assets {
 			self::enqueue_css();
 			return;
 		}
-		self::enqueue_css();
+
 		if ( function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
 			$vendor_id = self::get_current_vendor_id();
 			if ( $vendor_id ) {
@@ -612,8 +623,10 @@ class TM_Media_Player_Assets {
 		if ( ! function_exists( 'dokan_is_store_page' ) || ! dokan_is_store_page() ) { return; }
 		remove_action( 'wp_enqueue_scripts', 'wp_enqueue_global_styles' );
 		remove_action( 'wp_enqueue_scripts', 'wp_enqueue_global_styles_custom_css' );
-		wp_dequeue_style( 'astra-addon-megamenu-dynamic' );
-		wp_deregister_style( 'astra-addon-megamenu-dynamic' );
+		if ( wp_style_is( 'astra-addon-megamenu-dynamic', 'registered' ) || wp_style_is( 'astra-addon-megamenu-dynamic', 'enqueued' ) ) {
+			wp_dequeue_style( 'astra-addon-megamenu-dynamic' );
+			wp_deregister_style( 'astra-addon-megamenu-dynamic' );
+		}
 	}
 
 	// -----------------------------------------------------------------------

@@ -53,6 +53,7 @@ jQuery(document).ready(function($) {
 		wasPlaying: false,
 		vendorLoopEnabled: null
 	};
+	var showcaseInteractionPause = false;
 	// ── Advance pipeline state ──────────────────────────────────────────────────
 	// Single advance timer replaces the old preBlackoutTimer/minTimer/maxTimer trio.
 	// advanceBlackoutTimer is purely cosmetic: applies the CSS blackout class just
@@ -648,6 +649,49 @@ jQuery(document).ready(function($) {
 		transitionSequenceActive = false;
 	}
 
+	function isShowcaseRotationPaused() {
+		return isShowcaseMode() && showcaseInteractionPause;
+	}
+
+	function ensureResumeShowcaseControl() {
+		var $container = $(".keyboard-nav-container").first();
+		if (!$container.length) return $();
+		var $control = $container.find(".tm-showcase-resume-control").first();
+		if ($control.length) return $control;
+		$control = $(
+			'<button class="tm-showcase-resume-control" type="button" aria-live="polite" aria-label="Resume showcase autoplay" title="Resume showcase autoplay">'
+			+ '<span class="tm-showcase-resume-control__pin" aria-hidden="true">&#9679;</span>'
+			+ '<span class="tm-showcase-resume-control__label">Resume Showcase</span>'
+			+ '</button>'
+		);
+		$container.prepend($control);
+		return $control;
+	}
+
+	function updateResumeShowcaseControl() {
+		var $control = ensureResumeShowcaseControl();
+		if (!$control.length) return;
+		$control.toggleClass("is-visible", isShowcaseRotationPaused());
+	}
+
+	function pauseShowcaseRotation() {
+		if (!isShowcaseMode()) return;
+		showcaseInteractionPause = true;
+		clearTransitionTimers();
+		stopBlackout();
+		updateResumeShowcaseControl();
+	}
+
+	function resumeShowcaseRotation() {
+		if (!isShowcaseMode()) return;
+		showcaseInteractionPause = false;
+		updateResumeShowcaseControl();
+		if (!state.isPlaying || isAutoplayBlocked()) return;
+		clearTransitionTimers();
+		clearAdvanceTimer();
+		armAdvanceTimer(currentItem());
+	}
+
 	function setTransitionHold(ms) {
 		transitionHoldUntil = Date.now() + ms;
 		if (transitionHoldTimer) {
@@ -1195,10 +1239,8 @@ jQuery(document).ready(function($) {
 		// Get current location data
 		var currentAddress = $wrapper.find('.location-search-input').val() || '';
 		var $mapboxPanel = $wrapper.find('.inline-mapbox-panel').first();
-		var lat = $mapboxPanel.length ? ($mapboxPanel.data('lat') || '') : '';
-		var lng = $mapboxPanel.length ? ($mapboxPanel.data('lng') || '') : '';
-
-		$body.empty();
+		var lat = $mapboxPanel.data('lat') || '';
+		var lng = $mapboxPanel.data('lng') || '';
 		
 		// Create location search input
 		var $searchInput = $('<input type="text" id="vendor-location-search-modal" name="geo_location" class="edit-field-input location-search-input" placeholder="Start typing location..." />');
@@ -1216,10 +1258,6 @@ jQuery(document).ready(function($) {
 		$body.append($searchInput);
 		$body.append($hiddenInput);
 		$body.append($mapboxPanelClone);
-
-		if (!$body.find('.inline-mapbox-panel .inline-mapbox-map').length) {
-			$body.append('<div class="inline-mapbox-panel"><div class="inline-mapbox-search"></div><div class="inline-mapbox-map"></div></div>');
-		}
 		
 		// Initialize Mapbox for the modal
 		setTimeout(function() {
@@ -1583,6 +1621,12 @@ jQuery(document).ready(function($) {
 			//   already loaded. If the list is still loading, wrap to item 0 as a safe fallback
 			//   so the player never freezes while waiting for the async vendor list.
 			if (isShowcaseMode() && vendorList.length && currentVendorIndex >= 0) {
+				if (isShowcaseRotationPaused()) {
+					startBlackout();
+					loadItem(0);
+					advanceBlackoutTimer = setTimeout(stopBlackout, 250);
+					return;
+				}
 				// The advance timer already served the on-screen duration (VIDEO_LOOP_SECONDS /
 				// natural video length). Do not add more wait here — schedule an immediate swap.
 				// transitionSequenceActive guard prevents a double-fire (ended + armAdvanceTimer
@@ -1644,6 +1688,7 @@ jQuery(document).ready(function($) {
 	function shouldRunTalentSwap(item) {
 		if (!item) return false;
 		if (state.loopMode || vendorLoopEnabled || isAutoplayBlocked()) return false;
+		if (isShowcaseRotationPaused()) return false;
 		if (!vendorList.length || currentVendorIndex < 0) return false;
 		// Profile page: never auto-swap talent — visitor stays focused on the talent they came for.
 		if (!isShowcaseMode()) return false;
@@ -1734,6 +1779,7 @@ jQuery(document).ready(function($) {
 	}
 
 	function scheduleTalentSwapSequence(durationSeconds) {
+		if (isShowcaseRotationPaused()) return;
 		clearTransitionTimers();
 		transitionSequenceActive = true;
 		var collapseDelay = Math.max(0, (durationSeconds - 3) * 1000);
@@ -1836,14 +1882,7 @@ jQuery(document).ready(function($) {
 			}
 		}
 
-		if (showcaseMode && list.length) {
-			if (state.index < 0 || state.index >= list.length) {
-				state.index = 0;
-			}
-			// In showcase mode limit to one item — the preferred first video — so that
-			// loadNext() hits end-of-playlist after a single clip and immediately
-			// fires scheduleTalentSwapSequence() to advance to the next talent.
-			list = [ list[state.index] ];
+		if (showcaseMode && list.length && (state.index < 0 || state.index >= list.length)) {
 			state.index = 0;
 		}
 
@@ -2438,6 +2477,9 @@ jQuery(document).ready(function($) {
 
 	window.tmSuspendBackgroundForEditing = suspendBackgroundForEditing;
 	window.tmResumeBackgroundAfterEditing = resumeBackgroundAfterEditing;
+	window.tmPauseShowcaseRotation = pauseShowcaseRotation;
+	window.tmResumeShowcaseRotation = resumeShowcaseRotation;
+	window.tmIsShowcaseRotationPaused = isShowcaseRotationPaused;
 
 	function toggleMute() {
 		state.muted = !state.muted;
@@ -2535,6 +2577,7 @@ jQuery(document).ready(function($) {
 		$btn.attr("title", vendorLoopEnabled
 			? "Talent loop on (repeat this talent media)"
 			: "Talent loop off (advance to next talent)");
+		updateResumeShowcaseControl();
 	}
 
 	// goNext: manual forward navigation (remote buttons, keyboard, swipe-down).
@@ -2688,6 +2731,7 @@ jQuery(document).ready(function($) {
 				// First page load or page reload: reset to defaults and wait for user gesture.
 				state.isPlaying = false;
 			}
+			showcaseInteractionPause = false;
 			// (On a talent swap hasShowcaseStarted() is true — isPlaying stays true from above.)
 		} else {
 			// Profile / default page: silently force vendor media to loop within the same talent.
@@ -2727,8 +2771,8 @@ jQuery(document).ready(function($) {
 			playCurrent();
 		});
 		$heroRemote.on("click.tmhero", ".hero-pause", function() { markUserInteraction(); pauseCurrent(true); });
-		$heroRemote.on("click.tmhero", ".hero-next", function() { markUserInteraction(); unmuteForUserAction(); state.isPlaying = true; goNextManual(); });
-		$heroRemote.on("click.tmhero", ".hero-prev", function() { markUserInteraction(); unmuteForUserAction(); state.isPlaying = true; goPrev(); });
+		$heroRemote.on("click.tmhero", ".hero-next", function() { markUserInteraction(); pauseShowcaseRotation(); unmuteForUserAction(); state.isPlaying = true; goNextManual(); });
+		$heroRemote.on("click.tmhero", ".hero-prev", function() { markUserInteraction(); pauseShowcaseRotation(); unmuteForUserAction(); state.isPlaying = true; goPrev(); });
 
 		$heroBox.off("click.tmhero", ".hero-global-mute");
 		$heroBox.on("click.tmhero", ".hero-global-mute", function() { markUserInteraction(); toggleMute(); });
@@ -2757,6 +2801,7 @@ jQuery(document).ready(function($) {
 				toggleHeroRemote(false);
 			}, 800);
 		}
+		updateResumeShowcaseControl();
 
 		$heroRemote.on("click.tmhero", function() {
 			keepHeroRemoteVisible();
@@ -3304,6 +3349,7 @@ jQuery(document).ready(function($) {
 	$(document).on("click", ".keyboard-nav-up", function() {
 		if (!isKeyboardEnabled()) return;
 		markUserInteraction();
+		pauseShowcaseRotation();
 		unmuteForUserAction();
 		state.isPlaying = true;
 		goPrev();
@@ -3312,6 +3358,7 @@ jQuery(document).ready(function($) {
 	$(document).on("click", ".keyboard-nav-down", function() {
 		if (!isKeyboardEnabled()) return;
 		markUserInteraction();
+		pauseShowcaseRotation();
 		unmuteForUserAction();
 		state.isPlaying = true;
 		goNextManual();
@@ -3347,6 +3394,11 @@ jQuery(document).ready(function($) {
 		if (state.isPlaying) {
 			armAdvanceTimer(currentItem());
 		}
+	});
+
+	$(document).on("click", ".tm-showcase-resume-control", function() {
+		markUserInteraction();
+		resumeShowcaseRotation();
 	});
 
 	function isTouchNavigationTarget(target) {

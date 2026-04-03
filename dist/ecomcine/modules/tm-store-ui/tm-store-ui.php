@@ -2,11 +2,11 @@
 /**
  * Plugin Name: TM Store UI
  * Plugin URI:  https://ecomcine.com
- * Description: Theme-agnostic store UI layer for EcomCine — compatibility template overrides,
+ * Description: Theme-agnostic store UI layer for EcomCine — Dokan template overrides,
  *              vendor attributes, social metrics, cinematic header, store-listing filters,
- *              and hooks migrated out of the legacy theme layer. Works with the canonical
- *              ecomcine-base minimal theme or any standards-compliant WordPress theme.
- * Version:     1.0.1
+ *              and all hooks previously coupled to legacy theme code. Works with the
+ *              canonical ecomcine-base minimal theme or any standards-compliant WordPress theme.
+ * Version:     1.0.4
  * Author:      EcomCine
  * Requires at least: 6.3
  * Requires PHP: 8.0
@@ -16,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TM_STORE_UI_VERSION', '1.0.2' );
+define( 'TM_STORE_UI_VERSION', '1.0.4' );
 define( 'TM_STORE_UI_FILE',    __FILE__ );
 define( 'TM_STORE_UI_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'TM_STORE_UI_URL',     plugin_dir_url( __FILE__ ) );

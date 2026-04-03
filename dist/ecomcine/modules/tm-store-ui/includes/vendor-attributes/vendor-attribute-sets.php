@@ -25,48 +25,6 @@
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Build options map from EcomCine category fields for a given category slug.
- *
- * @param string $category_slug
- * @return array<string,array<string,string>>
- */
-function tm_ecomcine_category_field_options( string $category_slug ) {
-	if ( ! class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
-		return [];
-	}
-
-	$category = EcomCine_Person_Category_Registry::get_by_slug( $category_slug );
-	if ( ! $category ) {
-		return [];
-	}
-
-	$fields = EcomCine_Person_Category_Registry::get_fields_for_category( (int) $category['id'], true );
-	if ( empty( $fields ) ) {
-		return [];
-	}
-
-	$options_by_field = [];
-	foreach ( $fields as $field ) {
-		$field_type = sanitize_key( (string) ( $field['field_type'] ?? 'select' ) );
-		if ( ! in_array( $field_type, [ 'select', 'radio', 'checkbox' ], true ) ) {
-			continue;
-		}
-
-		$field_key   = sanitize_key( (string) ( $field['field_key'] ?? '' ) );
-		$field_label = sanitize_text_field( (string) ( $field['field_label'] ?? $field_key ) );
-		$map         = isset( $field['options_map'] ) && is_array( $field['options_map'] ) ? $field['options_map'] : [];
-
-		if ( '' === $field_key || empty( $map ) ) {
-			continue;
-		}
-
-		$options_by_field[ $field_key ] = [ '' => sprintf( 'Select %s', $field_label ) ] + $map;
-	}
-
-	return $options_by_field;
-}
-
 
 // =============================================================================
 // PHYSICAL ATTRIBUTES  (categories: model, artist)
@@ -77,14 +35,6 @@ function tm_ecomcine_category_field_options( string $category_slug ) {
  * Physical Attributes - Dropdown Options (American Units)
  */
 function get_talent_physical_attributes_options() {
-	$dynamic = tm_ecomcine_category_field_options( 'model' );
-	if ( empty( $dynamic ) ) {
-		$dynamic = tm_ecomcine_category_field_options( 'artist' );
-	}
-	if ( ! empty( $dynamic ) ) {
-		return $dynamic;
-	}
-
 	return [
 		'height' => [
 			'' => 'Select Height',
@@ -199,11 +149,6 @@ function get_talent_physical_attributes_options() {
  * Cameraman/Cinematographer - Dropdown Options for Equipment & Skills
  */
 function get_cameraman_filter_options() {
-	$dynamic = tm_ecomcine_category_field_options( 'cameraman' );
-	if ( ! empty( $dynamic ) ) {
-		return $dynamic;
-	}
-
 	return [
 		'camera_type' => [
 			'' => 'Select Camera Type',

@@ -18,12 +18,11 @@ class THO_Compat_Vendor_Identity_Projector implements THO_Vendor_Identity_Projec
 
 		$name       = '';
 		$avatar_url = '';
+		$banner_url = '';
 		$store_url  = '';
+		$person_info = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $vendor_id ) : array();
 
-		if ( function_exists( 'dokan_get_store_info' ) ) {
-			$info  = dokan_get_store_info( $vendor_id );
-			$name  = $info['store_name'] ?? '';
-		}
+		$name  = isset( $person_info['store_name'] ) ? (string) $person_info['store_name'] : '';
 		if ( ! $name ) {
 			$u    = get_userdata( $vendor_id );
 			$name = $u ? $u->display_name : '';
@@ -36,21 +35,16 @@ class THO_Compat_Vendor_Identity_Projector implements THO_Vendor_Identity_Projec
 			$store_url = get_author_posts_url( $vendor_id );
 		}
 
-		// Avatar: Dokan banner → WP avatar.
-		if ( function_exists( 'dokan' ) ) {
-			try {
-				$banner_url = dokan()->vendor->get( $vendor_id )->get_banner();
-				if ( $banner_url && filter_var( $banner_url, FILTER_VALIDATE_URL ) ) {
-					// Banner is a full URL to hero image; use avatar-sized attachment instead.
-					$banner_id = (int) get_user_meta( $vendor_id, 'dokan_store_banner_id', true );
-					if ( $banner_id ) {
-						$src        = wp_get_attachment_image_src( $banner_id, [ 80, 80 ] );
-						$avatar_url = $src ? $src[0] : '';
-					}
-				}
-			} catch ( \Throwable $e ) {
-				// Ignore.
-			}
+		$banner_id = isset( $person_info['banner_id'] ) ? (int) $person_info['banner_id'] : 0;
+		if ( $banner_id > 0 ) {
+			$src = wp_get_attachment_image_src( $banner_id, 'full' );
+			$banner_url = $src ? $src[0] : '';
+		}
+
+		$avatar_id = isset( $person_info['avatar_id'] ) ? (int) $person_info['avatar_id'] : 0;
+		if ( $avatar_id > 0 ) {
+			$src = wp_get_attachment_image_src( $avatar_id, array( 80, 80 ) );
+			$avatar_url = $src ? $src[0] : '';
 		}
 		if ( ! $avatar_url ) {
 			$avatar_url = get_avatar_url( $vendor_id, [ 'size' => 80 ] );
@@ -60,7 +54,7 @@ class THO_Compat_Vendor_Identity_Projector implements THO_Vendor_Identity_Projec
 			'vendor_id'  => $vendor_id,
 			'name'       => $name,
 			'avatar_url' => $avatar_url,
-			'banner_url' => '',
+			'banner_url' => $banner_url,
 			'store_url'  => $store_url,
 		];
 	}

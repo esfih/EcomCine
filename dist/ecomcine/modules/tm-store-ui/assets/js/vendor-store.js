@@ -870,6 +870,12 @@ jQuery(document).ready(function($) {
 			var infoPanelOpen = false;
 			var drawerPanelOpen = false;
 			var interactionPaused = false;
+			function pauseShowcaseRotation() {
+				if (!isShowcaseMode()) return;
+				if (window.tmPauseShowcaseRotation) {
+					window.tmPauseShowcaseRotation();
+				}
+			}
 			function updateInteractionPause() {
 				// In profile / direct-navigation mode the player loops only this talent's media
 				// and never auto-swaps to another talent, so there is no risk of the drawer data
@@ -878,12 +884,11 @@ jQuery(document).ready(function($) {
 				if (!isShowcaseMode()) return;
 				var shouldPause = infoPanelOpen || drawerPanelOpen;
 				if (shouldPause && !interactionPaused) {
-					suspendBackgroundForEditing();
+					pauseShowcaseRotation();
 					interactionPaused = true;
 					return;
 				}
 				if (!shouldPause && interactionPaused) {
-					resumeBackgroundAfterEditing();
 					interactionPaused = false;
 				}
 			}
@@ -1012,6 +1017,7 @@ jQuery(document).ready(function($) {
 		// showcase rotation. Namespace prevents accumulation on re-init.
 		$(document).off("click.tm-bottom-tab").on("click.tm-bottom-tab", ".bottom-tab-item", function(e) {
 			e.preventDefault();
+			pauseShowcaseRotation();
 			
 			var $clickedTab = $(this);
 			var targetId = $clickedTab.data("target");

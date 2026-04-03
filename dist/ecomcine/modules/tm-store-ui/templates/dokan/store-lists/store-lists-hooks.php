@@ -41,6 +41,37 @@
 
 defined( 'ABSPATH' ) || exit;
 
+if ( ! function_exists( 'tm_store_ui_get_person_filter_template_dir' ) ) {
+	/**
+	 * Return the standalone Talents filter template directory.
+	 *
+	 * @return string
+	 */
+	function tm_store_ui_get_person_filter_template_dir(): string {
+		return defined( 'TM_STORE_UI_DIR' )
+			? TM_STORE_UI_DIR . 'templates/standalone/talents/'
+			: get_stylesheet_directory() . '/ecomcine/talents/';
+	}
+}
+
+if ( ! function_exists( 'tm_store_ui_render_person_listing_filters' ) ) {
+	/**
+	 * Render the standalone Talents filter form.
+	 *
+	 * @return string
+	 */
+	function tm_store_ui_render_person_listing_filters(): string {
+		$template = tm_store_ui_get_person_filter_template_dir() . 'filters.php';
+		if ( ! file_exists( $template ) ) {
+			return '';
+		}
+
+		ob_start();
+		include $template;
+		return (string) ob_get_clean();
+	}
+}
+
 if ( ! function_exists( 'tm_store_lists_is_listing_page' ) ) {
 	/**
 	 * Detect store-listing contexts for both legacy and native shortcodes.
@@ -66,6 +97,41 @@ if ( ! function_exists( 'tm_store_lists_is_listing_page' ) ) {
 		return false;
 	}
 }
+
+if ( ! function_exists( 'tm_store_lists_is_legacy_dokan_listing_page' ) ) {
+	/**
+	 * Detect legacy Dokan-driven listing pages that still need compatibility hooks.
+	 *
+	 * @return bool
+	 */
+	function tm_store_lists_is_legacy_dokan_listing_page() {
+		if ( is_page_template( 'dokan/store-listing.php' ) ) {
+			return true;
+		}
+
+		$post = get_queried_object();
+		if ( ! ( $post instanceof WP_Post ) ) {
+			$post_id = get_queried_object_id();
+			$post    = $post_id ? get_post( (int) $post_id ) : null;
+		}
+
+		return $post instanceof WP_Post && has_shortcode( (string) $post->post_content, 'dokan-stores' );
+	}
+}
+
+add_action( 'template_redirect', function() {
+	if ( tm_store_lists_is_listing_page() ) {
+		$GLOBALS['ecomcine_suppress_site_header'] = true;
+	}
+}, 1 );
+
+add_filter( 'body_class', function( $classes ) {
+	if ( tm_store_lists_is_listing_page() && ! in_array( 'tm-listing-page', $classes, true ) ) {
+		$classes[] = 'tm-listing-page';
+	}
+
+	return $classes;
+}, 20 );
 
 
 // =============================================================================
@@ -114,9 +180,9 @@ function tm_store_list_sort_args( $tm_order = 'newest' ) {
 		case 'oldest':
 			return [ 'orderby' => 'registered', 'order' => 'ASC' ];
 		case 'name_az':
-			return [ 'orderby' => 'meta_value', 'meta_key' => 'dokan_store_name', 'order' => 'ASC' ];
+			return [ 'orderby' => 'meta_value', 'meta_key' => 'ecomcine_store_name', 'order' => 'ASC' ];
 		case 'name_za':
-			return [ 'orderby' => 'meta_value', 'meta_key' => 'dokan_store_name', 'order' => 'DESC' ];
+			return [ 'orderby' => 'meta_value', 'meta_key' => 'ecomcine_store_name', 'order' => 'DESC' ];
 		case 'newest':
 		default:
 			return [ 'orderby' => 'registered', 'order' => 'DESC' ];
@@ -142,11 +208,13 @@ function tm_store_list_sort_args( $tm_order = 'newest' ) {
 //    (not delayed by JS/document.ready). CSS order:1 positions it first.
 // =============================================================================
 add_action( 'dokan_before_store_lists_filter_category', function() {
-	$search_val = isset( $_GET['dokan_seller_search'] ) ? esc_attr( sanitize_text_field( $_GET['dokan_seller_search'] ) ) : '';
+	$search_val = function_exists( 'tm_store_ui_get_listing_request_value' )
+		? esc_attr( tm_store_ui_get_listing_request_value( array( 'ecomcine_person_search', 'dokan_seller_search' ) ) )
+		: '';
 	?>
 	<div class="store-search-field item">
-		<label for="dokan_seller_search">&#128269; Search:</label>
-		<input type="search" id="dokan_seller_search" name="dokan_seller_search"
+		<label for="ecomcine_person_search">&#128269; Search:</label>
+		<input type="search" id="ecomcine_person_search" name="ecomcine_person_search"
 		       placeholder="Search by name or keyword" value="<?php echo $search_val; ?>">
 	</div>
 	<?php
@@ -163,7 +231,7 @@ add_action( 'dokan_before_store_lists_filter_category', function() {
 add_action( 'dokan_after_store_lists_filter_category', function() {
 	// Build the "Clear all filters" URL: strip known filter params, keep everything else.
 	$_filter_keys = [
-		'dokan_seller_search', 'dokan_seller_category',
+		'ecomcine_person_search', 'dokan_seller_search', 'ecomcine_person_category', 'dokan_seller_category',
 		'verified', 'featured', 'profile_level',
 		'talent_height',     'talent_weight',     'talent_waist',
 		'talent_hip',        'talent_chest',      'talent_shoe_size',
@@ -255,23 +323,43 @@ function filter_dokan_seller_listing_args( $args ) {
 	];
 
 	// ── Category ─────────────────────────────────────────────────────────────
-	if ( isset( $_GET['dokan_seller_category'] ) && ! empty( $_GET['dokan_seller_category'] ) ) {
-		$category_slug = sanitize_text_field( $_GET['dokan_seller_category'] );
+	$category_slug = function_exists( 'tm_store_ui_get_listing_request_value' )
+		? tm_store_ui_get_listing_request_value( array( 'ecomcine_person_category', 'dokan_seller_category' ) )
+		: '';
+	if ( '' !== $category_slug ) {
 
-		if ( ! isset( $args['store_category_query'] ) ) {
-			$args['store_category_query'] = array();
+		// Use EcomCine registry when available (portable, no Dokan required).
+		if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			$person_ids_for_cat = EcomCine_Person_Category_Registry::get_person_ids_for_slug( $category_slug );
+			if ( ! empty( $person_ids_for_cat ) ) {
+				// Merge with any existing include restriction.
+				if ( ! empty( $args['include'] ) ) {
+					$args['include'] = array_intersect( (array) $args['include'], $person_ids_for_cat );
+				} else {
+					$args['include'] = $person_ids_for_cat;
+				}
+			} else {
+				// Category exists but has no members — return empty.
+				$args['include'] = array( 0 );
+			}
+		} elseif ( taxonomy_exists( 'store_category' ) ) {
+			// Dokan fallback: use store_category_query.
+			if ( ! isset( $args['store_category_query'] ) ) {
+				$args['store_category_query'] = array();
+			}
+			$args['store_category_query'][] = array(
+				'taxonomy' => 'store_category',
+				'field'    => 'slug',
+				'terms'    => $category_slug,
+			);
 		}
-
-		$args['store_category_query'][] = array(
-			'taxonomy' => 'store_category',
-			'field'    => 'slug',
-			'terms'    => $category_slug,
-		);
 	}
 
 	// ── Enhanced Search: name + biography ────────────────────────────────────
-	if ( isset( $_GET['dokan_seller_search'] ) && ! empty( $_GET['dokan_seller_search'] ) ) {
-		$search_term = sanitize_text_field( $_GET['dokan_seller_search'] );
+	$search_term = function_exists( 'tm_store_ui_get_listing_request_value' )
+		? tm_store_ui_get_listing_request_value( array( 'ecomcine_person_search', 'dokan_seller_search' ) )
+		: '';
+	if ( '' !== $search_term ) {
 
 		// Remove Dokan's default name-only meta_query condition.
 		if ( isset( $args['meta_query'] ) && is_array( $args['meta_query'] ) ) {
@@ -414,8 +502,8 @@ add_filter( 'dokan_seller_listing_args', 'filter_dokan_seller_listing_args', 20,
 // =============================================================================
 
 /**
- * Append a custom WHERE clause so the search matches both dokan_store_name
- * and the serialised dokan_profile_settings (which contains the biography).
+ * Append a custom WHERE clause so the search matches canonical person name
+ * and biography meta.
  *
  * @param WP_User_Query $query
  */
@@ -441,8 +529,8 @@ function dokan_enhanced_search_query( $query ) {
 		SELECT 1 FROM {$wpdb->usermeta} um
 		WHERE um.user_id = {$wpdb->users}.ID
 		AND (
-			(um.meta_key = 'dokan_store_name'         AND um.meta_value LIKE %s)
-			OR (um.meta_key = 'dokan_profile_settings' AND um.meta_value LIKE %s)
+			(um.meta_key = 'ecomcine_store_name' AND um.meta_value LIKE %s)
+			OR (um.meta_key = 'ecomcine_bio'     AND um.meta_value LIKE %s)
 		)
 	)";
 
@@ -484,20 +572,9 @@ add_action( 'wp_footer', function() {
 		return;
 	}
 
-	// Apply the same filter (reads $_GET) with no pagination limit.
-	// Use the same sort order as the visible grid so showcase IDs match the
-	// displayed order exactly.
-	$_sc_order    = isset( $_GET['tm_order'] ) ? sanitize_key( $_GET['tm_order'] ) : 'newest';
-	$_sc_sort     = tm_store_list_sort_args( $_sc_order );
-	$_sc_base     = array_merge(
-		[ 'role__in' => [ 'seller' ], 'number' => 9999, 'offset' => 0, 'meta_query' => [] ],
-		$_sc_sort
-	);
-	$all_args = apply_filters( 'dokan_seller_listing_args', $_sc_base, null );
-
-	// dokan_get_sellers so the dokan_get_sellers post-filters (e.g. age) also apply.
-	$all_sellers = dokan_get_sellers( $all_args );
-	$all_ids     = array_values( array_map( 'intval', wp_list_pluck( $all_sellers['users'], 'ID' ) ) );
+	$all_ids = function_exists( 'tm_store_ui_get_filtered_person_ids_for_listing' )
+		? tm_store_ui_get_filtered_person_ids_for_listing()
+		: array();
 	$total       = count( $all_ids );
 
 	// Resolve showcase page URL — use get_page_by_path so we get the canonical
@@ -534,25 +611,6 @@ add_action( 'wp_footer', function() {
 
 		function initStoreFilters() {
 
-			// ── Prevent Dokan from collapsing the always-open filter form ────────────
-			// Dokan Lite's init() calls slideToggle() on the form when URL filter params
-			// exist (designed to OPEN a hidden form). Since we keep the form open via
-			// CSS (display:block !important), slideToggle() finds it open and CLOSES it
-			// instead — height-animating to 0 + overflow:hidden.
-			// jQuery animations are queued asynchronously; calling stop() here, in the
-			// same synchronous document.ready tick (but registered after Dokan's), clears
-			// the queue before any animation frame has run.
-			var $filterForm = $('#dokan-store-listing-filter-form-wrap');
-			$filterForm.stop(true, false); // cancel Dokan's pending slideToggle
-			$filterForm.css({height: '', overflow: ''}); // wipe any stale inline overrides
-
-			// Rebind Cancel button: Dokan binds it to toggleForm() → slideToggle().
-			// Since the form is always visible we make Cancel a no-op.
-			$('#cancel-filter-btn').off('click').on('click', function(e) {
-				e.preventDefault();
-				e.stopImmediatePropagation();
-			});
-
 			// Declare urlParams once at the top so all restore-from-URL code can use it.
 			var urlParams = new URLSearchParams( window.location.search );
 
@@ -587,13 +645,13 @@ add_action( 'wp_footer', function() {
 
 				// Close every OTHER open box and reset its arrow
 				$('.category-box').not($box).slideUp();
-				$('.category-input').not($clicked).find('.dokan-icon')
+				$('.category-input').not($clicked).find('.ecomcine-icon')
 					.addClass('dashicons-arrow-down-alt2')
 					.removeClass('dashicons-arrow-up-alt2');
 
 				// Toggle this box and its arrow
 				$box.slideToggle();
-				$clicked.find('.dokan-icon')
+				$clicked.find('.ecomcine-icon')
 					.toggleClass('dashicons-arrow-down-alt2 dashicons-arrow-up-alt2');
 			});
 
@@ -601,7 +659,7 @@ add_action( 'wp_footer', function() {
 			$(document).off('click.tm-dropdown').on('click.tm-dropdown', function(e) {
 				if ( ! $(e.target).closest('.category-input, .category-box').length ) {
 					$('.category-box').slideUp();
-					$('.category-input .dokan-icon')
+					$('.category-input .ecomcine-icon')
 						.addClass('dashicons-arrow-down-alt2')
 						.removeClass('dashicons-arrow-up-alt2');
 				}
@@ -615,7 +673,7 @@ add_action( 'wp_footer', function() {
 					var $this       = $(this);
 					var wasSelected = $this.hasClass('selected');
 
-					$('.store-lists-category .category-box:not(.tm-level-box, .tm-country-box) ul li').removeClass('selected dokan-btn-theme');
+					$('.store-lists-category .category-box:not(.tm-level-box, .tm-country-box) ul li').removeClass('selected ecomcine-btn-primary');
 
 					if ( wasSelected ) {
 						$('.store-lists-category .category-items:not(.tm-level-items)').text('Select a category');
@@ -627,10 +685,11 @@ add_action( 'wp_footer', function() {
 					}
 					// Close the dropdown after a selection
 					$this.closest('.category-box').slideUp();
-					$this.closest('.store-lists-category').find('.category-input .dokan-icon')
+					$this.closest('.store-lists-category').find('.category-input .ecomcine-icon')
 						.addClass('dashicons-arrow-down-alt2')
 						.removeClass('dashicons-arrow-up-alt2');
 				});
+
 			// -- Country filter item selection ────────────────────────────────────
 			$('.tm-country-box ul li').off('click').on('click', function(e) {
 				e.preventDefault();
@@ -661,6 +720,7 @@ add_action( 'wp_footer', function() {
 					$('#ecomcine-country-filter').val( selectedCountry );
 				}
 			}
+
 			// -- Profile Level item selection ─────────────────────────────────────
 			$('.tm-level-box ul li').off('click').on('click', function(e) {
 				e.preventDefault();
@@ -697,7 +757,7 @@ add_action( 'wp_footer', function() {
 			// the correct display text. JS only needs to:
 			//  1. mark the active <li> selected (for click-deselect to work)
 			//  2. call updateCategorySpecificFilters to show matching filter rows.
-			var selectedCategorySlug = urlParams.get('dokan_seller_category');
+			var selectedCategorySlug = urlParams.get('ecomcine_person_category') || urlParams.get('dokan_seller_category');
 
 			if ( selectedCategorySlug ) {
 				var $item = $('.store-lists-category .category-box ul li[data-slug="' + selectedCategorySlug + '"]');
@@ -713,7 +773,7 @@ add_action( 'wp_footer', function() {
 			// ── "View all filters" toggle ────────────────────────────────────────
 			// Document delegation so this fires whether the button is in the page
 			// DOM (Talents page) or injected into the overlay (showcase page).
-			$(document).off('click.vaf', '#view-all-filters-btn').on('click.vaf', '#view-all-filters-btn', function(e) {
+			$(document).off('click.vaf', '#ecomcine-view-all-filters-btn').on('click.vaf', '#ecomcine-view-all-filters-btn', function(e) {
 				e.preventDefault();
 				var $demoFilters = $('.custom-filter-group.demographic-filters');
 				if ( $demoFilters.is(':visible') ) {
@@ -729,7 +789,7 @@ add_action( 'wp_footer', function() {
 			// Document delegation guarantees the handler fires even if
 			// initStoreFilters() ran before the button was injected into the DOM
 			// (overlay context).  .off() before .on() prevents stacking.
-			$(document).off('click.sf', '#apply-filter-btn').on('click.sf', '#apply-filter-btn', function(e) {
+			$(document).off('click.sf', '#ecomcine-apply-filters-btn').on('click.sf', '#ecomcine-apply-filters-btn', function(e) {
 				e.preventDefault();
 				e.stopPropagation();
 
@@ -738,22 +798,15 @@ add_action( 'wp_footer', function() {
 				var currentUrl = new URL( window.location.href, window.location.origin );
 				var params     = new URLSearchParams( currentUrl.search );
 
-				// Always include the nonce so Dokan's shortcode populates $requested_data
-				// (without it, featured/verified filters are silently ignored).
-				var nonce = $('input[name="_store_filter_nonce"]').first().val();
-				if ( nonce ) {
-					params.set('_store_filter_nonce', nonce);
-				}
-
 				// Verified
-				if ( $('#verified').is(':checked') ) {
+				if ( $('#ecomcine-verified').is(':checked') ) {
 					params.set('verified', 'yes');
 				} else {
 					params.delete('verified');
 				}
 
 				// Profile Level
-				var profileLevelVal = $('#profile_level').val();
+				var profileLevelVal = $('#ecomcine-profile-level').val();
 				if ( profileLevelVal ) {
 					params.set('profile_level', profileLevelVal);
 				} else {
@@ -769,23 +822,27 @@ add_action( 'wp_footer', function() {
 				}
 
 				// Search
-				var searchValue = $('#dokan_seller_search').val();
+				var searchValue = $('#ecomcine-person-search').val();
 				if ( searchValue && searchValue.trim() ) {
-					params.set('dokan_seller_search', searchValue.trim());
+					params.set('ecomcine_person_search', searchValue.trim());
+					params.delete('dokan_seller_search');
 				} else {
+					params.delete('ecomcine_person_search');
 					params.delete('dokan_seller_search');
 				}
 
 				// Category
 				var selectedCategory = $('.store-lists-category .category-box ul li.selected').data('slug');
 				if ( selectedCategory ) {
-					params.set('dokan_seller_category', selectedCategory);
+					params.set('ecomcine_person_category', selectedCategory);
+					params.delete('dokan_seller_category');
 				} else {
+					params.delete('ecomcine_person_category');
 					params.delete('dokan_seller_category');
 				}
 
 				// Featured
-				if ( $('#featured').is(':checked') ) {
+				if ( $('#ecomcine-featured').is(':checked') ) {
 					params.set('featured', 'yes');
 				} else {
 					params.delete('featured');
@@ -830,8 +887,20 @@ add_action( 'wp_footer', function() {
 		// A fixed bottom bar holds the Sort dropdown (left) and Showcase button (right).
 
 		(function() {
-			var $wrap = $( '#dokan-seller-listing-wrap' ).first();
+			var $wrap = $( '#ecomcine-person-listing, #dokan-seller-listing-wrap' ).first();
 			if ( ! $wrap.length ) { return; }
+
+			if ( 'function' === typeof syncShellWidth ) {
+				var shellRaf = 0;
+				$( window ).off( 'resize.tmShellSync orientationchange.tmShellSync' ).on( 'resize.tmShellSync orientationchange.tmShellSync', function() {
+					if ( shellRaf ) {
+						window.cancelAnimationFrame( shellRaf );
+					}
+					shellRaf = window.requestAnimationFrame( syncShellWidth );
+				} );
+
+				syncShellWidth();
+			}
 
 			var $pag     = $wrap.find( '.pagination-container' ).first();
 			var prevHref = null, nextHref = null;
@@ -909,16 +978,16 @@ add_action( 'wp_footer', function() {
 
 				var $sortDrop = $( '<ul/>', { id: 'tm-sort-dropdown' } );
 				sortOptions.forEach( function( opt ) {
-					var $li = $( '<li/>', { text: opt.label, 'data-value': opt.value } );
+					var p = new URLSearchParams( window.location.search );
+					p.set( 'tm_order', opt.value );
+					p.delete( 'paged' );
+					p.delete( 'page' );
+					var sortUrl = window.location.pathname + '?' + p.toString();
+					var $li = $( '<li/>', { text: opt.label, 'data-value': opt.value, 'data-url': sortUrl } );
 					if ( opt.value === activeSortKey ) { $li.addClass( 'selected' ); }
 					$li.on( 'click', function( e ) {
 						e.stopPropagation();
-						var p = new URLSearchParams( window.location.search );
-						p.set( 'tm_order', opt.value );
-						// Reset to page 1 when sort changes
-						p.delete( 'paged' );
-						p.delete( 'page' );
-						window.location.href = window.location.pathname + '?' + p.toString();
+						window.location.href = sortUrl;
 					} );
 					$sortDrop.append( $li );
 				} );

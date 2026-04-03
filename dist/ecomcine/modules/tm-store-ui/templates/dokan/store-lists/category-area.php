@@ -1,27 +1,27 @@
-<?php
 /**
- * Store listing category-area template migrated from the legacy theme layer.
+ * Store listing category-area template — EcomCine override.
  *
- * Overrides: dokan-pro/templates/store-lists/category-area.php (v3.0.0)
+ * Uses ecomcine_person_category GET param and reads categories from the
+ * EcomCine Person Category Registry (zero Dokan dependency).
  *
- * Changes from original:
- *   – Reads $_GET['dokan_seller_category'] server-side so the selected category
- *     name is rendered in .category-items immediately (no JS-on-load flash from
- *     "All Categories" → actual name).
- *   – Adds `selected` class to the active <li> in PHP so state is correct
- *     before JS runs.
- *
- * @package Dokan/Templates
- * @version 3.0.0
+ * @package EcomCine
  */
 
 defined( 'ABSPATH' ) || exit;
 
-$_selected_slug = isset( $_GET['dokan_seller_category'] )
-	? sanitize_text_field( $_GET['dokan_seller_category'] )
+$_selected_slug = isset( $_GET['ecomcine_person_category'] )
+	? sanitize_text_field( wp_unslash( $_GET['ecomcine_person_category'] ) )
 	: '';
 
-// Resolve the human-readable label from the category list passed by Dokan Pro.
+// Populate $categories from EcomCine registry; fall back to Dokan-provided $categories variable.
+if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+	$categories = EcomCine_Person_Category_Registry::get_all();
+}
+// $categories may also be passed from the parent Dokan template — keep it if set and registry is empty.
+if ( empty( $categories ) ) {
+	$categories = array();
+}
+
 $_selected_label = '';
 if ( $_selected_slug && ! empty( $categories ) ) {
 	foreach ( $categories as $_cat ) {
@@ -32,30 +32,30 @@ if ( $_selected_slug && ! empty( $categories ) ) {
 	}
 }
 
-$_display_text = $_selected_label ?: esc_html__( 'All Categories', 'dokan' );
+$_display_text = $_selected_label ?: esc_html__( 'All Categories', 'ecomcine' );
 ?>
 
 <div class="store-lists-other-filter-wrap">
-    <?php do_action( 'dokan_before_store_lists_filter_category', $stores ); ?>
+    <?php do_action( 'ecomcine_before_person_filter_category' ); ?>
 
     <?php if ( ! empty( $categories ) ) : ?>
         <div class="store-lists-category item">
             <div class="category-input">
                 <span class="category-label">
-                    <?php esc_html_e( 'Category:', 'dokan' ); ?>
+                    <?php esc_html_e( 'Category:', 'ecomcine' ); ?>
                 </span>
                 <span class="category-items">
                     <?php echo esc_html( $_display_text ); ?>
                 </span>
 
-                <span class="dokan-icon dashicons dashicons-arrow-down-alt2"></span>
+                <span class="ecomcine-icon dashicons dashicons-arrow-down-alt2"></span>
             </div>
 
-            <div class="category-box store_category" style="display: none">
+            <div class="category-box ecomcine-person-category" style="display: none">
                 <ul>
                     <?php foreach ( $categories as $category ) : ?>
                         <li data-slug="<?php echo esc_attr( $category['slug'] ); ?>"
-                            <?php if ( $category['slug'] === $_selected_slug ) echo 'class="selected dokan-btn-theme"'; ?>>
+                            <?php if ( $category['slug'] === $_selected_slug ) echo 'class="selected ecomcine-btn-primary"'; ?>>
                             <?php echo esc_html( $category['name'] ); ?>
                         </li>
                     <?php endforeach; ?>
@@ -64,5 +64,5 @@ $_display_text = $_selected_label ?: esc_html__( 'All Categories', 'dokan' );
         </div>
     <?php endif; ?>
 
-    <?php do_action( 'dokan_after_store_lists_filter_category', $stores ); ?>
+    <?php do_action( 'ecomcine_after_person_filter_category' ); ?>
 </div>

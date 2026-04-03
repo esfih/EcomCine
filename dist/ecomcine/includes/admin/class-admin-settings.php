@@ -66,7 +66,7 @@ class EcomCine_Admin_Settings {
 					continue;
 				}
 
-				if ( str_starts_with( $handle, 'dokan-' ) || false !== strpos( $handle, 'dokan' ) ) {
+				if ( 0 === strpos( $handle, 'dokan-' ) || false !== strpos( $handle, 'dokan' ) ) {
 					wp_dequeue_script( $handle );
 				}
 			}
@@ -78,7 +78,7 @@ class EcomCine_Admin_Settings {
 					continue;
 				}
 
-				if ( str_starts_with( $handle, 'dokan-' ) || false !== strpos( $handle, 'dokan' ) ) {
+				if ( 0 === strpos( $handle, 'dokan-' ) || false !== strpos( $handle, 'dokan' ) ) {
 					wp_dequeue_style( $handle );
 				}
 			}
@@ -1027,7 +1027,7 @@ class EcomCine_Admin_Settings {
 		if ( array_key_exists( 'mapbox_token', $input ) ) {
 			$mapbox_raw = sanitize_text_field( (string) $input['mapbox_token'] );
 			// Only accept Mapbox public tokens (prefix pk.) or empty string.
-			if ( '' !== $mapbox_raw && ! str_starts_with( $mapbox_raw, 'pk.' ) ) {
+			if ( '' !== $mapbox_raw && 0 !== strpos( $mapbox_raw, 'pk.' ) ) {
 				$mapbox_raw = '';
 				add_settings_error(
 					self::OPTION_KEY,

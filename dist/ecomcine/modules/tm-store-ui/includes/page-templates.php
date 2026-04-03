@@ -49,6 +49,7 @@ function tm_store_ui_template_include( $template ) {
 		has_shortcode( $content, 'dokan-stores' )
 		|| has_shortcode( $content, 'ecomcine-stores' )
 		|| has_shortcode( $content, 'ecomcine_categories' )
+		|| has_shortcode( $content, 'ecomcine_locations' )
 	);
 
 	$is_platform = 'tm-store-ui/page-platform' === $stored_tpl

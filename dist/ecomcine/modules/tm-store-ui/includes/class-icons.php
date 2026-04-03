@@ -116,6 +116,44 @@ class TM_Icons {
 	);
 
 	/**
+         * Normalize an icon name, resolving aliases when present.
+         *
+         * @param string $name Raw icon name.
+         * @return string
+         */
+        public static function normalize_name( $name ) {
+                $name = sanitize_key( (string) $name );
+
+                if ( isset( self::$aliases[ $name ] ) ) {
+                        return self::$aliases[ $name ];
+                }
+
+                return $name;
+        }
+
+        /**
+         * Determine whether an icon exists in the internal registry.
+         *
+         * @param string $name Icon slug or alias.
+         * @return bool
+         */
+        public static function has_icon( $name ) {
+                $name = self::normalize_name( $name );
+                return isset( self::$icons[ $name ] );
+        }
+
+        /**
+         * Return all available icon names.
+         *
+         * @return string[]
+         */
+        public static function all_icon_names() {
+                $names = array_keys( self::$icons );
+                sort( $names );
+                return $names;
+        }
+
+        /**
 	 * Return inline SVG markup for $name.
 	 *
 	 * @param string $name   Icon slug (FA6 or accepted FA5 alias).
@@ -124,9 +162,7 @@ class TM_Icons {
 	 * @return string        Safe SVG string, or '' if icon unknown.
 	 */
 	public static function svg( $name, $class = '', $title = '' ) {
-		if ( isset( self::$aliases[ $name ] ) ) {
-			$name = self::$aliases[ $name ];
-		}
+                $name = self::normalize_name( $name );
 
 		if ( ! isset( self::$icons[ $name ] ) ) {
 			return '';
