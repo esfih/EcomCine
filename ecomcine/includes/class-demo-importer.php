@@ -300,6 +300,17 @@ class EcomCine_Demo_Importer {
 			update_user_meta( $user_id, $meta_key, $meta_value );
 		}
 
+		// Write canonical geo keys so the vendors-map shortcode meta_query finds them.
+		$geo_data = isset( $dps['geolocation'] ) && is_array( $dps['geolocation'] ) ? $dps['geolocation'] : array();
+		if ( ! empty( $geo_data['latitude'] ) && ! empty( $geo_data['longitude'] ) ) {
+			update_user_meta( $user_id, 'ecomcine_geo_lat', (string) $geo_data['latitude'] );
+			update_user_meta( $user_id, 'ecomcine_geo_lng', (string) $geo_data['longitude'] );
+			$geo_address = sanitize_text_field( (string) ( $dps['location'] ?? '' ) );
+			if ( '' !== $geo_address ) {
+				update_user_meta( $user_id, 'ecomcine_geo_address', $geo_address );
+			}
+		}
+
 		update_user_meta( $user_id, 'dokan_enable_selling', 'yes' );
 		update_user_meta( $user_id, 'tm_l1_complete', '1' );
 
@@ -336,6 +347,21 @@ class EcomCine_Demo_Importer {
 			}
 			if ( ! empty( $term_ids ) ) {
 				wp_set_object_terms( $user_id, $term_ids, 'store_category' );
+			}
+		}
+
+		// Ensure a published tm_vendor CPT post exists so ecomcine_has_public_person_profile()
+		// returns true and the vendor appears on the Talents listing page.
+		if ( class_exists( 'TMP_WP_Vendor_CPT', false ) ) {
+			$cpt_data = array(
+				'biography'    => wp_kses_post( $dps['vendor_biography'] ?? '' ),
+				'banner_image' => (int) ( $dps['banner'] ?? 0 ),
+			);
+			$cpt_result = TMP_WP_Vendor_CPT::upsert_vendor( $user_id, $cpt_data );
+			if ( is_wp_error( $cpt_result ) ) {
+				$result['log'][] = "Warning: tm_vendor CPT upsert failed for {$login}: " . $cpt_result->get_error_message();
+			} else {
+				$result['log'][] = "tm_vendor CPT post {$cpt_result} for {$login}";
 			}
 		}
 
