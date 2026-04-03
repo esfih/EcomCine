@@ -41,8 +41,8 @@ Library resolution checks these autoload paths (in order):
 2. active stylesheet theme `lib/php-qrcode/vendor/autoload.php`
 3. active template theme `vendor/autoload.php`
 4. active template theme `lib/php-qrcode/vendor/autoload.php`
-5. `wp-content/themes/astra-child/vendor/autoload.php`
-6. `wp-content/themes/astra-child/lib/php-qrcode/vendor/autoload.php`
+5. `wp-content/themes/ecomcine-base/vendor/autoload.php`
+6. `wp-content/themes/ecomcine-base/lib/php-qrcode/vendor/autoload.php`
 7. `ECOMCINE_DIR/vendor/autoload.php` when available
 
 ## Regression Guard

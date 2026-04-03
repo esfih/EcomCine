@@ -353,37 +353,6 @@ function ecomcine_register_person_role(): void {
 // Register role on every init in case it was removed (e.g. by another plugin).
 add_action( 'init', 'ecomcine_register_person_role', 1 );
 
-// ── Location taxonomy ─────────────────────────────────────────────────────────
-// Registers a standalone 'location' taxonomy used by the [ecomcine_locations]
-// shortcode and the /locations/ onboarding page.  Terms can be managed at
-// Appearance → Menus or directly under Posts → Locations in the admin.
-add_action( 'init', function() {
-	if ( taxonomy_exists( 'location' ) ) {
-		return; // Another plugin already owns this slug; respect that.
-	}
-	register_taxonomy(
-		'location',
-		array( 'post' ),
-		array(
-			'labels'            => array(
-				'name'          => _x( 'Locations', 'taxonomy general name', 'ecomcine' ),
-				'singular_name' => _x( 'Location', 'taxonomy singular name', 'ecomcine' ),
-				'add_new_item'  => __( 'Add New Location', 'ecomcine' ),
-				'edit_item'     => __( 'Edit Location', 'ecomcine' ),
-				'search_items'  => __( 'Search Locations', 'ecomcine' ),
-				'all_items'     => __( 'All Locations', 'ecomcine' ),
-			),
-			'public'            => true,
-			'show_ui'           => true,
-			'show_in_menu'      => true,
-			'show_in_rest'      => true,
-			'hierarchical'      => true,
-			'rewrite'           => array( 'slug' => 'location' ),
-			'show_admin_column' => false,
-		)
-	);
-}, 5 );
-
 // ── Theme-compat layer ────────────────────────────────────────────────────────
 // Load the thin compat file for whichever active theme supports the
 // ecomcine_suppress_header / ecomcine_suppress_footer globals.

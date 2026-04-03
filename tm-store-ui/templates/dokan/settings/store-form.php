@@ -116,7 +116,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
     
     <?php
     // Get existing banner video if set (stored in separate meta)
-    $banner_video_id = get_user_meta( get_current_user_id(), 'dokan_banner_video', true );
+    $banner_video_id = get_user_meta( get_current_user_id(), 'ecomcine_banner_video', true );
     $banner_video_url = $banner_video_id ? wp_get_attachment_url( $banner_video_id ) : '';
     ?>
     
@@ -153,7 +153,8 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
         </label>
         <div class="dokan-w5">
             <?php
-            $video_position = ! empty( $profile_info['banner_video_position'] ) ? $profile_info['banner_video_position'] : 'center';
+            $video_position = (string) get_user_meta( get_current_user_id(), 'ecomcine_banner_video_position', true );
+            $video_position = $video_position ? $video_position : 'center';
             ?>
             <select name="banner_video_position" id="banner_video_position" class="dokan-form-control">
                 <option value="center" <?php selected( $video_position, 'center' ); ?>><?php esc_html_e( 'Center (Default)', 'dokan-lite' ); ?></option>
@@ -340,7 +341,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
     <div class="dokan-form-group physical-attributes-section tm-hidden-by-default" data-category="model,artist">
         <div class="dokan-w12">
             <h3 class="tm-physical-attributes-title">
-                📏 <?php esc_html_e( 'Physical Attributes', 'astra-child' ); ?>
+                📏 <?php esc_html_e( 'Physical Attributes', 'tm-store-ui' ); ?>
             </h3>
         </div>
     </div>
@@ -353,7 +354,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
     <!-- Body Measurements Row 1 -->
     <div class="dokan-form-group talent_height tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_height">
-            📏 <?php esc_html_e( 'Height', 'astra-child' ); ?>
+            📏 <?php esc_html_e( 'Height', 'tm-store-ui' ); ?>
         </label>
         <div class="dokan-w5">
             <select class="dokan-form-control" name="talent_height" id="talent_height">
@@ -374,7 +375,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
 
     <div class="dokan-form-group talent_weight tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_weight">
-            ⚖️ <?php esc_html_e( 'Weight', 'astra-child' ); ?>
+            ⚖️ <?php esc_html_e( 'Weight', 'tm-store-ui' ); ?>
         </label>
         <div class="dokan-w5">
             <select class="dokan-form-control" name="talent_weight" id="talent_weight">
@@ -396,7 +397,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
     <!-- Body Measurements Row 2 -->
     <div class="dokan-form-group talent_waist tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_waist">
-            📐 <?php esc_html_e( 'Waist', 'astra-child' ); ?>
+            📐 <?php esc_html_e( 'Waist', 'tm-store-ui' ); ?>
         </label>
         <div class="dokan-w5">
             <select class="dokan-form-control" name="talent_waist" id="talent_waist">
@@ -417,7 +418,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
 
     <div class="dokan-form-group talent_hip tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_hip">
-            📐 <?php esc_html_e( 'Hip', 'astra-child' ); ?>
+            📐 <?php esc_html_e( 'Hip', 'tm-store-ui' ); ?>
         </label>
         <div class="dokan-w5">
             <select class="dokan-form-control" name="talent_hip" id="talent_hip">
@@ -438,7 +439,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
 
     <div class="dokan-form-group talent_chest tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_chest">
-            📐 <?php esc_html_e( 'Chest', 'astra-child' ); ?>
+            📐 <?php esc_html_e( 'Chest', 'tm-store-ui' ); ?>
         </label>
         <div class="dokan-w5">
             <select class="dokan-form-control" name="talent_chest" id="talent_chest">
@@ -459,7 +460,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
 
     <div class="dokan-form-group talent_shoe_size tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_shoe_size">
-            👟 <?php esc_html_e( 'Shoe Size (US)', 'astra-child' ); ?>
+            👟 <?php esc_html_e( 'Shoe Size (US)', 'tm-store-ui' ); ?>
         </label>
         <div class="dokan-w5">
             <select class="dokan-form-control" name="talent_shoe_size" id="talent_shoe_size">
@@ -481,7 +482,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
     <!-- Features -->
     <div class="dokan-form-group talent_eye_color tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_eye_color">
-            👁️ <?php esc_html_e( 'Eye Color', 'astra-child' ); ?>
+            👁️ <?php esc_html_e( 'Eye Color', 'tm-store-ui' ); ?>
         </label>
         <div class="dokan-w5">
             <select class="dokan-form-control" name="talent_eye_color" id="talent_eye_color">
@@ -502,7 +503,7 @@ $args     = apply_filters( 'dokan_store_time_arguments', $args, $all_times );
 
     <div class="dokan-form-group talent_hair_color tm-hidden-by-default" data-category="model,artist">
         <label class="dokan-w3 dokan-control-label" for="talent_hair_color">
-            💇 <?php esc_html_e( 'Hair Color', 'astra-child' ); ?>
+            💇 <?php esc_html_e( 'Hair Color', 'tm-store-ui' ); ?>
         </label>
         <div class="dokan-w5">
             <select class="dokan-form-control" name="talent_hair_color" id="talent_hair_color">

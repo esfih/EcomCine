@@ -35,7 +35,7 @@ add_filter( 'theme_page_templates', function( $templates ) {
  * Handles:
  *  - New DB value:    _wp_page_template = 'tm-store-ui/page-platform'
  *  - Legacy DB value: _wp_page_template = 'page-platform.php'
- *  - Auto-detect:     page contains [dokan-stores] shortcode
+ *  - Auto-detect:     page contains [dokan-stores] or [ecomcine-stores] shortcode
  */
 function tm_store_ui_template_include( $template ) {
 	if ( ! is_page() ) { return $template; }
@@ -45,9 +45,14 @@ function tm_store_ui_template_include( $template ) {
 	$content     = $post_id ? (string) get_post_field( 'post_content', $post_id ) : '';
 
 	// Platform Page.
+	$has_store_shortcode = $post_id && (
+		has_shortcode( $content, 'dokan-stores' )
+		|| has_shortcode( $content, 'ecomcine-stores' )
+	);
+
 	$is_platform = 'tm-store-ui/page-platform' === $stored_tpl
 		|| 'page-platform.php' === $stored_tpl     // legacy value
-		|| ( $post_id && has_shortcode( $content, 'dokan-stores' ) );
+		|| $has_store_shortcode;
 
 	if ( $is_platform ) {
 		$tpl = TM_STORE_UI_DIR . 'templates/page-templates/page-platform.php';

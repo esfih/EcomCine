@@ -15,8 +15,11 @@ related-files:
 
 # EcomCine — README FIRST
 
-EcomCiné is a productized suite of cinematic customizations for WordPress/WooCommerce/Dokan
-marketplaces. Phase 1 is live at `castingagency.co`.
+EcomCiné is a productized WordPress-native cinematic marketplace suite.
+Phase 1 is live at `castingagency.co`.
+
+The canonical runtime target is bare WordPress + `ecomcine-base` + EcomCine plugins.
+WooCommerce, Dokan, and WooCommerce Bookings are legacy compatibility layers for parity and migration work, not the long-term required stack.
 
 **GitHub:** https://github.com/esfih/EcomCine  
 **Live site:** https://castingagency.co  
@@ -28,7 +31,7 @@ marketplaces. Phase 1 is live at `castingagency.co`.
 
 | Folder | What it is | Committed? |
 |---|---|---|
-| `theme/` | `astra-child` child theme | Yes |
+| `ecomcine/bundled-theme/` | Canonical minimal `ecomcine-base` theme shipped by the plugin | Yes |
 | `tm-media-player/` | Cinematic media player + showcase plugin | Yes |
 | `tm-account-panel/` | Front-end login/registration + talent onboarding plugin | Yes |
 | `tm-vendor-booking-modal/` | Frictionless booking/checkout modal plugin | Yes |
@@ -119,6 +122,7 @@ If a required task has no catalog entry, stop and create/approve a new catalog c
 
 - Never run interactive package-manager installs (for example `apt install`, `npm install -g`, `pip install --user`) from the IDE AI integrated terminal flow.
 - Use catalog command `host.tool.install` via `./scripts/run-catalog-command.sh host.tool.install <tool>` from an external WSL terminal session.
+- Exception: `./scripts/run-catalog-command.sh qa.playwright.browsers.install` is approved in the IDE integrated terminal so Playwright self-tests can fully bootstrap their local browser runtime.
 - This guardrail prevents VS Code renderer freezes caused by high-volume interactive terminal output.
 - Runtime enforcement is active via `.github/hooks/block-interactive-package-installs.json` (PreToolUse command guard).
 
@@ -209,7 +213,7 @@ Forbidden states (hard fail):
 
 The following runtime sources must resolve to Linux paths under `/home/<user>/dev/EcomCine`:
 
-- `theme/` -> `/var/www/html/wp-content/themes/astra-child`
+- `ecomcine/bundled-theme/` -> `/var/www/html/wp-content/themes/ecomcine-base`
 - `tm-media-player/` -> `/var/www/html/wp-content/plugins/tm-media-player`
 - `tm-account-panel/` -> `/var/www/html/wp-content/plugins/tm-account-panel`
 - `tm-vendor-booking-modal/` -> `/var/www/html/wp-content/plugins/tm-vendor-booking-modal`

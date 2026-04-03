@@ -14,7 +14,8 @@ if ($code < 200 || $code >= 300 || !is_string($body) || $body === '') {
     echo 'HTTP=' . $code . "\n";
     return;
 }
-$target = ABSPATH . 'wp-content/themes/astra-child/output-files/showcase.html';
+$target = ABSPATH . 'wp-content/themes/ecomcine-base/output-files/showcase.html';
+wp_mkdir_p( dirname( $target ) );
 file_put_contents($target, $body);
 echo 'WROTE=' . $target . "\n";
 echo 'HAS_TM_STORE_UI_101=' . (strpos($body, 'tm-store-ui/assets/js/vendor-store.js?ver=1.0.1') !== false ? 'yes' : 'no') . "\n";

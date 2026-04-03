@@ -34,7 +34,7 @@ for slug in dokan-pro woocommerce-bookings greenshift; do
   fi
 done
 
-echo "==> [4/4] Activating EcomCine custom plugins and theme..."
+echo "==> [4/4] Activating EcomCine custom plugins and canonical theme..."
 "$WP" wp plugin activate dokan-category-attributes
 "$WP" wp plugin activate ecomcine
 
@@ -52,7 +52,7 @@ for legacy_slug in tm-media-player tm-account-panel tm-vendor-booking-modal; do
   fi
 done
 
-"$WP" wp theme activate astra-child
+"$WP" wp theme activate ecomcine-base
 
 echo ""
 echo "Done. Run ./scripts/check-local-wp.sh to verify."

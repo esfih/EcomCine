@@ -221,7 +221,7 @@ Each command contract defines:
 
 `id`: `parity.check.tho`
 - goal: Run THO parity suite (should report 20/20 PASS)
-- command: `./scripts/wp.sh wp eval 'require ABSPATH."wp-content/themes/astra-child/includes/parity/class-parity-check.php"; THO_Parity_Check::run();'`
+- command: `./scripts/wp.sh wp eval 'require ABSPATH."wp-content/themes/ecomcine-base/includes/parity/class-parity-check.php"; THO_Parity_Check::run();'`
 - args: none
 - success: exit `0`; output contains `20/20 checks passed`
 - failure: non-zero or any `✗`; diagnose adapter contract drift
@@ -583,7 +583,7 @@ Guardrail:
 - command: `./scripts/playwright-selftest.sh install`
 - args: optional passthrough flags
 - success: exit `0`; `tools/playwright/node_modules` exists and Playwright Chromium browser is installed
-- failure: non-zero; if Chromium browser is missing run `qa.playwright.browsers.install` from an external WSL terminal first; resolve missing Linux Node runtime before proceeding
+- failure: non-zero; if Chromium browser is missing run `qa.playwright.browsers.install`; resolve missing Linux Node runtime before proceeding
 - failure_class: `tooling`
 - remediation_type: `source-fix`
 
@@ -592,10 +592,10 @@ Guardrail:
 - command: `./scripts/install-playwright-system.sh`
 - args: none
 - success: exit `0`; output contains `DONE`; Chromium directory exists under `/root/.cache/ms-playwright/`
-- failure: non-zero; check apt availability, Node runtime path (node must resolve to a Linux binary), and disk space; exit `10` means the script was called from VS Code integrated terminal
+- failure: non-zero; check apt availability, sudo privileges when not root, Node runtime path (node must resolve to a Linux binary), and disk space
 - failure_class: `infra`
 - remediation_type: `source-fix`
-- constraint: MUST be run from an external WSL2 terminal — NOT from VS Code integrated terminal; the script self-checks and exits `10` if called from VS Code
+- constraint: Approved for IDE AI integrated-terminal execution as an explicit exception to the generic interactive package-manager restriction because Playwright self-test depends on a reproducible local browser runtime
 
 `id`: `qa.playwright.test.smoke`
 - goal: Run deterministic smoke checks against local WordPress runtime and fail fast on hard JS/runtime regressions

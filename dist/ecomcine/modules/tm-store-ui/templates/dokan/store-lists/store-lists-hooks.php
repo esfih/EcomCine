@@ -36,10 +36,36 @@
  * 4. Add the field name to the JS apply-filter handler (section 5) so the
  *    value is included in the redirect URL.
  *
- * @package Astra Child
+ * @package TM_Store_UI
  */
 
 defined( 'ABSPATH' ) || exit;
+
+if ( ! function_exists( 'tm_store_lists_is_listing_page' ) ) {
+	/**
+	 * Detect store-listing contexts for both legacy and native shortcodes.
+	 *
+	 * @return bool
+	 */
+	function tm_store_lists_is_listing_page() {
+		if ( is_page_template( 'dokan/store-listing.php' ) || is_page_template( 'page-platform.php' ) || is_page_template( 'tm-store-ui/page-platform' ) ) {
+			return true;
+		}
+
+		$post = get_queried_object();
+		if ( ! ( $post instanceof WP_Post ) ) {
+			$post_id = get_queried_object_id();
+			$post    = $post_id ? get_post( (int) $post_id ) : null;
+		}
+
+		if ( $post instanceof WP_Post ) {
+			$content = (string) $post->post_content;
+			return has_shortcode( $content, 'dokan-stores' ) || has_shortcode( $content, 'ecomcine-stores' );
+		}
+
+		return false;
+	}
+}
 
 
 // =============================================================================
@@ -453,8 +479,7 @@ add_action( 'dokan_seller_listing_after_featured', 'add_verified_badge_to_seller
 //     window.tmShowcaseData for the JS pager "Showcase" button.
 // =============================================================================
 add_action( 'wp_footer', function() {
-	$on_store_page = is_page_template( 'dokan/store-listing.php' ) ||
-	                 has_shortcode( get_post_field( 'post_content', get_the_ID() ), 'dokan-stores' );
+	$on_store_page = tm_store_lists_is_listing_page();
 	if ( ! $on_store_page ) {
 		return;
 	}
@@ -500,8 +525,7 @@ add_action( 'wp_footer', function() {
 // =============================================================================
 
 add_action( 'wp_footer', function() {
-	$on_store_page = is_page_template( 'dokan/store-listing.php' ) ||
-	                 has_shortcode( get_post_field( 'post_content', get_the_ID() ), 'dokan-stores' );
+	$on_store_page = tm_store_lists_is_listing_page();
 	if ( ! $on_store_page ) {
 		return;
 	}
@@ -777,6 +801,7 @@ add_action( 'wp_footer', function() {
 			var $pag     = $wrap.find( '.pagination-container' ).first();
 			var prevHref = null, nextHref = null;
 			if ( $pag.length ) {
+				$( 'body' ).addClass( 'tm-pager-enhanced' );
 				var $pa = $pag.find( 'a.prev' ); if ( $pa.length ) { prevHref = $pa.attr( 'href' ); }
 				var $na = $pag.find( 'a.next' ); if ( $na.length ) { nextHref = $na.attr( 'href' ); }
 				$pag.hide();

@@ -52,8 +52,8 @@ if ( ! function_exists( 'tm_load_qr_library' ) ) {
 			get_stylesheet_directory() . '/lib/php-qrcode/vendor/autoload.php',
 			get_template_directory() . '/vendor/autoload.php',
 			get_template_directory() . '/lib/php-qrcode/vendor/autoload.php',
-			defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/astra-child/vendor/autoload.php' : '',
-			defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/astra-child/lib/php-qrcode/vendor/autoload.php' : '',
+			defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/ecomcine-base/vendor/autoload.php' : '',
+			defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/ecomcine-base/lib/php-qrcode/vendor/autoload.php' : '',
 			defined( 'ECOMCINE_DIR' ) ? ECOMCINE_DIR . 'vendor/autoload.php' : '',
 		);
 

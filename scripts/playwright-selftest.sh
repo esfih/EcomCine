@@ -80,7 +80,7 @@ case "$ACTION" in
       "$NODE_BIN" "$PW_CLI" install chromium
     else
       echo "[playwright-selftest] Local Linux Node not found or node_modules missing."
-      echo "Run from an external WSL terminal: ./scripts/install-playwright-system.sh"
+      echo "Install the Playwright system runtime via: ./scripts/run-catalog-command.sh qa.playwright.browsers.install"
       echo "Falling back to Docker image $PW_DOCKER_IMAGE ..."
       run_in_docker "node node_modules/playwright/cli.js install chromium"
     fi

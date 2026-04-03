@@ -497,7 +497,7 @@ add_filter( 'cron_schedules', function( $schedules ) {
 	if ( ! isset( $schedules['tm_monthly'] ) ) {
 		$schedules['tm_monthly'] = [
 			'interval' => defined( 'MONTH_IN_SECONDS' ) ? MONTH_IN_SECONDS : 30 * DAY_IN_SECONDS,
-			'display'  => __( 'Every 30 days (Talent Marketplace)', 'astra-child' ),
+			'display'  => __( 'Every 30 days (Talent Marketplace)', 'tm-store-ui' ),
 		];
 	}
 	return $schedules;
@@ -549,8 +549,13 @@ function tm_get_vendor_social_profiles( $vendor_id ) {
 			return $vendor->get_social_profiles();
 		}
 	}
-	$profile_settings = get_user_meta( $vendor_id, 'dokan_profile_settings', true );
-	return is_array( $profile_settings ) && isset( $profile_settings['social'] ) ? $profile_settings['social'] : [];
+	if ( function_exists( 'ecomcine_get_person_info' ) ) {
+		$person_info = ecomcine_get_person_info( $vendor_id );
+		if ( ! empty( $person_info['social'] ) && is_array( $person_info['social'] ) ) {
+			return $person_info['social'];
+		}
+	}
+	return [];
 }
 
 /**
@@ -2045,16 +2050,13 @@ add_action( 'tm_fetch_facebook_snapshot_event', 'tm_fetch_facebook_snapshot', 10
  * Detect social URL changes and refresh LinkedIn metrics
  */
 function tm_handle_social_profile_update( $meta_id, $user_id, $meta_key, $meta_value ) {
-	if ( 'dokan_profile_settings' !== $meta_key ) {
+	if ( 'ecomcine_social' !== $meta_key ) {
 		return;
 	}
 	if ( ! is_array( $meta_value ) ) {
 		return;
 	}
-	$social = isset( $meta_value['social'] ) ? $meta_value['social'] : [];
-	if ( ! is_array( $social ) ) {
-		return;
-	}
+	$social = $meta_value;
 	$linkedin_url = '';
 	if ( ! empty( $social['linkedin'] ) ) {
 		$linkedin_url = $social['linkedin'];

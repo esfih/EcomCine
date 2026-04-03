@@ -1,6 +1,6 @@
 <?php
 /**
- * Store listing filter template — Astra Child theme override.
+ * Store listing filter template migrated from the legacy theme layer.
  *
  * Overrides: dokan-lite/templates/store-lists-filter.php (v2.9.30)
  *

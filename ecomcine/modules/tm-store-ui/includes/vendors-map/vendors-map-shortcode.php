@@ -208,10 +208,17 @@ add_shortcode( 'vendors_map', function() {
 			continue;
 		}
 
-		// Dokan stores vendor-category associations using the user ID as object_id
-		// in wp_term_relationships (non-standard but supported by WP core tables).
-		$v_terms = wp_get_object_terms( $user->ID, 'store_category', array( 'fields' => 'slugs' ) );
-		$v_cats  = ( is_array( $v_terms ) && ! is_wp_error( $v_terms ) ) ? $v_terms : array();
+		// Use EcomCine native categories — avoids Dokan store_category taxonomy.
+		$v_cats = array();
+		if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			foreach ( EcomCine_Person_Category_Registry::get_for_person( $user->ID ) as $row ) {
+				$v_cats[] = $row['slug'];
+			}
+		}
+
+		$address_str  = (string) get_user_meta( $user->ID, 'dokan_geo_address', true );
+		$address_parts = array_map( 'trim', explode( ',', $address_str ) );
+		$country_str   = ! empty( $address_parts ) ? end( $address_parts ) : '';
 
 		$store_info       = function_exists( 'ecomcine_get_person_info' )
 			? ecomcine_get_person_info( $user->ID )
@@ -224,7 +231,8 @@ add_shortcode( 'vendors_map', function() {
 				: ( function_exists( 'dokan_get_store_url' ) ? dokan_get_store_url( $user->ID ) : get_author_posts_url( $user->ID ) ),
 			'lat'        => $lat,
 			'lng'        => $lng,
-			'address'    => get_user_meta( $user->ID, 'dokan_geo_address', true ),
+			'address'    => $address_str,
+			'country'    => $country_str,
 			'avatar'     => get_avatar_url( $user->ID, array( 'size' => 150 ) ),
 			'cats'       => implode( ',', $v_cats ),
 			'registered' => (int) strtotime( $user->user_registered ),
@@ -235,28 +243,12 @@ add_shortcode( 'vendors_map', function() {
 		return '<p>No vendors with location data found.</p>';
 	}
 
-	// Build the categories list from slugs that are actually present on map vendors.
-	// Doing this after the vendor loop ensures empty categories are never shown.
-	$present_slugs = array();
-	foreach ( $vendor_markers as $vm ) {
-		if ( ! empty( $vm['cats'] ) ) {
-			foreach ( explode( ',', $vm['cats'] ) as $s ) {
-				$present_slugs[ trim( $s ) ] = true;
-			}
-		}
-	}
+	// Build the full EcomCine categories list (all categories, not only those
+	// present on map vendors, so the panel is always complete).
 	$map_categories = array();
-	if ( ! empty( $present_slugs ) ) {
-		$cat_terms = get_terms( array(
-			'taxonomy'   => 'store_category',
-			'hide_empty' => false,
-			'slug'       => array_keys( $present_slugs ),
-			'orderby'    => 'name',
-		) );
-		if ( is_array( $cat_terms ) && ! is_wp_error( $cat_terms ) ) {
-			foreach ( $cat_terms as $t ) {
-				$map_categories[] = array( 'slug' => $t->slug, 'name' => $t->name );
-			}
+	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+		foreach ( EcomCine_Person_Category_Registry::get_all() as $row ) {
+			$map_categories[] = array( 'slug' => $row['slug'], 'name' => $row['name'] );
 		}
 	}
 
@@ -281,20 +273,17 @@ add_shortcode( 'vendors_map', function() {
 
 	wp_add_inline_script( 'tm-vendors-map-js', $ajax_config, 'before' );
 
-	// Resolve showcase page URL (same logic as store-lists-hooks.php).
-	$_sc_pages      = get_pages( [
-		'meta_key'   => '_wp_page_template',
-		'meta_value' => 'template-talent-showcase-full.php',
-		'number'     => 1,
-	] );
-	$_showcase_url  = $_sc_pages
-		? esc_url( get_permalink( $_sc_pages[0]->ID ) )
+	// Resolve showcase page URL — use get_page_by_path so we get the canonical
+	// permalink regardless of which page template is assigned.
+	$_sc_page       = get_page_by_path( 'showcase', OBJECT, 'page' );
+	$_showcase_url  = $_sc_page instanceof WP_Post
+		? esc_url( get_permalink( $_sc_page ) )
 		: esc_url( home_url( '/showcase/' ) );
 
-	// Resolve talents (store-listing) page URL via Dokan's stored page ID.
-	$_talents_page_id = (int) dokan_get_option( 'store_listing', 'dokan_pages', 0 );
-	$_talents_url     = $_talents_page_id
-		? esc_url( get_permalink( $_talents_page_id ) )
+	// Resolve talents page URL via slug — avoids relying on Dokan's store-listing page.
+	$_talents_page  = get_page_by_path( 'talents', OBJECT, 'page' );
+	$_talents_url   = $_talents_page instanceof WP_Post
+		? esc_url( get_permalink( $_talents_page ) )
 		: esc_url( home_url( '/talents/' ) );
 
 	wp_add_inline_script(

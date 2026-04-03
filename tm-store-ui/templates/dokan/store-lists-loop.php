@@ -77,33 +77,11 @@
                                         <?php endif ?>
 
                                         <?php
-                                        // Store Categories (from vendor profile)
-                                        $profile_settings = get_user_meta( $seller->ID, 'dokan_profile_settings', true );
-                                        $category_names = [];
-                                        if ( is_array( $profile_settings ) ) {
-                                            $cat_ids = [];
-                                            if ( ! empty( $profile_settings['dokan_category'] ) ) {
-                                                $cat_ids = (array) $profile_settings['dokan_category'];
-                                            } elseif ( ! empty( $profile_settings['categories'] ) ) {
-                                                $cat_ids = (array) $profile_settings['categories'];
-                                            }
-                                            foreach ( $cat_ids as $cat_id ) {
-                                                $term = get_term( $cat_id, 'store_category' );
-                                                if ( $term && ! is_wp_error( $term ) ) {
-                                                    $category_names[] = $term->name;
-                                                }
-                                            }
-                                        }
-                                        if ( empty( $category_names ) && ! empty( $store_info['categories'] ) && is_array( $store_info['categories'] ) ) {
-                                            foreach ( $store_info['categories'] as $cat_id ) {
-                                                $term = get_term( $cat_id, 'store_category' );
-                                                if ( $term && ! is_wp_error( $term ) ) {
-                                                    $category_names[] = $term->name;
-                                                }
-                                            }
-                                        }
-                                        if ( ! empty( $category_names ) ) {
-                                            echo '<div class="store-categories-wrapper editable-field" style="text-align:left; margin-top:6px;"><div class="field-display" style="text-align:left;"><span class="store-categories-display" style="text-align:left;">' . esc_html( implode( ', ', $category_names ) ) . '</span></div></div>';
+                                        $category_display = function_exists( 'tm_store_ui_get_person_category_label' )
+                                            ? tm_store_ui_get_person_category_label( $seller->ID )
+                                            : '';
+                                        if ( '' !== $category_display ) {
+                                            echo '<div class="store-categories-wrapper editable-field" style="text-align:left; margin-top:6px;"><div class="field-display" style="text-align:left;"><span class="store-categories-display" style="text-align:left;">' . esc_html( $category_display ) . '</span></div></div>';
                                         }
                                         ?>
 

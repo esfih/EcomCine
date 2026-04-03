@@ -1,6 +1,6 @@
 <?php
 /**
- * All WordPress hook registrations extracted from astra-child/functions.php.
+ * All WordPress hook registrations extracted from the legacy theme layer.
  *
  * These fire regardless of which theme is active.
  *

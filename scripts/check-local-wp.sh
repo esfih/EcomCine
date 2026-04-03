@@ -96,10 +96,10 @@ else
 fi
 
 echo "==> Checking theme activation..."
-if docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T "$WP_SERVICE" wp theme is-active astra-child --allow-root >/dev/null 2>&1; then
-  echo "OK: astra-child theme is active."
+if docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T "$WP_SERVICE" wp theme is-active ecomcine-base --allow-root >/dev/null 2>&1; then
+  echo "OK: ecomcine-base theme is active."
 else
-  echo "WARN: astra-child theme is not active. Run: ./scripts/wp.sh wp theme activate astra-child"
+  echo "WARN: ecomcine-base theme is not active. Run: ./scripts/wp.sh wp theme activate ecomcine-base"
 fi
 
 echo ""

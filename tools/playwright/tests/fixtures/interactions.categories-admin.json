@@ -1,0 +1,47 @@
+{
+  "name": "Categories admin interactions",
+  "pages": [
+    {
+      "name": "Categories edit hides list and loads form in the same card",
+      "url": "/wp-admin/admin.php?page=ecomcine-settings&tab=categories&view=edit",
+      "steps": [
+        {
+          "action": "loginAsAdmin"
+        },
+        {
+          "action": "waitFor",
+          "target": ".ecomcine-categories-card"
+        },
+        {
+          "action": "waitFor",
+          "target": ".ecomcine-categories-card .widefat.striped tbody tr"
+        },
+        {
+          "action": "click",
+          "target": ".ecomcine-categories-card .widefat.striped tbody tr:first-child a[href*='edit_cat=']"
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "tab=categories&view=edit&edit_cat="
+        },
+        {
+          "action": "assertVisible",
+          "target": ".ecomcine-categories-card .ecomcine-breadcrumb a"
+        },
+        {
+          "action": "assertVisible",
+          "target": [
+            "text=Update Category",
+            "text=Edit Category:"
+          ],
+          "within": ".ecomcine-categories-card"
+        },
+        {
+          "action": "assertHidden",
+          "target": ".ecomcine-categories-card .widefat.striped",
+          "within": ".ecomcine-categories-card"
+        }
+      ]
+    }
+  ]
+}

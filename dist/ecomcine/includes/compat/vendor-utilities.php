@@ -61,14 +61,14 @@ if ( ! function_exists( 'tm_load_qr_library' ) ) {
 			defined( 'ECOMCINE_DIR' ) ? ECOMCINE_DIR . 'vendor/autoload.php' : '',
 			// Standalone tm-store-ui plugin vendor (if present).
 			defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'vendor/autoload.php' : '',
-			// Theme-provided vendor (legacy fallback — astra-child or custom theme).
+			// Theme-provided vendor (legacy fallback — canonical theme or custom child).
 			get_stylesheet_directory() . '/vendor/autoload.php',
 			get_stylesheet_directory() . '/lib/php-qrcode/vendor/autoload.php',
 			get_template_directory() . '/vendor/autoload.php',
 			get_template_directory() . '/lib/php-qrcode/vendor/autoload.php',
-			// Hardcoded astra-child path (legacy fallback when astra-child is installed but not active).
-			defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/astra-child/vendor/autoload.php' : '',
-			defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/astra-child/lib/php-qrcode/vendor/autoload.php' : '',
+			// Hardcoded canonical bundled-theme path (legacy fallback when ecomcine-base is installed but not active).
+			defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/ecomcine-base/vendor/autoload.php' : '',
+			defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/ecomcine-base/lib/php-qrcode/vendor/autoload.php' : '',
 		);
 
 		foreach ( $autoload_paths as $autoload ) {

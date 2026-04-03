@@ -18,10 +18,78 @@
  * 3. PROFILE SAVE   dokan_store_profile_saved
  *    Persists physical, cameraman, and demographic fields on form submit.
  *
- * @package Astra Child
+ * @package TM_Store_UI
  */
 
 defined( 'ABSPATH' ) || exit;
+
+/**
+ * Resolve vendor category slugs from EcomCine registry with Dokan fallback.
+ *
+ * @param int $vendor_id
+ * @return array<int,string>
+ */
+function tm_vendor_category_slugs( $vendor_id ) {
+	$vendor_id = (int) $vendor_id;
+	if ( $vendor_id < 1 ) {
+		return [];
+	}
+
+	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+		$assigned = EcomCine_Person_Category_Registry::get_for_person( $vendor_id );
+		if ( ! empty( $assigned ) ) {
+			$slugs = [];
+			foreach ( $assigned as $row ) {
+				if ( ! empty( $row['slug'] ) ) {
+					$slugs[] = sanitize_key( (string) $row['slug'] );
+				}
+			}
+			if ( ! empty( $slugs ) ) {
+				return array_values( array_unique( $slugs ) );
+			}
+		}
+	}
+
+	$store_categories = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );
+	if ( is_wp_error( $store_categories ) ) {
+		return [];
+	}
+
+	return array_values( array_unique( array_map( 'sanitize_key', (array) $store_categories ) ) );
+}
+
+/**
+ * Return configured public field metadata for a category slug.
+ *
+ * @param string $category_slug
+ * @return array<string,array<string,string>>
+ */
+function tm_category_field_meta( $category_slug ) {
+	if ( ! class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+		return [];
+	}
+
+	$category = EcomCine_Person_Category_Registry::get_by_slug( (string) $category_slug );
+	if ( ! $category ) {
+		return [];
+	}
+
+	$fields = EcomCine_Person_Category_Registry::get_fields_for_category( (int) $category['id'], true );
+	$meta   = [];
+	foreach ( $fields as $field ) {
+		$key = sanitize_key( (string) ( $field['field_key'] ?? '' ) );
+		if ( '' === $key ) {
+			continue;
+		}
+		$meta[ $key ] = [
+			'label' => sanitize_text_field( (string) ( $field['field_label'] ?? $key ) ),
+			'icon'  => sanitize_text_field( (string) ( $field['field_icon'] ?? '' ) ),
+			'type'  => sanitize_key( (string) ( $field['field_type'] ?? 'select' ) ),
+		];
+	}
+
+	return $meta;
+}
 
 
 // =============================================================================
@@ -304,10 +372,7 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 		return;
 	}
 
-	$store_categories = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );
-	if ( is_wp_error( $store_categories ) ) {
-		$store_categories = array();
-	}
+	$store_categories = tm_vendor_category_slugs( $vendor_id );
 	$has_physical_category  = in_array( 'model', $store_categories, true ) || in_array( 'artist', $store_categories, true );
 	$has_cameraman_category = in_array( 'cameraman', $store_categories, true );
 
@@ -375,18 +440,20 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 
 	// ========== CAMERAMAN EQUIPMENT & SKILLS SECTION ==========
 	$cameraman_options = get_cameraman_filter_options();
-
-	$cameraman_fields = [
-		'camera_type'        => [ 'label' => 'Camera Type',        'icon' => '📷', 'value' => get_user_meta( $vendor_id, 'camera_type', true ),        'options' => $cameraman_options['camera_type'] ],
-		'experience_level'   => [ 'label' => 'Experience Level',   'icon' => '⭐', 'value' => get_user_meta( $vendor_id, 'experience_level', true ),   'options' => $cameraman_options['experience_level'] ],
-		'editing_software'   => [ 'label' => 'Editing Software',   'icon' => '🎬', 'value' => get_user_meta( $vendor_id, 'editing_software', true ),   'options' => $cameraman_options['editing_software'] ],
-		'specialization'     => [ 'label' => 'Specialization',     'icon' => '🎯', 'value' => get_user_meta( $vendor_id, 'specialization', true ),     'options' => $cameraman_options['specialization'] ],
-		'years_experience'   => [ 'label' => 'Years of Experience','icon' => '📅', 'value' => get_user_meta( $vendor_id, 'years_experience', true ),   'options' => $cameraman_options['years_experience'] ],
-		'equipment_ownership'=> [ 'label' => 'Equipment Ownership','icon' => '🎥', 'value' => get_user_meta( $vendor_id, 'equipment_ownership', true ),'options' => $cameraman_options['equipment_ownership'] ],
-		'lighting_equipment' => [ 'label' => 'Lighting Equipment', 'icon' => '💡', 'value' => get_user_meta( $vendor_id, 'lighting_equipment', true ), 'options' => $cameraman_options['lighting_equipment'] ],
-		'audio_equipment'    => [ 'label' => 'Audio Equipment',    'icon' => '🎤', 'value' => get_user_meta( $vendor_id, 'audio_equipment', true ),    'options' => $cameraman_options['audio_equipment'] ],
-		'drone_capability'   => [ 'label' => 'Drone/Aerial',       'icon' => '🚁', 'value' => get_user_meta( $vendor_id, 'drone_capability', true ),   'options' => $cameraman_options['drone_capability'] ],
-	];
+	$cameraman_meta    = tm_category_field_meta( 'cameraman' );
+	$cameraman_fields  = [];
+	foreach ( (array) $cameraman_options as $field_key => $field_options ) {
+		$key   = sanitize_key( (string) $field_key );
+		$meta  = $cameraman_meta[ $key ] ?? [];
+		$label = $meta['label'] ?? ucwords( str_replace( '_', ' ', $key ) );
+		$icon  = $meta['icon'] ?? '';
+		$cameraman_fields[ $key ] = [
+			'label'   => $label,
+			'icon'    => $icon,
+			'value'   => get_user_meta( $vendor_id, $key, true ),
+			'options' => (array) $field_options,
+		];
+	}
 
 	$has_cameraman_values = false;
 	foreach ( $cameraman_fields as $attr ) {
@@ -648,6 +715,7 @@ add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_inf
  */
 add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_info ) {
 	$cameraman_options = get_cameraman_filter_options();
+	$cameraman_meta    = tm_category_field_meta( 'cameraman' );
 
 	// Section header
 	?>
@@ -661,17 +729,15 @@ add_action( 'dokan_settings_after_store_phone', function( $user_id, $profile_inf
 	<?php
 
 	// Build each cameraman field generically
-	$cameraman_field_defs = [
-		'camera_type'         => [ 'icon' => '📷', 'label' => 'Camera Type' ],
-		'experience_level'    => [ 'icon' => '⭐', 'label' => 'Experience Level' ],
-		'editing_software'    => [ 'icon' => '💻', 'label' => 'Editing Software' ],
-		'specialization'      => [ 'icon' => '🎬', 'label' => 'Specialization' ],
-		'years_experience'    => [ 'icon' => '📅', 'label' => 'Years of Experience' ],
-		'equipment_ownership' => [ 'icon' => '🎥', 'label' => 'Equipment Ownership' ],
-		'lighting_equipment'  => [ 'icon' => '💡', 'label' => 'Lighting Equipment' ],
-		'audio_equipment'     => [ 'icon' => '🎤', 'label' => 'Audio Equipment' ],
-		'drone_capability'    => [ 'icon' => '🚁', 'label' => 'Drone Capability' ],
-	];
+	$cameraman_field_defs = [];
+	foreach ( (array) $cameraman_options as $field_key => $choices ) {
+		$key  = sanitize_key( (string) $field_key );
+		$meta = $cameraman_meta[ $key ] ?? [];
+		$cameraman_field_defs[ $key ] = [
+			'icon'  => $meta['icon'] ?? '',
+			'label' => $meta['label'] ?? ucwords( str_replace( '_', ' ', $key ) ),
+		];
+	}
 
 	foreach ( $cameraman_field_defs as $field_key => $field_def ) {
 		$current_value = get_user_meta( $user_id, $field_key, true );
@@ -717,11 +783,25 @@ add_action( 'dokan_store_profile_saved', function ( $store_id, $dokan_settings )
 		'talent_shoe_size', 'talent_eye_color', 'talent_hair_color',
 	];
 
-	// Cameraman fields
-	$cameraman_fields = [
-		'camera_type', 'experience_level', 'editing_software', 'specialization',
-		'years_experience', 'equipment_ownership', 'lighting_equipment', 'audio_equipment', 'drone_capability',
-	];
+	// Dynamic category custom fields from EcomCine registry (public profile fields).
+	$category_custom_fields = [];
+	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+		$assigned = EcomCine_Person_Category_Registry::get_for_person( $store_id );
+		foreach ( (array) $assigned as $category ) {
+			$category_id = (int) ( $category['id'] ?? 0 );
+			if ( $category_id < 1 ) {
+				continue;
+			}
+			$fields = EcomCine_Person_Category_Registry::get_fields_for_category( $category_id, true );
+			foreach ( (array) $fields as $field ) {
+				$field_key = sanitize_key( (string) ( $field['field_key'] ?? '' ) );
+				if ( '' !== $field_key ) {
+					$category_custom_fields[] = $field_key;
+				}
+			}
+		}
+		$category_custom_fields = array_values( array_unique( $category_custom_fields ) );
+	}
 
 	// Demographic & Availability fields
 	$demographic_fields = [
@@ -729,7 +809,7 @@ add_action( 'dokan_store_profile_saved', function ( $store_id, $dokan_settings )
 		'demo_notice_time', 'demo_can_travel', 'demo_daily_rate', 'demo_education',
 	];
 
-	foreach ( array_merge( $attributes, $cameraman_fields, $demographic_fields ) as $field ) {
+	foreach ( array_merge( $attributes, $category_custom_fields, $demographic_fields ) as $field ) {
 		if ( isset( $_POST[ $field ] ) ) {
 			$value = sanitize_text_field( wp_unslash( $_POST[ $field ] ) );
 			update_user_meta( $store_id, $field, $value );

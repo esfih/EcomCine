@@ -10,16 +10,6 @@
 defined( 'ABSPATH' ) || exit;
 
 if ( ! function_exists( 'tm_store_ui_collect_person_ids_for_listing' ) ) {
-	/**
-	 * Return true when a person profile is listable in the Talents grid.
-	 *
-	 * Listable means both:
-	 * - Live/published (inline visibility button state), and
-	 * - Level 1 profile completion is complete.
-	 *
-	 * @param int $user_id User ID.
-	 * @return bool
-	 */
 	function tm_store_ui_is_person_live( int $user_id ): bool {
 		$user_id = (int) $user_id;
 		if ( $user_id <= 0 ) {
@@ -41,11 +31,6 @@ if ( ! function_exists( 'tm_store_ui_collect_person_ids_for_listing' ) ) {
 		return $published && $l1_done;
 	}
 
-	/**
-	 * Collect person/vendor user IDs for the listing page.
-	 *
-	 * @return int[]
-	 */
 	function tm_store_ui_collect_person_ids_for_listing(): array {
 		$ids = array();
 
@@ -124,12 +109,6 @@ if ( ! function_exists( 'tm_store_ui_collect_person_ids_for_listing' ) ) {
 }
 
 if ( ! function_exists( 'tm_store_ui_get_person_category_label' ) ) {
-	/**
-	 * Resolve EcomCine category name by numeric ID.
-	 *
-	 * @param int $category_id Category ID.
-	 * @return string
-	 */
 	function tm_store_ui_get_person_category_name_by_id( int $category_id ): string {
 		$category_id = (int) $category_id;
 		if ( $category_id < 1 ) {
@@ -145,17 +124,10 @@ if ( ! function_exists( 'tm_store_ui_get_person_category_label' ) ) {
 
 		global $wpdb;
 		$table = $wpdb->prefix . 'ecomcine_categories';
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$name = $wpdb->get_var( $wpdb->prepare( "SELECT name FROM {$table} WHERE id = %d", $category_id ) );
+		$name  = $wpdb->get_var( $wpdb->prepare( "SELECT name FROM {$table} WHERE id = %d", $category_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return is_string( $name ) ? trim( $name ) : '';
 	}
 
-	/**
-	 * Resolve a legacy category token (id or slug) to a readable label.
-	 *
-	 * @param string $token Raw category token.
-	 * @return string
-	 */
 	function tm_store_ui_resolve_legacy_category_token( string $token ): string {
 		$token = trim( $token );
 		if ( '' === $token ) {
@@ -177,9 +149,8 @@ if ( ! function_exists( 'tm_store_ui_get_person_category_label' ) ) {
 			}
 
 			global $wpdb;
-			$terms = $wpdb->terms;
-			$tt    = $wpdb->term_taxonomy;
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$terms     = $wpdb->terms;
+			$tt        = $wpdb->term_taxonomy;
 			$term_name = $wpdb->get_var(
 				$wpdb->prepare(
 					"SELECT t.name
@@ -190,7 +161,7 @@ if ( ! function_exists( 'tm_store_ui_get_person_category_label' ) ) {
 					 LIMIT 1",
 					$id
 				)
-			);
+			); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 			return is_string( $term_name ) ? trim( $term_name ) : '';
 		}
@@ -210,12 +181,6 @@ if ( ! function_exists( 'tm_store_ui_get_person_category_label' ) ) {
 		return ucwords( str_replace( '-', ' ', $slug ) );
 	}
 
-	/**
-	 * Resolve display label for person categories.
-	 *
-	 * @param int $user_id User ID.
-	 * @return string
-	 */
 	function tm_store_ui_get_person_category_label( int $user_id ): string {
 		$labels = array();
 
@@ -233,7 +198,6 @@ if ( ! function_exists( 'tm_store_ui_get_person_category_label' ) ) {
 			global $wpdb;
 			$cats = $wpdb->prefix . 'ecomcine_categories';
 			$join = $wpdb->prefix . 'ecomcine_person_categories';
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$rows = $wpdb->get_col(
 				$wpdb->prepare(
 					"SELECT c.name
@@ -243,7 +207,7 @@ if ( ! function_exists( 'tm_store_ui_get_person_category_label' ) ) {
 					 ORDER BY c.sort_order ASC, c.name ASC",
 					$user_id
 				)
-			);
+			); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 			foreach ( (array) $rows as $name ) {
 				$name = trim( (string) $name );
@@ -296,11 +260,9 @@ if ( ! function_exists( 'tm_store_ui_get_person_category_label' ) ) {
 
 			foreach ( $cat_ids as $cat_id ) {
 				$resolved = tm_store_ui_resolve_legacy_category_token( (string) $cat_id );
-				if ( '' === $resolved ) {
-					continue;
+				if ( '' !== $resolved ) {
+					$labels[] = $resolved;
 				}
-
-				$labels[] = $resolved;
 			}
 		}
 
@@ -310,12 +272,6 @@ if ( ! function_exists( 'tm_store_ui_get_person_category_label' ) ) {
 }
 
 if ( ! function_exists( 'tm_store_ui_meta_is_truthy' ) ) {
-	/**
-	 * Normalize user-meta truthy states.
-	 *
-	 * @param mixed $value Raw meta value.
-	 * @return bool
-	 */
 	function tm_store_ui_meta_is_truthy( $value ): bool {
 		if ( is_bool( $value ) ) {
 			return $value;
@@ -327,12 +283,6 @@ if ( ! function_exists( 'tm_store_ui_meta_is_truthy' ) ) {
 }
 
 if ( ! function_exists( 'tm_store_ui_get_person_status_badges' ) ) {
-	/**
-	 * Resolve featured/verified flags for a person from native-first meta keys.
-	 *
-	 * @param int $user_id User ID.
-	 * @return array{featured: bool, verified: bool}
-	 */
 	function tm_store_ui_get_person_status_badges( int $user_id ): array {
 		$featured = false;
 		$verified = false;
@@ -359,12 +309,6 @@ if ( ! function_exists( 'tm_store_ui_get_person_status_badges' ) ) {
 }
 
 if ( ! function_exists( 'tm_store_ui_compact_location_label' ) ) {
-	/**
-	 * Compact long location strings to "first, last" when 3+ segments exist.
-	 *
-	 * @param string $location Raw location text.
-	 * @return string
-	 */
 	function tm_store_ui_compact_location_label( string $location ): string {
 		$parts = array_values( array_filter( array_map( 'trim', explode( ',', $location ) ), 'strlen' ) );
 
@@ -377,13 +321,6 @@ if ( ! function_exists( 'tm_store_ui_compact_location_label' ) ) {
 }
 
 if ( ! function_exists( 'tm_store_ui_get_country_code_from_profile_or_geo' ) ) {
-	/**
-	 * Resolve a 2-letter country code from profile address first, then geo text.
-	 *
-	 * @param array  $profile      Person info profile.
-	 * @param string $raw_location Raw geolocation address.
-	 * @return string
-	 */
 	function tm_store_ui_get_country_code_from_profile_or_geo( array $profile, string $raw_location ): string {
 		$address_country = '';
 		if ( isset( $profile['address'] ) && is_array( $profile['address'] ) ) {
@@ -417,13 +354,6 @@ if ( ! function_exists( 'tm_store_ui_get_country_code_from_profile_or_geo' ) ) {
 }
 
 if ( ! function_exists( 'tm_store_ui_get_person_location_display_html' ) ) {
-	/**
-	 * Return location display HTML with optional country flag and compact text.
-	 *
-	 * @param int   $user_id User ID.
-	 * @param array $profile Person profile info.
-	 * @return string
-	 */
 	function tm_store_ui_get_person_location_display_html( int $user_id, array $profile ): string {
 		$raw_location = '';
 
@@ -433,11 +363,10 @@ if ( ! function_exists( 'tm_store_ui_get_person_location_display_html' ) ) {
 		}
 
 		if ( '' === $raw_location && isset( $profile['address'] ) && is_array( $profile['address'] ) ) {
-			$city    = trim( (string) ( $profile['address']['city'] ?? '' ) );
-			$country = trim( (string) ( $profile['address']['country'] ?? '' ) );
-			$state   = trim( (string) ( $profile['address']['state'] ?? '' ) );
-
-			$parts = array_values( array_filter( array( $city, $state, $country ), 'strlen' ) );
+			$city        = trim( (string) ( $profile['address']['city'] ?? '' ) );
+			$country     = trim( (string) ( $profile['address']['country'] ?? '' ) );
+			$state       = trim( (string) ( $profile['address']['state'] ?? '' ) );
+			$parts       = array_values( array_filter( array( $city, $state, $country ), 'strlen' ) );
 			$raw_location = implode( ', ', $parts );
 		}
 
@@ -450,11 +379,11 @@ if ( ! function_exists( 'tm_store_ui_get_person_location_display_html' ) ) {
 		$flag_html    = '';
 		if ( strlen( $country_code ) === 2 ) {
 			$flag_code = strtolower( $country_code );
-			$flag_html = '<span class="country-flag" title="' . esc_attr( $country_code ) . '">'
-				. '<img src="https://flagcdn.com/w40/' . esc_attr( $flag_code ) . '.png"'
-				. ' srcset="https://flagcdn.com/w80/' . esc_attr( $flag_code ) . '.png 2x"'
-				. ' width="18" height="18" loading="lazy" alt="" class="country-flag-img">'
-				. '</span>';
+			$flag_html = '<span class="country-flag" title="' . esc_attr( $country_code ) . '">' .
+				'<img src="https://flagcdn.com/w40/' . esc_attr( $flag_code ) . '.png"' .
+				' srcset="https://flagcdn.com/w80/' . esc_attr( $flag_code ) . '.png 2x"' .
+				' width="18" height="18" loading="lazy" alt="" class="country-flag-img">' .
+				'</span>';
 		}
 
 		return $flag_html . '<span class="geo-address">' . esc_html( $compact ) . '</span>';
@@ -462,12 +391,6 @@ if ( ! function_exists( 'tm_store_ui_get_person_location_display_html' ) ) {
 }
 
 if ( ! function_exists( 'tm_store_ui_get_person_location_label' ) ) {
-	/**
-	 * Resolve compact location label.
-	 *
-	 * @param int $user_id User ID.
-	 * @return string
-	 */
 	function tm_store_ui_get_person_location_label( int $user_id ): string {
 		if ( function_exists( 'ecomcine_get_geo' ) ) {
 			$geo = ecomcine_get_geo( $user_id );
@@ -496,13 +419,254 @@ if ( ! function_exists( 'tm_store_ui_get_person_location_label' ) ) {
 	}
 }
 
+if ( ! function_exists( 'tm_store_ui_get_listing_request_value' ) ) {
+	function tm_store_ui_get_listing_request_value( array $keys ): string {
+		foreach ( $keys as $key ) {
+			if ( ! isset( $_GET[ $key ] ) ) {
+				continue;
+			}
+
+			$value = trim( sanitize_text_field( wp_unslash( (string) $_GET[ $key ] ) ) );
+			if ( '' !== $value ) {
+				return $value;
+			}
+		}
+
+		return '';
+	}
+}
+
+if ( ! function_exists( 'tm_store_ui_get_person_category_slugs' ) ) {
+	function tm_store_ui_get_person_category_slugs( int $user_id ): array {
+		$slugs = array();
+
+		if ( class_exists( 'EcomCine_Person_Category_Registry' ) && method_exists( 'EcomCine_Person_Category_Registry', 'get_for_person' ) ) {
+			$cats = (array) EcomCine_Person_Category_Registry::get_for_person( $user_id );
+			foreach ( $cats as $cat ) {
+				$slug = isset( $cat['slug'] ) ? sanitize_title( (string) $cat['slug'] ) : '';
+				if ( '' !== $slug ) {
+					$slugs[] = $slug;
+				}
+			}
+		}
+
+		if ( empty( $slugs ) ) {
+			global $wpdb;
+			$cats = $wpdb->prefix . 'ecomcine_categories';
+			$join = $wpdb->prefix . 'ecomcine_person_categories';
+			$rows = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT c.slug
+					 FROM {$cats} c
+					 INNER JOIN {$join} j ON j.category_id = c.id
+					 WHERE j.user_id = %d",
+					$user_id
+				)
+			); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			foreach ( (array) $rows as $slug ) {
+				$slug = sanitize_title( (string) $slug );
+				if ( '' !== $slug ) {
+					$slugs[] = $slug;
+				}
+			}
+		}
+
+		return array_values( array_unique( array_filter( $slugs ) ) );
+	}
+}
+
+if ( ! function_exists( 'tm_store_ui_get_active_listing_filters' ) ) {
+	function tm_store_ui_get_active_listing_filters(): array {
+		$meta_filters = array();
+		foreach (
+			array(
+				'talent_height', 'talent_weight', 'talent_waist', 'talent_hip', 'talent_chest', 'talent_shoe_size',
+				'talent_eye_color', 'talent_hair_color', 'camera_type', 'experience_level', 'editing_software',
+				'specialization', 'years_experience', 'equipment_ownership', 'lighting_equipment', 'audio_equipment',
+				'drone_capability', 'demo_ethnicity', 'demo_languages', 'demo_availability', 'demo_notice_time',
+				'demo_can_travel', 'demo_daily_rate', 'demo_education',
+			) as $meta_key
+		) {
+			$value = tm_store_ui_get_listing_request_value( array( $meta_key ) );
+			if ( '' !== $value ) {
+				$meta_filters[ $meta_key ] = $value;
+			}
+		}
+
+		return array(
+			'search'        => tm_store_ui_get_listing_request_value( array( 'ecomcine_person_search', 'dokan_seller_search' ) ),
+			'category'      => sanitize_title( tm_store_ui_get_listing_request_value( array( 'ecomcine_person_category', 'dokan_seller_category' ) ) ),
+			'verified'      => 'yes' === tm_store_ui_get_listing_request_value( array( 'verified' ) ),
+			'featured'      => 'yes' === tm_store_ui_get_listing_request_value( array( 'featured' ) ),
+			'profile_level' => tm_store_ui_get_listing_request_value( array( 'profile_level' ) ),
+			'age_range'     => tm_store_ui_get_listing_request_value( array( 'demo_age' ) ),
+			'tm_order'      => tm_store_ui_get_listing_request_value( array( 'tm_order' ) ) ?: 'newest',
+			'meta_filters'  => $meta_filters,
+		);
+	}
+}
+
+if ( ! function_exists( 'tm_store_ui_person_matches_meta_filter' ) ) {
+	function tm_store_ui_person_matches_meta_filter( int $user_id, string $meta_key, string $needle ): bool {
+		$raw = get_user_meta( $user_id, $meta_key, true );
+		if ( '' === $needle ) {
+			return true;
+		}
+
+		if ( 'demo_languages' === $meta_key ) {
+			$values = maybe_unserialize( $raw );
+			if ( ! is_array( $values ) ) {
+				$values = array( $values );
+			}
+
+			$needle = strtolower( trim( $needle ) );
+			foreach ( $values as $value ) {
+				if ( strtolower( trim( (string) $value ) ) === $needle ) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		return strtolower( trim( (string) $raw ) ) === strtolower( trim( $needle ) );
+	}
+}
+
+if ( ! function_exists( 'tm_store_ui_get_person_sort_name' ) ) {
+	function tm_store_ui_get_person_sort_name( int $user_id ): string {
+		$profile = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $user_id ) : array();
+		$name    = isset( $profile['store_name'] ) ? trim( (string) $profile['store_name'] ) : '';
+		if ( '' !== $name ) {
+			return function_exists( 'mb_strtolower' ) ? mb_strtolower( $name ) : strtolower( $name );
+		}
+
+		$user         = get_userdata( $user_id );
+		$display_name = $user ? trim( (string) $user->display_name ) : '';
+		return function_exists( 'mb_strtolower' ) ? mb_strtolower( $display_name ) : strtolower( $display_name );
+	}
+}
+
+if ( ! function_exists( 'tm_store_ui_sort_person_ids_for_listing' ) ) {
+	function tm_store_ui_sort_person_ids_for_listing( array $ids, string $tm_order ): array {
+		$tm_order = sanitize_key( $tm_order );
+		if ( '' === $tm_order ) {
+			return array_values( $ids );
+		}
+
+		usort(
+			$ids,
+			static function( int $a, int $b ) use ( $tm_order ): int {
+				switch ( $tm_order ) {
+					case 'oldest':
+					case 'newest':
+						$ua = get_userdata( $a );
+						$ub = get_userdata( $b );
+						$ta = $ua ? strtotime( (string) $ua->user_registered ) : 0;
+						$tb = $ub ? strtotime( (string) $ub->user_registered ) : 0;
+						if ( $ta === $tb ) {
+							return strcmp( tm_store_ui_get_person_sort_name( $a ), tm_store_ui_get_person_sort_name( $b ) );
+						}
+						return ( 'oldest' === $tm_order ) ? ( $ta <=> $tb ) : ( $tb <=> $ta );
+					case 'name_za':
+						return strcmp( tm_store_ui_get_person_sort_name( $b ), tm_store_ui_get_person_sort_name( $a ) );
+					case 'name_az':
+					default:
+						return strcmp( tm_store_ui_get_person_sort_name( $a ), tm_store_ui_get_person_sort_name( $b ) );
+				}
+			}
+		);
+
+		return array_values( $ids );
+	}
+}
+
+if ( ! function_exists( 'tm_store_ui_get_filtered_person_ids_for_listing' ) ) {
+	function tm_store_ui_get_filtered_person_ids_for_listing(): array {
+		static $cache = null;
+		if ( null !== $cache ) {
+			return $cache;
+		}
+
+		$filters = tm_store_ui_get_active_listing_filters();
+		$ids     = tm_store_ui_collect_person_ids_for_listing();
+
+		$ids = array_values(
+			array_filter(
+				$ids,
+				static function( int $user_id ) use ( $filters ): bool {
+					if ( ! empty( $filters['category'] ) ) {
+						$slugs = tm_store_ui_get_person_category_slugs( $user_id );
+						if ( ! in_array( (string) $filters['category'], $slugs, true ) ) {
+							return false;
+						}
+					}
+
+					if ( ! empty( $filters['search'] ) ) {
+						$user       = get_userdata( $user_id );
+						$profile    = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $user_id ) : array();
+						$categories = tm_store_ui_get_person_category_label( $user_id );
+						$haystack   = implode(
+							' ',
+							array_filter(
+								array(
+									$user ? (string) $user->display_name : '',
+									(string) ( $profile['store_name'] ?? '' ),
+									(string) ( $profile['bio'] ?? '' ),
+									$categories,
+								)
+							)
+						);
+
+						if ( false === stripos( $haystack, (string) $filters['search'] ) ) {
+							return false;
+						}
+					}
+
+					if ( ! empty( $filters['verified'] ) || ! empty( $filters['featured'] ) ) {
+						$badges = tm_store_ui_get_person_status_badges( $user_id );
+						if ( ! empty( $filters['verified'] ) && empty( $badges['verified'] ) ) {
+							return false;
+						}
+						if ( ! empty( $filters['featured'] ) && empty( $badges['featured'] ) ) {
+							return false;
+						}
+					}
+
+					if ( ! empty( $filters['profile_level'] ) ) {
+						$l2_complete = '1' === trim( (string) get_user_meta( $user_id, 'tm_l2_complete', true ) );
+						if ( 'mediatic' === $filters['profile_level'] && ! $l2_complete ) {
+							return false;
+						}
+						if ( 'basic' === $filters['profile_level'] && $l2_complete ) {
+							return false;
+						}
+					}
+
+					if ( ! empty( $filters['age_range'] ) && function_exists( 'age_matches_range' ) ) {
+						$birth_date = get_user_meta( $user_id, 'demo_birth_date', true );
+						if ( ! age_matches_range( $birth_date, (string) $filters['age_range'] ) ) {
+							return false;
+						}
+					}
+
+					foreach ( (array) $filters['meta_filters'] as $meta_key => $value ) {
+						if ( ! tm_store_ui_person_matches_meta_filter( $user_id, (string) $meta_key, (string) $value ) ) {
+							return false;
+						}
+					}
+
+					return true;
+				}
+			)
+		);
+
+		$cache = tm_store_ui_sort_person_ids_for_listing( $ids, (string) $filters['tm_order'] );
+		return $cache;
+	}
+}
+
 if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
-	/**
-	 * Extract first stores shortcode attributes from page content.
-	 *
-	 * @param string $content Post content.
-	 * @return array
-	 */
 	function tm_store_ui_get_stores_shortcode_atts_from_content( string $content ): array {
 		if ( '' === $content ) {
 			return array();
@@ -522,12 +686,6 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 		return is_array( $atts ) ? $atts : array();
 	}
 
-	/**
-	 * Resolve listing pagination config from settings + shortcode attributes.
-	 *
-	 * @param array $raw_atts Shortcode atts.
-	 * @return array{rows:int,columns:int,per_page:int}
-	 */
 	function tm_store_ui_get_stores_pagination_config( array $raw_atts = array() ): array {
 		$grid_settings = tm_store_ui_get_persons_grid_settings();
 
@@ -545,9 +703,7 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 		$columns = max( 1, min( 6, (int) $atts['columns'] ) );
 
 		$has_per_page_override = array_key_exists( 'per_page', $raw_atts ) && (int) $raw_atts['per_page'] > 0;
-		$per_page              = $has_per_page_override
-			? max( 1, (int) $atts['per_page'] )
-			: max( 1, $rows * $columns );
+		$per_page              = $has_per_page_override ? max( 1, (int) $atts['per_page'] ) : max( 1, $rows * $columns );
 
 		return array(
 			'rows'     => $rows,
@@ -556,11 +712,6 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 		);
 	}
 
-	/**
-	 * Redirect stale/out-of-range paged URLs to the last available listing page.
-	 *
-	 * @return void
-	 */
 	function tm_store_ui_maybe_redirect_out_of_range_store_page(): void {
 		if ( is_admin() || ! is_page() ) {
 			return;
@@ -589,10 +740,9 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 
 		$shortcode_atts = tm_store_ui_get_stores_shortcode_atts_from_content( $content );
 		$config         = tm_store_ui_get_stores_pagination_config( $shortcode_atts );
-
-		$total_ids   = tm_store_ui_collect_person_ids_for_listing();
-		$total_items = count( $total_ids );
-		$max_page    = max( 1, (int) ceil( $total_items / max( 1, $config['per_page'] ) ) );
+		$total_ids      = tm_store_ui_get_filtered_person_ids_for_listing();
+		$total_items    = count( $total_ids );
+		$max_page       = max( 1, (int) ceil( $total_items / max( 1, $config['per_page'] ) ) );
 
 		if ( $requested_page <= $max_page ) {
 			return;
@@ -603,9 +753,7 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 			return;
 		}
 
-		$target_url = ( $max_page <= 1 )
-			? $base_url
-			: trailingslashit( $base_url ) . 'page/' . $max_page . '/';
+		$target_url = ( $max_page <= 1 ) ? $base_url : trailingslashit( $base_url ) . 'page/' . $max_page . '/';
 
 		$query_args = $_GET;
 		unset( $query_args['paged'], $query_args['page'] );
@@ -619,16 +767,11 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 
 	add_action( 'template_redirect', 'tm_store_ui_maybe_redirect_out_of_range_store_page', 20 );
 
-	/**
-	 * Resolve admin-configured rows/columns for the Talents persons grid.
-	 *
-	 * @return array{rows:int,columns:int}
-	 */
 	function tm_store_ui_get_persons_grid_settings(): array {
-		$rows    = 2;
-		$columns = 4;
-
+		$rows     = 2;
+		$columns  = 4;
 		$settings = get_option( 'ecomcine_settings', array() );
+
 		if ( is_array( $settings ) && isset( $settings['persons_grid'] ) && is_array( $settings['persons_grid'] ) ) {
 			if ( isset( $settings['persons_grid']['rows'] ) ) {
 				$rows = (int) $settings['persons_grid']['rows'];
@@ -644,20 +787,12 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 		);
 	}
 
-	/**
-	 * Render the native EcomCine stores listing.
-	 *
-	 * @param array $atts Shortcode attributes.
-	 * @return string
-	 */
 	function tm_store_ui_render_stores_shortcode( $atts = array() ): string {
 		$raw_atts = (array) $atts;
 		$config   = tm_store_ui_get_stores_pagination_config( $raw_atts );
 
-		$rows     = $config['rows'];
 		$columns  = $config['columns'];
 		$per_page = $config['per_page'];
-
 		$paged    = max(
 			1,
 			(int) get_query_var( 'paged' ),
@@ -665,7 +800,27 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 			isset( $_GET['paged'] ) ? (int) $_GET['paged'] : 0
 		);
 
-		$all_ids = tm_store_ui_collect_person_ids_for_listing();
+		$all_ids = tm_store_ui_get_filtered_person_ids_for_listing();
+			// ── Country filter (from Locations map CTA: ?country=United+States) ────
+			$country_filter = isset( $_GET['country'] ) ? sanitize_text_field( wp_unslash( $_GET['country'] ) ) : '';
+			if ( '' !== $country_filter ) {
+				global $wpdb;
+				$ids_in_country = $wpdb->get_col(
+					$wpdb->prepare(
+						"SELECT user_id FROM {$wpdb->usermeta}
+						 WHERE meta_key = 'ecomcine_geo_address'
+						   AND ( meta_value = %s OR meta_value LIKE %s )",
+						$country_filter,
+						'%' . $wpdb->esc_like( ', ' . $country_filter )
+					)
+				);
+				$ids_in_country = ! empty( $ids_in_country )
+					? array_map( 'intval', $ids_in_country )
+					: array();
+				$all_ids = ! empty( $ids_in_country )
+					? array_values( array_intersect( $all_ids, $ids_in_country ) )
+					: array();
+			}
 		$total   = count( $all_ids );
 
 		if ( 0 === $total ) {
@@ -674,9 +829,11 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 
 		$offset   = ( $paged - 1 ) * $per_page;
 		$page_ids = array_slice( $all_ids, $offset, $per_page );
+		$filter_markup = function_exists( 'tm_store_ui_render_person_listing_filters' ) ? tm_store_ui_render_person_listing_filters() : '';
 
 		ob_start();
 		?>
+		<?php echo $filter_markup; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		<div id="dokan-seller-listing-wrap" class="grid-view ecomcine-store-listing-wrap ecomcine-store-grid" data-grid-columns="<?php echo esc_attr( (string) $columns ); ?>" style="--tm-grid-columns: <?php echo esc_attr( (string) $columns ); ?>;">
 			<div class="seller-listing-content">
 				<ul class="dokan-seller-wrap">
@@ -708,7 +865,7 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 							$avatar = (string) get_avatar_url( $vendor_id, array( 'size' => 300 ) );
 						}
 
-						$categories = tm_store_ui_get_person_category_label( $vendor_id );
+						$categories    = tm_store_ui_get_person_category_label( $vendor_id );
 						$location_html = tm_store_ui_get_person_location_display_html( $vendor_id, (array) $profile );
 						$badges        = tm_store_ui_get_person_status_badges( $vendor_id );
 						?>
@@ -717,11 +874,11 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 								<a class="tm-store-card-link" href="<?php echo esc_url( $url ); ?>" aria-label="<?php echo esc_attr( sprintf( __( 'Open profile: %s', 'tm-store-ui' ), $name ) ); ?>"></a>
 								<div class="store-header">
 									<div class="store-banner">
-											<?php if ( '' !== $banner ) : ?>
-												<img src="<?php echo esc_url( $banner ); ?>" alt="<?php echo esc_attr( $name ); ?>">
-											<?php else : ?>
-												<div class="tm-store-fallback-banner" aria-hidden="true"></div>
-											<?php endif; ?>
+										<?php if ( '' !== $banner ) : ?>
+											<img src="<?php echo esc_url( $banner ); ?>" alt="<?php echo esc_attr( $name ); ?>">
+										<?php else : ?>
+											<div class="tm-store-fallback-banner" aria-hidden="true"></div>
+										<?php endif; ?>
 									</div>
 								</div>
 								<div class="store-content">
@@ -809,8 +966,6 @@ if ( ! shortcode_exists( 'ecomcine-stores' ) ) {
 	add_shortcode( 'ecomcine-stores', 'tm_store_ui_render_stores_shortcode' );
 }
 
-// Backward compatibility for old Talents pages still containing [dokan-stores]
-// when Dokan is not active.
 if ( ! function_exists( 'dokan' ) && ! shortcode_exists( 'dokan-stores' ) ) {
 	add_shortcode( 'dokan-stores', 'tm_store_ui_render_stores_shortcode' );
 }

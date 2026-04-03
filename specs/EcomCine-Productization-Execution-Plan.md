@@ -17,9 +17,9 @@ Scope: Transform CastingAgency-specific custom stack into productized EcomCine a
 - Public distributable plugin: `ecomcine` (single app plugin)
 - Private billing/licensing plugin: `ecomcine-control-plane` (installed only on ecomcine.com billing site)
 - Compatibility model:
-  - Preferred stack: Astra + Dokan Pro + WooCommerce + WooCommerce Bookings
-  - Supported baseline: bare WordPress + Gutenberg + default users/CPT
-  - Theme strategy: theme-agnostic core with recommended/compatible theme registry
+  - Canonical stack: bare WordPress + `ecomcine-base` + EcomCine-owned CPT/meta/taxonomy flows
+  - Legacy compatibility stack: Dokan Pro + WooCommerce + WooCommerce Bookings when parity is required
+  - Theme strategy: one canonical minimal theme shell with optional third-party compatibility layers
 
 ## Phase 0 - Product Contract And Baseline Freeze (Completed)
 
@@ -54,7 +54,7 @@ Active plugin baseline snapshot:
 - woocommerce-bookings `2.2.9`
 
 Active theme baseline snapshot:
-- astra-child `1.0.0`
+- ecomcine-base `1.0.0`
 
 Known non-blocking note:
 - WP-CLI command output includes PHP deprecation warning:
@@ -76,7 +76,7 @@ Before Phase 1 starts, this baseline is the parity reference:
 Status: Completed on 2026-03-27
 
 Goal:
-- Consolidate current 3 TM plugins into one `ecomcine` plugin while preserving current behavior on Astra + Dokan + Woo + Bookings.
+- Consolidate current 3 TM plugins into one `ecomcine` plugin while preserving behavior on the legacy marketplace compatibility stack.
 
 High-level outcomes:
 - Business logic moved out of entangled locations into modular plugin internals.
@@ -123,9 +123,9 @@ High-level outcomes:
 ### Phase 2 Milestone Log
 
 - 2026-03-27 (Phase 2 Start): Began abstraction layer implementation in one go.
-- 2026-03-27 (Phase 2 Build): Added core adapter contracts and runtime resolver under `ecomcine/includes/core/` with preferred (`dokan-astra`, `woo-dokan`) and baseline (`wp-baseline`) adapters.
+- 2026-03-27 (Phase 2 Build): Added core adapter contracts and runtime resolver under `ecomcine/includes/core/` with legacy compatibility (`dokan-astra`, `woo-dokan`) and baseline (`wp-baseline`) adapters.
 - 2026-03-27 (Phase 2 Build): Wired new abstraction layer into `ecomcine/ecomcine.php` and exposed `ecomcine_get_runtime_adapter_snapshot()` for diagnostics and follow-on integration work.
-- 2026-03-27 (Phase 2 Exit): Core adapter contract baseline completed and validated on preferred stack runtime.
+- 2026-03-27 (Phase 2 Exit): Core adapter contract baseline completed and validated on the legacy compatibility runtime.
 
 ## Phase 3 - WP-Admin Management Layer (Completed)
 
@@ -137,7 +137,7 @@ Goal:
 High-level outcomes:
 - Admin-managed fields, taxonomies, layout presets, style tokens, and feature toggles.
 - Data model and migration path from hardcoded values.
-- Presets for preferred stack and baseline WordPress mode.
+- Presets for legacy compatibility mode and baseline WordPress mode.
 
 ### Phase 3 Milestone Log
 
@@ -146,7 +146,7 @@ High-level outcomes:
 - 2026-03-27 (Phase 3 Build): Wired settings module into `ecomcine/ecomcine.php` and applied feature toggles to unified module loading decisions.
 - 2026-03-27 (Phase 3 Build): Extended admin settings with layout preset and managed labels, and applied frontend runtime hooks for body classes and style-token CSS variables.
 - 2026-03-27 (Phase 3 Build): Updated abstraction resolver to honor `runtime_mode` so wp-admin can force baseline adapters.
-- 2026-03-27 (Phase 3 Validation): PASS on diagnostics + health checks; verified `preferred_stack` resolves to `dokan-astra`/`woo-dokan` and forced `baseline_wp` resolves to `wp-baseline`/`wp-baseline` (with settings restored).
+- 2026-03-27 (Phase 3 Validation): PASS on diagnostics + health checks; verified the legacy compatibility preset resolves to `dokan-astra`/`woo-dokan` and forced `baseline_wp` resolves to `wp-baseline`/`wp-baseline` (with settings restored).
 
 ## Phase 4 - Licensing/Billing Hardening And Distribution (In Progress)
 

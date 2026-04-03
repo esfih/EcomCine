@@ -1,6 +1,6 @@
 <?php
 /**
- * Preferred theme/runtime adapter for Astra + Dokan stack.
+ * Legacy compatibility theme/runtime adapter for Astra + Dokan stack.
  */
 
 defined( 'ABSPATH' ) || exit;

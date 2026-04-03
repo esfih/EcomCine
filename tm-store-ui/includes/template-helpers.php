@@ -1,6 +1,6 @@
 <?php
 /**
- * Template helper functions previously living in astra-child/functions.php.
+ * Template helper functions previously living in the legacy theme layer.
  *
  * These are utility functions called from templates and from hooks.php.
  *
@@ -257,7 +257,8 @@ if ( ! function_exists( 'tm_get_vendor_geo_location_display' ) ) {
 function tm_get_vendor_geo_location_display( $vendor_id, $store_info = array(), $store_address = array() ) {
 	$vendor_id = (int) $vendor_id;
 	if ( ! $vendor_id || ! function_exists( 'WC' ) ) { return ''; }
-	$geo_address = get_user_meta( $vendor_id, 'dokan_geo_address', true );
+	$geo = function_exists( 'ecomcine_get_geo' ) ? ecomcine_get_geo( $vendor_id ) : array();
+	$geo_address = isset( $geo['address'] ) ? (string) $geo['address'] : '';
 	if ( empty( $geo_address ) && ! empty( $store_info['location'] ) ) {
 		$geo_address = is_string( $store_info['location'] ) ? $store_info['location'] : '';
 	}

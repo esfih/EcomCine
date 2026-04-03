@@ -35,7 +35,7 @@ add_filter( 'theme_page_templates', function( $templates ) {
  * Handles:
  *  - New DB value:    _wp_page_template = 'tm-store-ui/page-platform'
  *  - Legacy DB value: _wp_page_template = 'page-platform.php'
- *  - Auto-detect:     page contains [dokan-stores] or [ecomcine-stores] shortcode
+ *  - Auto-detect:     page contains [dokan-stores], [ecomcine-stores], or [ecomcine_categories] shortcode
  */
 function tm_store_ui_template_include( $template ) {
 	if ( ! is_page() ) { return $template; }
@@ -48,6 +48,7 @@ function tm_store_ui_template_include( $template ) {
 	$has_store_shortcode = $post_id && (
 		has_shortcode( $content, 'dokan-stores' )
 		|| has_shortcode( $content, 'ecomcine-stores' )
+		|| has_shortcode( $content, 'ecomcine_categories' )
 	);
 
 	$is_platform = 'tm-store-ui/page-platform' === $stored_tpl
@@ -72,20 +73,16 @@ function tm_store_ui_template_include( $template ) {
 add_filter( 'template_include', 'tm_store_ui_template_include', 90 );
 
 /**
- * Fix locate_template('template-talent-showcase-full.php') calls from
- * tm-media-player so they resolve to the plugin copy when FSE themes are active.
- *
- * tm-media-player hooks template_include at priority 99 and calls locate_template().
- * We hook at 91 (after our own resolver at 90) and set a global path so the
- * media-player's locate_template() fallback code can find it.
- *
- * More robustly: we also define a constant the media-player can check.
+ * Expose the canonical showcase template path as a constant so tm-media-player
+ * and other plugins can resolve it without searching theme directories.
+ * The TM_STORE_UI_SHOWCASE_FULL_TEMPLATE constant name is kept for backward
+ * compatibility; it now always points to template-talent-showcase.php.
  */
 add_filter( 'template_include', function( $template ) {
 	if ( ! defined( 'TM_STORE_UI_SHOWCASE_FULL_TEMPLATE' ) ) {
-		$showcase_full = TM_STORE_UI_DIR . 'templates/page-templates/template-talent-showcase-full.php';
-		if ( file_exists( $showcase_full ) ) {
-			define( 'TM_STORE_UI_SHOWCASE_FULL_TEMPLATE', $showcase_full );
+		$showcase_tpl = TM_STORE_UI_DIR . 'templates/page-templates/template-talent-showcase.php';
+		if ( file_exists( $showcase_tpl ) ) {
+			define( 'TM_STORE_UI_SHOWCASE_FULL_TEMPLATE', $showcase_tpl );
 		}
 	}
 	return $template;

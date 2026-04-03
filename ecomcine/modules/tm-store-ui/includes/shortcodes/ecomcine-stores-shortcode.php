@@ -666,7 +666,28 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 		);
 
 		$all_ids = tm_store_ui_collect_person_ids_for_listing();
-		$total   = count( $all_ids );
+
+			// ── Country filter (from Locations map CTA: ?country=United+States) ────
+			$country_filter = isset( $_GET['country'] ) ? sanitize_text_field( wp_unslash( $_GET['country'] ) ) : '';
+			if ( '' !== $country_filter ) {
+				global $wpdb;
+				$ids_in_country = $wpdb->get_col(
+					$wpdb->prepare(
+						"SELECT user_id FROM {$wpdb->usermeta}
+						 WHERE meta_key = 'ecomcine_geo_address'
+						   AND ( meta_value = %s OR meta_value LIKE %s )",
+						$country_filter,
+						'%' . $wpdb->esc_like( ', ' . $country_filter )
+					)
+				);
+				$ids_in_country = ! empty( $ids_in_country )
+					? array_map( 'intval', $ids_in_country )
+					: array();
+				$all_ids = ! empty( $ids_in_country )
+					? array_values( array_intersect( $all_ids, $ids_in_country ) )
+					: array();
+			}
+
 
 		if ( 0 === $total ) {
 			return '<p class="dokan-error">No talent found!</p>';

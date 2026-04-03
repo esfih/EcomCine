@@ -26,6 +26,8 @@ class EcomCine_Admin_Categories_Tab {
 		add_action( 'admin_post_ecomcine_category_field_update', array( __CLASS__, 'handle_field_update' ) );
 		add_action( 'admin_post_ecomcine_category_field_delete', array( __CLASS__, 'handle_field_delete' ) );
 		add_action( 'admin_post_ecomcine_category_recover_cameraman', array( __CLASS__, 'handle_recover_cameraman' ) );
+		add_filter( 'upload_mimes', array( __CLASS__, 'allow_category_icon_svg_mime' ) );
+		add_filter( 'wp_check_filetype_and_ext', array( __CLASS__, 'allow_category_icon_svg_filetype' ), 10, 5 );
 	}
 
 	// ── Action handlers ──────────────────────────────────────────────────────
@@ -40,20 +42,31 @@ class EcomCine_Admin_Categories_Tab {
 		$slug        = sanitize_title( wp_unslash( $_POST['cat_slug'] ?? $name ) );
 		$description = sanitize_textarea_field( wp_unslash( $_POST['cat_description'] ?? '' ) );
 		$sort_order  = absint( $_POST['cat_sort_order'] ?? 0 );
+		$icon_data   = self::resolve_category_icon_submission();
 
 		$error = '';
 		if ( '' === $name ) {
 			$error = 'name_required';
 		} elseif ( '' === $slug ) {
 			$error = 'slug_invalid';
+		} elseif ( is_wp_error( $icon_data ) ) {
+			$error = 'icon_upload_failed';
 		} else {
-			$result = EcomCine_Person_Category_Registry::create( $name, $slug, $description, $sort_order );
+			$result = EcomCine_Person_Category_Registry::create(
+				$name,
+				$slug,
+				$description,
+				$sort_order,
+				'',
+				(int) ( $icon_data['attachment_id'] ?? 0 ),
+				(string) ( $icon_data['url'] ?? '' )
+			);
 			if ( ! $result ) {
 				$error = 'create_failed';
 			}
 		}
 
-		wp_safe_redirect( self::_tab_url( $error ? array( 'cat_error' => $error ) : array( 'cat_created' => 1 ) ) );
+		wp_safe_redirect( self::_tab_url( $error ? array( 'view' => 'add', 'cat_error' => $error ) : array( 'view' => 'add', 'cat_created' => 1 ) ) );
 		exit;
 	}
 
@@ -68,17 +81,24 @@ class EcomCine_Admin_Categories_Tab {
 		$slug        = sanitize_title( wp_unslash( $_POST['cat_slug'] ?? '' ) );
 		$description = sanitize_textarea_field( wp_unslash( $_POST['cat_description'] ?? '' ) );
 		$sort_order  = absint( $_POST['cat_sort_order'] ?? 0 );
+		$existing_row = $id > 0 ? EcomCine_Person_Category_Registry::get_category( $id ) : null;
+		$icon_data    = self::resolve_category_icon_submission( is_array( $existing_row ) ? $existing_row : null );
 
 		$error = '';
 		if ( ! $id ) {
 			$error = 'invalid_id';
 		} elseif ( '' === $name ) {
 			$error = 'name_required';
+		} elseif ( is_wp_error( $icon_data ) ) {
+			$error = 'icon_upload_failed';
 		} else {
 			$ok = EcomCine_Person_Category_Registry::update( $id, array(
 				'name'        => $name,
 				'slug'        => $slug,
 				'description' => $description,
+				'icon_attachment_id' => (int) ( $icon_data['attachment_id'] ?? 0 ),
+				'icon_url'    => (string) ( $icon_data['url'] ?? '' ),
+				'icon_key'    => '',
 				'sort_order'  => $sort_order,
 			) );
 			if ( ! $ok ) {
@@ -86,7 +106,14 @@ class EcomCine_Admin_Categories_Tab {
 			}
 		}
 
-		wp_safe_redirect( self::_tab_url( $error ? array( 'cat_error' => $error ) : array( 'cat_updated' => 1 ) ) );
+		$redirect_args = array( 'view' => 'edit', 'edit_cat' => $id );
+		if ( '' !== $error ) {
+			$redirect_args['cat_error'] = $error;
+		} else {
+			$redirect_args['cat_updated'] = 1;
+		}
+
+		wp_safe_redirect( self::_tab_url( $redirect_args ) );
 		exit;
 	}
 
@@ -107,7 +134,7 @@ class EcomCine_Admin_Categories_Tab {
 			}
 		}
 
-		wp_safe_redirect( self::_tab_url( $error ? array( 'cat_error' => $error ) : array( 'cat_deleted' => 1 ) ) );
+		wp_safe_redirect( self::_tab_url( $error ? array( 'view' => 'edit', 'cat_error' => $error ) : array( 'view' => 'edit', 'cat_deleted' => 1 ) ) );
 		exit;
 	}
 
@@ -288,24 +315,18 @@ class EcomCine_Admin_Categories_Tab {
 			return;
 		}
 
+		wp_enqueue_media();
+
 		$categories = EcomCine_Person_Category_Registry::get_all();
+		$active_view = self::get_active_view();
 		$edit_id    = isset( $_GET['edit_cat'] ) ? absint( $_GET['edit_cat'] ) : 0;
-		$fields_cat = isset( $_GET['fields_cat'] ) ? absint( $_GET['fields_cat'] ) : 0;
-		$edit_field = isset( $_GET['edit_field'] ) ? absint( $_GET['edit_field'] ) : 0;
 		$edit_row   = null;
-		$edit_field_row = null;
 		if ( $edit_id ) {
 			foreach ( $categories as $cat ) {
 				if ( (int) $cat['id'] === $edit_id ) {
 					$edit_row = $cat;
 					break;
 				}
-			}
-		}
-		if ( $fields_cat > 0 && $edit_field > 0 ) {
-			$edit_field_row = EcomCine_Person_Category_Registry::get_field( $edit_field );
-			if ( ! $edit_field_row || (int) $edit_field_row['category_id'] !== $fields_cat ) {
-				$edit_field_row = null;
 			}
 		}
 
@@ -319,195 +340,330 @@ class EcomCine_Admin_Categories_Tab {
 		if ( isset( $_GET['cat_deleted'] ) ) {
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Category deleted.', 'ecomcine' ) . '</p></div>';
 		}
-		if ( isset( $_GET['cat_migrated'] ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>'
-				. esc_html( sprintf( __( 'Migrated %d persons from Dokan store_category.', 'ecomcine' ), absint( $_GET['cat_migrated'] ) ) )
-				. '</p></div>';
-		}
 		if ( isset( $_GET['cat_error'] ) ) {
 			echo '<div class="notice notice-error is-dismissible"><p>'
 				. esc_html( sprintf( __( 'Error: %s', 'ecomcine' ), sanitize_key( wp_unslash( $_GET['cat_error'] ) ) ) )
 				. '</p></div>';
 		}
-		if ( isset( $_GET['field_created'] ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Custom field created.', 'ecomcine' ) . '</p></div>';
-		}
-		if ( isset( $_GET['field_updated'] ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Custom field updated.', 'ecomcine' ) . '</p></div>';
-		}
-		if ( isset( $_GET['field_deleted'] ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Custom field deleted.', 'ecomcine' ) . '</p></div>';
-		}
-		if ( isset( $_GET['cat_recovered'] ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>'
-				. esc_html(
-					sprintf(
-						/* translators: 1: number of fields 2: source */
-						__( 'Recovered Cameraman category with %1$d fields (source: %2$s).', 'ecomcine' ),
-						absint( $_GET['cat_fields'] ?? 0 ),
-						sanitize_key( wp_unslash( $_GET['cat_source'] ?? 'unknown' ) )
-					)
-				)
-				. '</p></div>';
-		}
 		?>
 		<div style="max-width:960px;margin-top:20px;">
+			<style>
+			.ecomcine-subtab-wrapper {
+				margin: 0 0 20px;
+			}
+			.ecomcine-categories-card {
+				background: #fff;
+				border: 1px solid #ccd0d4;
+				border-radius: 4px;
+				box-shadow: 0 1px 1px rgba(0,0,0,.04);
+				padding: 20px 24px;
+			}
+			.ecomcine-categories-card.is-editing {
+				padding: 16px 20px 20px;
+			}
+			.ecomcine-breadcrumb {
+				margin: 0 0 14px;
+			}
+			.ecomcine-categories-card.is-editing .ecomcine-breadcrumb {
+				margin-bottom: 10px;
+			}
+			.ecomcine-categories-card.is-editing h3 {
+				margin-bottom: 12px;
+			}
+			.ecomcine-categories-card.is-editing .form-table {
+				margin-top: 0;
+			}
+			.ecomcine-categories-card.is-editing .submit {
+				margin-bottom: 0;
+				padding-bottom: 0;
+			}
+			.ecomcine-category-grid-row {
+				display: flex;
+				gap: 16px;
+				align-items: flex-end;
+				flex-wrap: wrap;
+			}
+			.ecomcine-category-grid-row .ecomcine-grid-field {
+				min-width: 140px;
+			}
+			.ecomcine-grid-field label {
+				display: block;
+				font-weight: 600;
+				margin: 0 0 6px;
+			}
+			.ecomcine-color-row {
+				display: flex;
+				gap: 10px;
+				align-items: center;
+			}
+			.ecomcine-category-icon-upload {
+				align-items: start;
+				display: grid;
+				gap: 14px;
+				grid-template-columns: 120px minmax(0, 1fr);
+				max-width: 720px;
+			}
+			.ecomcine-category-icon-upload-preview {
+				align-items: center;
+				background: linear-gradient(180deg,#fff 0%,#f7f1ea 100%);
+				border: 1px solid #ccd0d4;
+				border-radius: 12px;
+				display: flex;
+				height: 112px;
+				justify-content: center;
+				overflow: hidden;
+				padding: 10px;
+				width: 112px;
+			}
+			.ecomcine-category-icon-upload-preview img {
+				display: block;
+				max-height: 100%;
+				max-width: 100%;
+				object-fit: contain;
+			}
+			.ecomcine-category-icon-upload-preview.is-empty {
+				background: #f6f7f7;
+				color: #6b7280;
+				font-size: 12px;
+				line-height: 1.4;
+				text-align: center;
+			}
+			.ecomcine-category-icon-upload-controls input[type="file"] {
+				max-width: 100%;
+			}
+			.ecomcine-category-icon-upload-controls button {
+				margin-right: 8px;
+			}
+			.ecomcine-category-icon-upload-controls .description {
+				margin: 8px 0 0;
+			}
+			.ecomcine-category-table-icon {
+				align-items: center;
+				background: linear-gradient(180deg,#fff 0%,#f7f1ea 100%);
+				border: 1px solid #d0d7de;
+				border-radius: 10px;
+				display: inline-flex;
+				height: 42px;
+				justify-content: center;
+				overflow: hidden;
+				width: 42px;
+			}
+			.ecomcine-category-table-icon img {
+				display: block;
+				max-height: 100%;
+				max-width: 100%;
+				object-fit: contain;
+			}
+			.ecomcine-category-table-icon .tm-icon {
+				height: 14px;
+				width: 14px;
+			}
+			</style>
 
-			<h2 style="font-size:16px;"><?php esc_html_e( 'Person Categories', 'ecomcine' ); ?></h2>
-			<p><?php esc_html_e( 'Manage the categories that appear on the talent listing and profile pages. These are owned by EcomCine and work without Dokan.', 'ecomcine' ); ?></p>
+			<?php settings_errors( EcomCine_Admin_Settings::OPTION_KEY ); ?>
 
-			<?php if ( ! empty( $categories ) ) : ?>
-			<table class="widefat striped" style="margin-bottom:24px;">
-				<thead>
-					<tr>
-						<th><?php esc_html_e( 'Name', 'ecomcine' ); ?></th>
-						<th><?php esc_html_e( 'Slug', 'ecomcine' ); ?></th>
-						<th><?php esc_html_e( 'Description', 'ecomcine' ); ?></th>
-						<th><?php esc_html_e( 'Order', 'ecomcine' ); ?></th>
-						<th><?php esc_html_e( 'Actions', 'ecomcine' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ( $categories as $cat ) : ?>
-					<tr>
-						<td><strong><?php echo esc_html( $cat['name'] ); ?></strong></td>
-						<td><code><?php echo esc_html( $cat['slug'] ); ?></code></td>
-						<td><?php echo esc_html( $cat['description'] ); ?></td>
-						<td><?php echo esc_html( $cat['sort_order'] ); ?></td>
-						<td>
-							<a href="<?php echo esc_url( self::_tab_url( array( 'edit_cat' => $cat['id'] ) ) ); ?>"><?php esc_html_e( 'Edit', 'ecomcine' ); ?></a>
-							&nbsp;|&nbsp;
-							<a href="<?php echo esc_url( self::_tab_url( array( 'fields_cat' => $cat['id'] ) ) ); ?>"><?php esc_html_e( 'Fields', 'ecomcine' ); ?></a>
-							&nbsp;|&nbsp;
-							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;">
-								<?php wp_nonce_field( 'ecomcine_category_delete' ); ?>
-								<input type="hidden" name="action" value="ecomcine_category_delete" />
-								<input type="hidden" name="cat_id" value="<?php echo esc_attr( $cat['id'] ); ?>" />
-								<button type="submit" class="button-link" style="color:#d63638;"
-									onclick="return confirm('<?php esc_attr_e( 'Delete this category and all person assignments?', 'ecomcine' ); ?>');">
-									<?php esc_html_e( 'Delete', 'ecomcine' ); ?>
-								</button>
-							</form>
-						</td>
-					</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
+			<nav class="nav-tab-wrapper ecomcine-subtab-wrapper">
+				<a href="<?php echo esc_url( self::_tab_url( array( 'view' => 'edit' ) ) ); ?>" class="nav-tab <?php echo 'edit' === $active_view ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Edit Categories', 'ecomcine' ); ?></a>
+				<a href="<?php echo esc_url( self::_tab_url( array( 'view' => 'add' ) ) ); ?>" class="nav-tab <?php echo 'add' === $active_view ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Add Category', 'ecomcine' ); ?></a>
+				<a href="<?php echo esc_url( self::_tab_url( array( 'view' => 'styling' ) ) ); ?>" class="nav-tab <?php echo 'styling' === $active_view ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Styling', 'ecomcine' ); ?></a>
+			</nav>
+
+
+			<?php if ( 'edit' === $active_view ) : ?>
+			<div class="ecomcine-categories-card <?php echo $edit_row ? 'is-editing' : ''; ?>">
+				<?php if ( $edit_row ) : ?>
+					<p class="ecomcine-breadcrumb"><a href="<?php echo esc_url( self::_tab_url( array( 'view' => 'edit' ) ) ); ?>"><?php esc_html_e( 'Back To Categories List', 'ecomcine' ); ?></a></p>
+				<?php endif; ?>
+				<?php if ( $edit_row ) : ?>
+					<h3 style="margin-top:0;"><?php echo esc_html( sprintf( __( 'Edit Category: %s', 'ecomcine' ), $edit_row['name'] ) ); ?></h3>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<?php wp_nonce_field( 'ecomcine_category_update' ); ?>
+						<input type="hidden" name="action" value="ecomcine_category_update" />
+						<input type="hidden" name="cat_id" value="<?php echo esc_attr( $edit_row['id'] ); ?>" />
+						<?php self::_render_form_fields( $edit_row ); ?>
+						<?php submit_button( __( 'Update Category', 'ecomcine' ), 'primary', 'submit', false ); ?>
+					</form>
+				<?php elseif ( ! empty( $categories ) ) : ?>
+				<table class="widefat striped" style="margin-bottom:24px;">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Icon', 'ecomcine' ); ?></th>
+							<th><?php esc_html_e( 'Name', 'ecomcine' ); ?></th>
+							<th><?php esc_html_e( 'Slug', 'ecomcine' ); ?></th>
+							<th><?php esc_html_e( 'Description', 'ecomcine' ); ?></th>
+							<th><?php esc_html_e( 'Order', 'ecomcine' ); ?></th>
+							<th><?php esc_html_e( 'Actions', 'ecomcine' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $categories as $cat ) : ?>
+						<tr>
+							<td><?php echo self::render_category_icon_badge( $cat ); ?></td>
+							<td><strong><?php echo esc_html( $cat['name'] ); ?></strong></td>
+							<td><code><?php echo esc_html( $cat['slug'] ); ?></code></td>
+							<td><?php echo esc_html( $cat['description'] ); ?></td>
+							<td><?php echo esc_html( $cat['sort_order'] ); ?></td>
+							<td>
+								<a href="<?php echo esc_url( self::_tab_url( array( 'view' => 'edit', 'edit_cat' => $cat['id'] ) ) ); ?>"><?php esc_html_e( 'Edit', 'ecomcine' ); ?></a>
+								&nbsp;|&nbsp;
+								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;">
+									<?php wp_nonce_field( 'ecomcine_category_delete' ); ?>
+									<input type="hidden" name="action" value="ecomcine_category_delete" />
+									<input type="hidden" name="cat_id" value="<?php echo esc_attr( $cat['id'] ); ?>" />
+									<button type="submit" class="button-link" style="color:#d63638;" onclick="return confirm('<?php esc_attr_e( 'Delete this category and all person assignments?', 'ecomcine' ); ?>');"><?php esc_html_e( 'Delete', 'ecomcine' ); ?></button>
+								</form>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+				<?php else : ?>
+					<p><?php esc_html_e( 'No categories found yet.', 'ecomcine' ); ?></p>
+				<?php endif; ?>
+			</div>
+			<?php elseif ( 'add' === $active_view ) : ?>
+			<div class="ecomcine-categories-card">
+				<h3 style="margin-top:0;"><?php esc_html_e( 'Add Category', 'ecomcine' ); ?></h3>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<?php wp_nonce_field( 'ecomcine_category_create' ); ?>
+					<input type="hidden" name="action" value="ecomcine_category_create" />
+					<?php self::_render_form_fields(); ?>
+					<?php submit_button( __( 'Add Category', 'ecomcine' ), 'primary', 'submit', false ); ?>
+				</form>
+			</div>
 			<?php else : ?>
-				<p><?php esc_html_e( 'No categories yet. Add one below.', 'ecomcine' ); ?></p>
+			<?php $category_grid = EcomCine_Admin_Settings::get_category_grid_settings(); ?>
+			<div class="ecomcine-categories-card">
+				<h3 style="margin-top:0;"><?php esc_html_e( 'Category Grid Styling', 'ecomcine' ); ?></h3>
+				<form method="post" action="options.php">
+					<?php settings_fields( 'ecomcine_settings_group' ); ?>
+					<div class="ecomcine-category-grid-row" style="margin-bottom:20px;">
+						<div class="ecomcine-grid-field">
+							<label for="ecomcine-categories-grid-rows"><?php esc_html_e( 'Rows', 'ecomcine' ); ?></label>
+							<input id="ecomcine-categories-grid-rows" type="number" min="1" max="12" step="1" class="small-text" name="<?php echo esc_attr( EcomCine_Admin_Settings::OPTION_KEY ); ?>[categories_grid][rows]" value="<?php echo esc_attr( (string) (int) $category_grid['rows'] ); ?>" />
+						</div>
+						<div class="ecomcine-grid-field">
+							<label for="ecomcine-categories-grid-columns"><?php esc_html_e( 'Columns', 'ecomcine' ); ?></label>
+							<input id="ecomcine-categories-grid-columns" type="number" min="1" max="6" step="1" class="small-text" name="<?php echo esc_attr( EcomCine_Admin_Settings::OPTION_KEY ); ?>[categories_grid][columns]" value="<?php echo esc_attr( (string) (int) $category_grid['columns'] ); ?>" />
+						</div>
+					</div>
+
+					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row"><label for="ecomcine-categories-grid-gap"><?php esc_html_e( 'Padding Between Cards', 'ecomcine' ); ?></label></th>
+							<td><input id="ecomcine-categories-grid-gap" type="number" min="0" max="80" step="1" class="small-text" name="<?php echo esc_attr( EcomCine_Admin_Settings::OPTION_KEY ); ?>[categories_grid][card_gap]" value="<?php echo esc_attr( (string) (int) $category_grid['card_gap'] ); ?>" /> <span class="description"><?php esc_html_e( 'px', 'ecomcine' ); ?></span></td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="ecomcine-categories-card-radius"><?php esc_html_e( 'Card Corner Radius', 'ecomcine' ); ?></label></th>
+							<td><input id="ecomcine-categories-card-radius" type="number" min="0" max="80" step="1" class="small-text" name="<?php echo esc_attr( EcomCine_Admin_Settings::OPTION_KEY ); ?>[categories_grid][card_radius]" value="<?php echo esc_attr( (string) (int) ( $category_grid['card_radius'] ?? 24 ) ); ?>" /> <span class="description"><?php esc_html_e( 'px', 'ecomcine' ); ?></span></td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="ecomcine-categories-border-width"><?php esc_html_e( 'Border Thickness', 'ecomcine' ); ?></label></th>
+							<td><input id="ecomcine-categories-border-width" type="number" min="0" max="20" step="1" class="small-text" name="<?php echo esc_attr( EcomCine_Admin_Settings::OPTION_KEY ); ?>[categories_grid][border_width]" value="<?php echo esc_attr( (string) (int) $category_grid['border_width'] ); ?>" /> <span class="description"><?php esc_html_e( 'px', 'ecomcine' ); ?></span></td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="ecomcine-categories-card-background"><?php esc_html_e( 'Card Background Color', 'ecomcine' ); ?></label></th>
+							<td>
+								<div class="ecomcine-color-row">
+									<input id="ecomcine-categories-card-background-picker" class="ecomcine-color-sync" type="color" value="<?php echo esc_attr( (string) ( $category_grid['card_background_color'] ?? '#FFF8F0' ) ); ?>" data-target="#ecomcine-categories-card-background" />
+									<input id="ecomcine-categories-card-background" class="regular-text ecomcine-color-sync-target" type="text" name="<?php echo esc_attr( EcomCine_Admin_Settings::OPTION_KEY ); ?>[categories_grid][card_background_color]" value="<?php echo esc_attr( (string) ( $category_grid['card_background_color'] ?? '#FFF8F0' ) ); ?>" />
+								</div>
+								<p class="description"><?php esc_html_e( 'Use the color picker or enter a hex code.', 'ecomcine' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="ecomcine-categories-card-background-hover"><?php esc_html_e( 'Card Background Hover Color', 'ecomcine' ); ?></label></th>
+							<td>
+								<div class="ecomcine-color-row">
+									<input id="ecomcine-categories-card-background-hover-picker" class="ecomcine-color-sync" type="color" value="<?php echo esc_attr( (string) ( $category_grid['card_background_hover_color'] ?? ( $category_grid['card_background_color'] ?? '#FFF8F0' ) ) ); ?>" data-target="#ecomcine-categories-card-background-hover" />
+									<input id="ecomcine-categories-card-background-hover" class="regular-text ecomcine-color-sync-target" type="text" name="<?php echo esc_attr( EcomCine_Admin_Settings::OPTION_KEY ); ?>[categories_grid][card_background_hover_color]" value="<?php echo esc_attr( (string) ( $category_grid['card_background_hover_color'] ?? ( $category_grid['card_background_color'] ?? '#FFF8F0' ) ) ); ?>" />
+								</div>
+								<p class="description"><?php esc_html_e( 'Use the color picker or enter a hex code.', 'ecomcine' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="ecomcine-categories-title-color"><?php esc_html_e( 'Title Text Color', 'ecomcine' ); ?></label></th>
+							<td>
+								<div class="ecomcine-color-row">
+									<input id="ecomcine-categories-title-color-picker" class="ecomcine-color-sync" type="color" value="<?php echo esc_attr( (string) ( $category_grid['title_color'] ?? '#111827' ) ); ?>" data-target="#ecomcine-categories-title-color" />
+									<input id="ecomcine-categories-title-color" class="regular-text ecomcine-color-sync-target" type="text" name="<?php echo esc_attr( EcomCine_Admin_Settings::OPTION_KEY ); ?>[categories_grid][title_color]" value="<?php echo esc_attr( (string) ( $category_grid['title_color'] ?? '#111827' ) ); ?>" />
+								</div>
+								<p class="description"><?php esc_html_e( 'Use the color picker or enter a hex code.', 'ecomcine' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="ecomcine-categories-border-style"><?php esc_html_e( 'Border Style', 'ecomcine' ); ?></label></th>
+							<td>
+								<select id="ecomcine-categories-border-style" name="<?php echo esc_attr( EcomCine_Admin_Settings::OPTION_KEY ); ?>[categories_grid][border_style]">
+									<?php foreach ( array( 'none', 'solid', 'dotted', 'dashed', 'double' ) as $border_style ) : ?>
+										<option value="<?php echo esc_attr( $border_style ); ?>" <?php selected( $category_grid['border_style'], $border_style ); ?>><?php echo esc_html( ucfirst( $border_style ) ); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="ecomcine-categories-border-color"><?php esc_html_e( 'Border Color', 'ecomcine' ); ?></label></th>
+							<td>
+								<div class="ecomcine-color-row">
+									<input id="ecomcine-categories-border-color-picker" class="ecomcine-color-sync" type="color" value="<?php echo esc_attr( (string) $category_grid['border_color'] ); ?>" data-target="#ecomcine-categories-border-color" />
+									<input id="ecomcine-categories-border-color" class="regular-text ecomcine-color-sync-target" type="text" name="<?php echo esc_attr( EcomCine_Admin_Settings::OPTION_KEY ); ?>[categories_grid][border_color]" value="<?php echo esc_attr( (string) $category_grid['border_color'] ); ?>" />
+								</div>
+								<p class="description"><?php esc_html_e( 'Use the color picker or enter a hex code.', 'ecomcine' ); ?></p>
+							</td>
+						</tr>
+					</table>
+
+					<?php submit_button( __( 'Save Category Styling', 'ecomcine' ) ); ?>
+				</form>
+			</div>
 			<?php endif; ?>
 
-			<?php /* Edit form (shown when ?edit_cat=N is in URL) */ ?>
-			<?php if ( $edit_row ) : ?>
-			<h3><?php esc_html_e( 'Edit Category', 'ecomcine' ); ?></h3>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="max-width:500px;">
-				<?php wp_nonce_field( 'ecomcine_category_update' ); ?>
-				<input type="hidden" name="action" value="ecomcine_category_update" />
-				<input type="hidden" name="cat_id" value="<?php echo esc_attr( $edit_row['id'] ); ?>" />
-				<?php self::_render_form_fields( $edit_row ); ?>
-				<?php submit_button( __( 'Update Category', 'ecomcine' ), 'primary', 'submit', false ); ?>
-				&nbsp;<a href="<?php echo esc_url( self::_tab_url() ); ?>"><?php esc_html_e( 'Cancel', 'ecomcine' ); ?></a>
-			</form>
-			<?php endif; ?>
+			<script>
+			jQuery(function($){
+				var categoryFrame;
 
-			<h3><?php esc_html_e( 'Add New Category', 'ecomcine' ); ?></h3>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="max-width:500px;">
-				<?php wp_nonce_field( 'ecomcine_category_create' ); ?>
-				<input type="hidden" name="action" value="ecomcine_category_create" />
-				<?php self::_render_form_fields(); ?>
-				<?php submit_button( __( 'Add Category', 'ecomcine' ), 'primary', 'submit', false ); ?>
-			</form>
+				$('body').on('click', '.ecomcine-category-media-select', function(e){
+					e.preventDefault();
+					var container = $(this).closest('.ecomcine-category-icon-upload');
+					if (!categoryFrame) {
+						categoryFrame = wp.media({ title: 'Select Category Image', button: { text: 'Use this image' }, multiple: false, library: { type: 'image' } });
+					}
 
-			<?php if ( taxonomy_exists( 'store_category' ) ) : ?>
-			<hr style="margin:32px 0 16px;">
-			<h3><?php esc_html_e( 'Migrate from Dokan', 'ecomcine' ); ?></h3>
-			<p><?php esc_html_e( 'Copy existing Dokan store_category term assignments for all sellers into the EcomCine category tables. Existing EcomCine assignments are replaced. Safe to run more than once.', 'ecomcine' ); ?></p>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<?php wp_nonce_field( 'ecomcine_category_migrate' ); ?>
-				<input type="hidden" name="action" value="ecomcine_category_migrate" />
-				<?php submit_button( __( 'Run Migration', 'ecomcine' ), 'secondary', 'submit', false ); ?>
-			</form>
-			<?php endif; ?>
+					categoryFrame.off('select');
+					categoryFrame.on('select', function(){
+						var attachment = categoryFrame.state().get('selection').first().toJSON();
+						container.find('.ecomcine-category-icon-id').val(attachment.id || 0);
+						container.find('.ecomcine-category-icon-url').val(attachment.url || '');
+						container.find('.ecomcine-category-icon-remove-flag').prop('checked', false);
+						container.find('.ecomcine-category-icon-upload-preview').removeClass('is-empty').html('<img src="' + (attachment.url || '') + '" alt="" />');
+					});
+					categoryFrame.open();
+				});
 
-			<hr style="margin:32px 0 16px;">
-			<h3><?php esc_html_e( 'Recover Legacy Cameraman Fields', 'ecomcine' ); ?></h3>
-			<p><?php esc_html_e( 'Import Cameraman category field definitions from legacy Dokan Category Attributes storage into EcomCine.', 'ecomcine' ); ?></p>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<?php wp_nonce_field( 'ecomcine_category_recover_cameraman' ); ?>
-				<input type="hidden" name="action" value="ecomcine_category_recover_cameraman" />
-				<?php submit_button( __( 'Recover Cameraman + Fields', 'ecomcine' ), 'secondary', 'submit', false ); ?>
-			</form>
+				$('body').on('click', '.ecomcine-category-media-remove', function(e){
+					e.preventDefault();
+					var container = $(this).closest('.ecomcine-category-icon-upload');
+					container.find('.ecomcine-category-icon-id').val('0');
+					container.find('.ecomcine-category-icon-url').val('');
+					container.find('.ecomcine-category-icon-remove-flag').prop('checked', true);
+					container.find('.ecomcine-category-icon-upload-preview').addClass('is-empty').html('<span>No image selected</span>');
+				});
 
-			<?php
-			$manage_category = $fields_cat > 0 ? EcomCine_Person_Category_Registry::get_category( $fields_cat ) : null;
-			if ( $manage_category ) :
-				$fields = EcomCine_Person_Category_Registry::get_fields_for_category( $fields_cat );
-			?>
-			<hr style="margin:32px 0 16px;">
-			<h3><?php echo esc_html( sprintf( __( 'Custom Fields: %s', 'ecomcine' ), $manage_category['name'] ) ); ?></h3>
-			<p><?php esc_html_e( 'Add dropdowns or other inputs for this category. For options, use one per line (value:Label or just value).', 'ecomcine' ); ?></p>
+				$('body').on('input change', '.ecomcine-color-sync', function(){
+					var target = $(this).data('target');
+					if (target) {
+						$(target).val($(this).val());
+					}
+				});
 
-			<?php if ( ! empty( $fields ) ) : ?>
-			<table class="widefat striped" style="margin-bottom:16px;">
-				<thead>
-					<tr>
-						<th><?php esc_html_e( 'Key', 'ecomcine' ); ?></th>
-						<th><?php esc_html_e( 'Label', 'ecomcine' ); ?></th>
-						<th><?php esc_html_e( 'Type', 'ecomcine' ); ?></th>
-						<th><?php esc_html_e( 'Order', 'ecomcine' ); ?></th>
-						<th><?php esc_html_e( 'Public', 'ecomcine' ); ?></th>
-						<th><?php esc_html_e( 'Filters', 'ecomcine' ); ?></th>
-						<th><?php esc_html_e( 'Actions', 'ecomcine' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ( $fields as $field ) : ?>
-					<tr>
-						<td><code><?php echo esc_html( $field['field_key'] ); ?></code></td>
-						<td><?php echo esc_html( $field['field_label'] ); ?></td>
-						<td><?php echo esc_html( $field['field_type'] ); ?></td>
-						<td><?php echo esc_html( (string) $field['sort_order'] ); ?></td>
-						<td><?php echo ! empty( $field['show_in_public'] ) ? 'yes' : 'no'; ?></td>
-						<td><?php echo ! empty( $field['show_in_filters'] ) ? 'yes' : 'no'; ?></td>
-						<td>
-							<a href="<?php echo esc_url( self::_tab_url( array( 'fields_cat' => $fields_cat, 'edit_field' => $field['id'] ) ) ); ?>"><?php esc_html_e( 'Edit', 'ecomcine' ); ?></a>
-							&nbsp;|&nbsp;
-							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;">
-								<?php wp_nonce_field( 'ecomcine_category_field_delete' ); ?>
-								<input type="hidden" name="action" value="ecomcine_category_field_delete" />
-								<input type="hidden" name="cat_id" value="<?php echo esc_attr( $fields_cat ); ?>" />
-								<input type="hidden" name="field_id" value="<?php echo esc_attr( $field['id'] ); ?>" />
-								<button type="submit" class="button-link" style="color:#d63638;" onclick="return confirm('<?php esc_attr_e( 'Delete this custom field?', 'ecomcine' ); ?>');"><?php esc_html_e( 'Delete', 'ecomcine' ); ?></button>
-							</form>
-						</td>
-					</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-			<?php endif; ?>
-
-			<?php if ( $edit_field_row ) : ?>
-			<h4><?php esc_html_e( 'Edit Field', 'ecomcine' ); ?></h4>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="max-width:720px;">
-				<?php wp_nonce_field( 'ecomcine_category_field_update' ); ?>
-				<input type="hidden" name="action" value="ecomcine_category_field_update" />
-				<input type="hidden" name="cat_id" value="<?php echo esc_attr( $fields_cat ); ?>" />
-				<input type="hidden" name="field_id" value="<?php echo esc_attr( $edit_field_row['id'] ); ?>" />
-				<?php self::_render_field_form_fields( $edit_field_row ); ?>
-				<?php submit_button( __( 'Update Field', 'ecomcine' ), 'primary', 'submit', false ); ?>
-				&nbsp;<a href="<?php echo esc_url( self::_tab_url( array( 'fields_cat' => $fields_cat ) ) ); ?>"><?php esc_html_e( 'Cancel', 'ecomcine' ); ?></a>
-			</form>
-			<?php endif; ?>
-
-			<h4><?php esc_html_e( 'Add New Field', 'ecomcine' ); ?></h4>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="max-width:720px;">
-				<?php wp_nonce_field( 'ecomcine_category_field_create' ); ?>
-				<input type="hidden" name="action" value="ecomcine_category_field_create" />
-				<input type="hidden" name="cat_id" value="<?php echo esc_attr( $fields_cat ); ?>" />
-				<?php self::_render_field_form_fields(); ?>
-				<?php submit_button( __( 'Add Field', 'ecomcine' ), 'primary', 'submit', false ); ?>
-			</form>
-			<?php endif; ?>
+				$('body').on('input change', '.ecomcine-color-sync-target', function(){
+					var value = $(this).val();
+					if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+						$('#ecomcine-categories-border-color-picker').val(value);
+					}
+				});
+			});
+			</script>
 
 		</div>
 		<?php
@@ -524,6 +680,8 @@ class EcomCine_Admin_Categories_Tab {
 		$name        = isset( $row['name'] )        ? esc_attr( $row['name'] )        : '';
 		$slug        = isset( $row['slug'] )        ? esc_attr( $row['slug'] )        : '';
 		$description = isset( $row['description'] ) ? esc_attr( $row['description'] ) : '';
+		$icon_attachment_id = isset( $row['icon_attachment_id'] ) ? absint( $row['icon_attachment_id'] ) : 0;
+		$icon_url    = is_array( $row ) ? EcomCine_Person_Category_Registry::get_category_icon_url( $row ) : '';
 		$sort_order  = isset( $row['sort_order'] )  ? (int) $row['sort_order']        : 0;
 		?>
 		<table class="form-table" role="presentation">
@@ -541,6 +699,28 @@ class EcomCine_Admin_Categories_Tab {
 			<tr>
 				<th scope="row"><label for="cat_desc_field"><?php esc_html_e( 'Description', 'ecomcine' ); ?></label></th>
 				<td><textarea id="cat_desc_field" name="cat_description" rows="3" class="large-text"><?php echo $description; ?></textarea></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Icon Image', 'ecomcine' ); ?></th>
+				<td>
+					<div class="ecomcine-category-icon-upload">
+						<div class="ecomcine-category-icon-upload-preview <?php echo '' === $icon_url ? 'is-empty' : ''; ?>">
+							<?php if ( '' !== $icon_url ) : ?>
+								<img src="<?php echo esc_url( $icon_url ); ?>" alt="" />
+							<?php else : ?>
+								<span><?php esc_html_e( 'No image uploaded', 'ecomcine' ); ?></span>
+							<?php endif; ?>
+						</div>
+						<div class="ecomcine-category-icon-upload-controls">
+							<button type="button" class="button button-secondary ecomcine-category-media-select"><?php esc_html_e( 'Select From Media Library', 'ecomcine' ); ?></button>
+							<button type="button" class="button button-link-delete ecomcine-category-media-remove"><?php esc_html_e( 'Remove Image', 'ecomcine' ); ?></button>
+							<input type="hidden" class="ecomcine-category-icon-id" name="cat_icon_existing_id" value="<?php echo esc_attr( (string) $icon_attachment_id ); ?>" />
+							<input type="hidden" class="ecomcine-category-icon-url" name="cat_icon_existing_url" value="<?php echo esc_attr( $icon_url ); ?>" />
+							<input type="checkbox" class="ecomcine-category-icon-remove-flag" name="cat_icon_remove" value="1" style="display:none;" />
+							<p class="description"><?php esc_html_e( 'Use the WordPress media library to choose or upload a category image, including SVG files when available to admins.', 'ecomcine' ); ?></p>
+						</div>
+					</div>
+				</td>
 			</tr>
 			<tr>
 				<th scope="row"><label for="cat_order_field"><?php esc_html_e( 'Order', 'ecomcine' ); ?></label></th>
@@ -656,8 +836,144 @@ class EcomCine_Admin_Categories_Tab {
 	 */
 	private static function _tab_url( array $extra_args = array() ): string {
 		return add_query_arg(
-			array_merge( array( 'page' => 'ecomcine-settings', 'tab' => 'categories' ), $extra_args ),
+			array_merge( array( 'page' => 'ecomcine-settings', 'tab' => 'categories', 'view' => self::get_active_view() ), $extra_args ),
 			admin_url( 'admin.php' )
 		);
+	}
+
+	/**
+	 * Resolve the active categories sub-tab.
+	 *
+	 * @return string
+	 */
+	private static function get_active_view(): string {
+		$view = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( $_GET['view'] ) ) : 'edit';
+		return in_array( $view, array( 'edit', 'add', 'styling' ), true ) ? $view : 'edit';
+	}
+
+	/**
+	 * Resolve uploaded category icon submission state.
+	 *
+	 * @param array|null $existing_row Existing row data for edits.
+	 * @return array|WP_Error
+	 */
+	private static function resolve_category_icon_submission( ?array $existing_row = null ) {
+		$posted_attachment_id = absint( $_POST['cat_icon_existing_id'] ?? 0 );
+		$posted_url           = EcomCine_Person_Category_Registry::sanitize_icon_url( (string) wp_unslash( $_POST['cat_icon_existing_url'] ?? '' ) );
+
+		$attachment_id = $posted_attachment_id;
+		$url           = $posted_url;
+
+		if ( is_array( $existing_row ) ) {
+			if ( 0 === $attachment_id ) {
+				$attachment_id = absint( $existing_row['icon_attachment_id'] ?? 0 );
+			}
+			if ( '' === $url ) {
+				$url = EcomCine_Person_Category_Registry::get_category_icon_url( $existing_row );
+			}
+		}
+		$remove        = ! empty( $_POST['cat_icon_remove'] );
+
+		if ( $remove ) {
+			$attachment_id = 0;
+			$url           = '';
+		}
+
+		if ( $attachment_id > 0 ) {
+			$attachment = get_post( $attachment_id );
+			if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
+				return new WP_Error( 'invalid_attachment', __( 'The selected media library item is no longer available.', 'ecomcine' ) );
+			}
+
+			$mime_type = (string) get_post_mime_type( $attachment_id );
+			if ( 0 !== strpos( $mime_type, 'image/' ) ) {
+				return new WP_Error( 'invalid_image', __( 'The selected media item must be an image.', 'ecomcine' ) );
+			}
+
+			$resolved_url = wp_get_attachment_url( $attachment_id );
+			if ( is_string( $resolved_url ) && '' !== $resolved_url ) {
+				$url = EcomCine_Person_Category_Registry::sanitize_icon_url( $resolved_url );
+			}
+		}
+
+		return array(
+			'attachment_id' => $attachment_id,
+			'url'           => $url,
+		);
+	}
+
+	/**
+	 * Render the icon badge shown in the category table.
+	 *
+	 * @param array $category Category row.
+	 * @return string
+	 */
+	private static function render_category_icon_badge( array $category ): string {
+		$icon_url = EcomCine_Person_Category_Registry::get_category_icon_url( $category );
+		if ( '' !== $icon_url ) {
+			return '<span class="ecomcine-category-table-icon"><img src="' . esc_url( $icon_url ) . '" alt="" /></span>';
+		}
+
+		$svg = self::render_category_icon_svg( (string) ( $category['icon_key'] ?? '' ) );
+		if ( '' === $svg ) {
+			return '';
+		}
+
+		return '<span class="ecomcine-category-table-icon">' . $svg . '</span>';
+	}
+
+	/**
+	 * Render the raw SVG for a category icon.
+	 *
+	 * @param string $icon_key Icon key.
+	 * @param string $title Optional accessible title.
+	 * @return string
+	 */
+	private static function render_category_icon_svg( string $icon_key, string $title = '' ): string {
+		$icon_key = EcomCine_Person_Category_Registry::sanitize_icon_key( $icon_key );
+		if ( '' === $icon_key || ! class_exists( 'TM_Icons' ) ) {
+			return '';
+		}
+
+		return TM_Icons::svg( $icon_key, '', $title );
+	}
+
+	/**
+	 * Temporarily allow SVG uploads for category icon files.
+	 *
+	 * @param array $mimes Allowed MIME list.
+	 * @return array
+	 */
+	public static function allow_category_icon_svg_mime( array $mimes ): array {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return $mimes;
+		}
+
+		$mimes['svg'] = 'image/svg+xml';
+		return $mimes;
+	}
+
+	/**
+	 * Normalize SVG file type validation during category icon uploads.
+	 *
+	 * @param array  $data File type data.
+	 * @param string $file Full path to file.
+	 * @param string $filename File name.
+	 * @param array  $mimes Allowed MIME list.
+	 * @param string|false $real_mime Real MIME when available.
+	 * @return array
+	 */
+	public static function allow_category_icon_svg_filetype( array $data, string $file, string $filename, array $mimes, $real_mime ): array {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return $data;
+		}
+
+		$extension = strtolower( (string) pathinfo( $filename, PATHINFO_EXTENSION ) );
+		if ( 'svg' === $extension ) {
+			$data['ext'] = 'svg';
+			$data['type'] = 'image/svg+xml';
+		}
+
+		return $data;
 	}
 }

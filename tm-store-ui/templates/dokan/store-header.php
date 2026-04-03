@@ -46,13 +46,16 @@ if ( 'layout3' === $profile_layout ) {
 
 // Get Featured/Verified status
 $vendor_id = $store_user->get_id();
+$person_info = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $vendor_id ) : [];
+$person_geo  = function_exists( 'ecomcine_get_geo' ) ? ecomcine_get_geo( $vendor_id ) : [];
+$status_flags = function_exists( 'ecomcine_get_person_status_flags' ) ? ecomcine_get_person_status_flags( $vendor_id ) : [ 'featured' => false, 'verified' => false ];
 $current_user_id = get_current_user_id();
 $is_owner = function_exists( 'tm_can_edit_vendor_profile' ) 
 	? tm_can_edit_vendor_profile( $vendor_id, $current_user_id )
 	: ( $current_user_id && $current_user_id == $vendor_id );
 $is_admin_editing = $is_owner && $current_user_id != $vendor_id && current_user_can( 'manage_options' );
-$is_featured = get_user_meta( $vendor_id, 'dokan_feature_seller', true );
-$is_verified = get_user_meta( $vendor_id, 'dokan_store_verified', true );
+$is_featured = ! empty( $status_flags['featured'] );
+$is_verified = ! empty( $status_flags['verified'] );
 $is_preonboard = (bool) get_user_meta( $vendor_id, 'tm_preonboard', true );
 
 $onboard_token = isset( $_GET['tm_onboard'] ) ? sanitize_text_field( wp_unslash( $_GET['tm_onboard'] ) ) : '';
@@ -64,48 +67,24 @@ $onboard_error = isset( $_GET['tm_onboard_error'] ) ? sanitize_text_field( wp_un
 $is_onboarding_context = $is_preonboard || ! empty( $onboard_state['valid'] ) || ! empty( $onboard_claimed );
 
 // Store categories data for inline editing in the profile panel
-$store_category_terms = get_terms( [
-    'taxonomy'   => 'store_category',
-    'hide_empty' => false,
-] );
+$store_category_terms = class_exists( 'EcomCine_Person_Category_Registry', false )
+    ? EcomCine_Person_Category_Registry::get_all()
+    : [];
 $store_category_options = [];
 if ( ! is_wp_error( $store_category_terms ) ) {
     foreach ( $store_category_terms as $term ) {
-        $store_category_options[ (int) $term->term_id ] = $term->name;
+        if ( is_array( $term ) ) {
+            $store_category_options[ (int) ( $term['id'] ?? 0 ) ] = (string) ( $term['name'] ?? '' );
+        } elseif ( is_object( $term ) ) {
+            $store_category_options[ (int) $term->term_id ] = $term->name;
+        }
     }
 }
 
 $selected_category_ids = [];
-
-// Pull categories from Dokan profile settings (vendor dashboard source of truth)
-$profile_settings = $vendor_id ? get_user_meta( $vendor_id, 'dokan_profile_settings', true ) : [];
-if ( is_array( $profile_settings ) ) {
-    if ( ! empty( $profile_settings['dokan_category'] ) ) {
-        $selected_category_ids = (array) $profile_settings['dokan_category'];
-    } elseif ( ! empty( $profile_settings['categories'] ) ) {
-        $selected_category_ids = (array) $profile_settings['categories'];
-    }
-}
-
-// Fallback: dedicated meta stored by our normalization hook
-if ( empty( $selected_category_ids ) && $vendor_id ) {
-    $meta_cats = get_user_meta( $vendor_id, 'dokan_store_categories', true );
-    if ( is_array( $meta_cats ) ) {
-        $selected_category_ids = $meta_cats;
-    }
-}
-
-// Fallback: store_info payload
-if ( empty( $selected_category_ids ) && ! empty( $store_info['categories'] ) && is_array( $store_info['categories'] ) ) {
-    $selected_category_ids = $store_info['categories'];
-}
-
-// Fallback: taxonomy terms
-if ( empty( $selected_category_ids ) && $vendor_id ) {
-    $term_ids = wp_get_object_terms( $vendor_id, 'store_category', [ 'fields' => 'ids' ] );
-    if ( ! is_wp_error( $term_ids ) ) {
-        $selected_category_ids = $term_ids;
-    }
+if ( $vendor_id && class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+    $selected_rows = EcomCine_Person_Category_Registry::get_for_person( $vendor_id );
+    $selected_category_ids = array_values( array_filter( array_map( 'absint', wp_list_pluck( (array) $selected_rows, 'id' ) ) ) );
 }
 
 $selected_category_ids = array_values( array_filter( $selected_category_ids ) );
@@ -126,16 +105,8 @@ $shop_name = $shop_name ? $shop_name : '';
 $shop_name_words = preg_split( '/\s+/', trim( $shop_name ) );
 $contact_first_name = ( $shop_name_words && ! empty( $shop_name_words[0] ) ) ? $shop_name_words[0] : 'this talent';
 
-$inline_profile_settings = $vendor_id ? get_user_meta( $vendor_id, 'dokan_profile_settings', true ) : [];
-$inline_geo = [];
-if ( is_array( $inline_profile_settings ) && ! empty( $inline_profile_settings['geolocation'] ) && is_array( $inline_profile_settings['geolocation'] ) ) {
-    $inline_geo = $inline_profile_settings['geolocation'];
-}
-if ( empty( $inline_geo ) && ! empty( $store_info['geolocation'] ) && is_array( $store_info['geolocation'] ) ) {
-    $inline_geo = $store_info['geolocation'];
-}
-$geo_lat = isset( $inline_geo['latitude'] ) ? $inline_geo['latitude'] : '';
-$geo_lng = isset( $inline_geo['longitude'] ) ? $inline_geo['longitude'] : '';
+$geo_lat = isset( $person_geo['lat'] ) ? $person_geo['lat'] : '';
+$geo_lng = isset( $person_geo['lng'] ) ? $person_geo['lng'] : '';
 $geo_lat_attr = is_numeric( $geo_lat ) ? $geo_lat : '';
 $geo_lng_attr = is_numeric( $geo_lng ) ? $geo_lng : '';
 
@@ -158,10 +129,7 @@ if ( ! is_array( $contact_phones ) ) {
     $contact_phones = [];
 }
 $contact_phone_main = $vendor_id ? get_user_meta( $vendor_id, 'tm_contact_phone_main', true ) : '';
-$profile_phone = '';
-if ( is_array( $inline_profile_settings ) && ! empty( $inline_profile_settings['phone'] ) ) {
-    $profile_phone = $inline_profile_settings['phone'];
-}
+$profile_phone = isset( $person_info['phone'] ) ? (string) $person_info['phone'] : '';
 if ( ! $contact_phone_main && $profile_phone ) {
     $contact_phone_main = $profile_phone;
 }
@@ -255,7 +223,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
         <div class="profile-info-box profile-layout-<?php echo esc_attr( $profile_layout ); ?>" data-vendor-id="<?php echo absint( $vendor_id ); ?>">
             <?php 
             // We render a neutral video container that our JS controls. Banner image is used as poster only.
-                 $video_position = get_user_meta( $store_user->get_id(), 'dokan_banner_video_position', true );
+                 $video_position = (string) get_user_meta( $store_user->get_id(), 'ecomcine_banner_video_position', true );
                  $video_position = $video_position ? $video_position : 'center';
                  $video_style_attr = '';
                  if ( 'center' !== $video_position ) {
@@ -494,7 +462,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                             $geo_location_display = function_exists( 'tm_get_vendor_geo_location_display' )
                                 ? tm_get_vendor_geo_location_display( $store_user->get_id(), $store_info, $store_address )
                                 : '';
-                            $geo_address_raw = get_user_meta( $store_user->get_id(), 'dokan_geo_address', true );
+                            $geo_address_raw = isset( $person_geo['address'] ) ? (string) $person_geo['address'] : '';
                             ?>
                             <?php if ( ! dokan_is_vendor_info_hidden( 'address' ) && ( ! empty( $geo_location_display ) || $is_owner || $is_preonboard || $is_admin_editing ) ) { ?>
                                 <?php $geo_location_display_text = $geo_location_display ? $geo_location_display : 'Location'; ?>
@@ -869,7 +837,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                             $geo_location_display = function_exists( 'tm_get_vendor_geo_location_display' )
                                 ? tm_get_vendor_geo_location_display( $store_user->get_id(), $store_info, $store_address )
                                 : '';
-                            $geo_address_raw = get_user_meta( $store_user->get_id(), 'dokan_geo_address', true );
+                            $geo_address_raw = isset( $person_geo['address'] ) ? (string) $person_geo['address'] : '';
                             ?>
                             <?php if ( ! dokan_is_vendor_info_hidden( 'address' ) && ( ! empty( $geo_location_display ) || $is_owner || $is_preonboard || $is_admin_editing ) ) { ?>
                                 <?php $geo_location_display_text = $geo_location_display ? $geo_location_display : 'Location'; ?>

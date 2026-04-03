@@ -35,8 +35,8 @@ services:
       - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
       # ── Media uploads (persist on WSL project path) ──────────────────────
       - ./wp-content/uploads:/var/www/html/wp-content/uploads
-      # ── Custom theme ──────────────────────────────────────────────────────
-      - ./theme:/var/www/html/wp-content/themes/astra-child
+      # ── Canonical minimal theme shipped with EcomCine ────────────────────
+      - ./ecomcine/bundled-theme:/var/www/html/wp-content/themes/ecomcine-base
       # ── Custom plugins (committed to this repo) ───────────────────────────
       - ./ecomcine:/var/www/html/wp-content/plugins/ecomcine
       - ./ecomcine-control-plane:/var/www/html/wp-content/plugins/ecomcine-control-plane

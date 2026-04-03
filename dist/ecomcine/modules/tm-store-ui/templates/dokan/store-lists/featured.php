@@ -1,6 +1,6 @@
 <?php
 /**
- * Store listing featured filter — Astra Child theme override.
+ * Store listing featured filter migrated from the legacy theme layer.
  *
  * Overrides: dokan-pro/templates/store-lists/featured.php (v3.0.0)
  *

@@ -2,8 +2,8 @@
 /**
  * Asset enqueueing for TM Store UI — theme-agnostic.
  *
- * Replaces child_enqueue_styles() from astra-child/functions.php.
- * CSS dependencies no longer reference astra-child-theme-css; instead they
+ * Replaces the former theme-owned enqueue path.
+ * CSS dependencies no longer reference legacy theme handles; instead they
  * depend on 'tm-store-ui-responsive' (the plugin-owned responsive-config.css).
  *
  * @package TM_Store_UI

@@ -219,6 +219,80 @@ if ( ! function_exists( 'ecomcine_get_person_info' ) ) {
 
 if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	/**
+	 * Return true when a person has a published standalone profile artifact.
+	 *
+	 * @param int $user_id
+	 * @return bool
+	 */
+	function ecomcine_has_public_person_profile( int $user_id ): bool {
+		$user_id = (int) $user_id;
+		if ( $user_id <= 0 ) {
+			return false;
+		}
+
+		if ( class_exists( 'TMP_WP_Vendor_CPT', false ) && method_exists( 'TMP_WP_Vendor_CPT', 'get_post_id_for_vendor' ) ) {
+			$post_id = (int) TMP_WP_Vendor_CPT::get_post_id_for_vendor( $user_id );
+			if ( $post_id > 0 ) {
+				return 'publish' === get_post_status( $post_id );
+			}
+		}
+
+		$posts = get_posts(
+			array(
+				'post_type'      => 'tm_vendor',
+				'post_status'    => 'publish',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'meta_query'     => array(
+					array(
+						'key'   => '_tm_vendor_user_id',
+						'value' => $user_id,
+					),
+				),
+			)
+		);
+
+		return ! empty( $posts );
+	}
+
+	/**
+	 * Resolve a person user ID from nicename slug.
+	 *
+	 * @param string $slug
+	 * @return int
+	 */
+	function ecomcine_resolve_person_user_id_by_slug( string $slug ): int {
+		$slug = sanitize_title( $slug );
+		if ( '' === $slug ) {
+			return 0;
+		}
+
+		$user = get_user_by( 'slug', $slug );
+		if ( ! $user ) {
+			return 0;
+		}
+
+		$user_id = (int) $user->ID;
+		if ( $user_id <= 0 ) {
+			return 0;
+		}
+
+		if ( function_exists( 'ecomcine_is_person_user' ) && ! ecomcine_is_person_user( $user_id ) ) {
+			return 0;
+		}
+
+		if ( function_exists( 'ecomcine_is_person_enabled' ) && ! ecomcine_is_person_enabled( $user_id ) ) {
+			return 0;
+		}
+
+		if ( function_exists( 'ecomcine_has_public_person_profile' ) && ! ecomcine_has_public_person_profile( $user_id ) ) {
+			return 0;
+		}
+
+		return $user_id;
+	}
+
+	/**
 	 * Return the canonical public profile URL for a person.
 	 *
 	 * Uses EcomCine's own /person/{nicename}/ rewrite when the rewrite rule is
@@ -232,16 +306,24 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 			return '';
 		}
 
+		if ( function_exists( 'ecomcine_is_person_user' ) && ! ecomcine_is_person_user( $user_id ) ) {
+			return '';
+		}
+
+		if ( function_exists( 'ecomcine_is_person_enabled' ) && ! ecomcine_is_person_enabled( $user_id ) ) {
+			return '';
+		}
+
+		if ( function_exists( 'ecomcine_has_public_person_profile' ) && ! ecomcine_has_public_person_profile( $user_id ) ) {
+			return '';
+		}
+
 		// EcomCine native rewrite rule: /person/{user_nicename}/.
 		$rewrite_base = get_option( 'ecomcine_person_base', 'person' );
 		$user         = get_userdata( $user_id );
 		if ( $user && $user->user_nicename ) {
 			$url = trailingslashit( home_url( '/' . trim( $rewrite_base, '/' ) . '/' . $user->user_nicename ) );
-			// Only return if we actually have the rewrite capability (query var registered).
-			if ( get_query_var( 'ecomcine_person', '__not_set__' ) !== '__not_set__' || true ) {
-				// Rewrite base is always in place after ecomcine.php init; return it.
-				return $url;
-			}
+			return $url;
 		}
 
 		// Dokan fallback for sites that have not yet migrated rewrite rules.
@@ -252,6 +334,111 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 		return '';
 	}
 }
+
+// Register /person/{nicename}/ routing and map it to ecomcine_person query var.
+add_action( 'init', function() {
+	$rewrite_base = trim( (string) get_option( 'ecomcine_person_base', 'person' ), '/' );
+	if ( '' === $rewrite_base ) {
+		$rewrite_base = 'person';
+	}
+
+	add_rewrite_tag( '%ecomcine_person%', '([^&]+)' );
+	add_rewrite_rule( '^' . preg_quote( $rewrite_base, '/' ) . '/([^/]+)/?$', 'index.php?ecomcine_person=$matches[1]', 'top' );
+
+	$flush_key      = 'ecomcine_person_rewrite_flushed';
+	$flush_expected = '1|' . $rewrite_base;
+	$flush_state    = (string) get_option( $flush_key, '' );
+	if ( $flush_expected !== $flush_state ) {
+		flush_rewrite_rules( false );
+		update_option( $flush_key, $flush_expected, false );
+	}
+}, 20 );
+
+add_filter( 'query_vars', function( array $vars ): array {
+	if ( ! in_array( 'ecomcine_person', $vars, true ) ) {
+		$vars[] = 'ecomcine_person';
+	}
+
+	return $vars;
+} );
+
+// Set dynamic document title for standalone person profile pages.
+add_filter( 'pre_get_document_title', function( string $title ): string {
+	$slug = (string) get_query_var( 'ecomcine_person', '' );
+	if ( '' === $slug ) {
+		return $title;
+	}
+
+	$user_id = function_exists( 'ecomcine_resolve_person_user_id_by_slug' )
+		? ecomcine_resolve_person_user_id_by_slug( $slug )
+		: 0;
+	if ( $user_id <= 0 ) {
+		return $title;
+	}
+
+	$full_name = trim( (string) get_the_author_meta( 'display_name', $user_id ) );
+	if ( '' === $full_name ) {
+		$user = get_userdata( $user_id );
+		if ( $user ) {
+			$full_name = trim( (string) $user->display_name );
+		}
+	}
+	if ( '' === $full_name ) {
+		$full_name = 'Person';
+	}
+
+	$site_name = trim( (string) get_bloginfo( 'name' ) );
+	if ( '' === $site_name ) {
+		$site_name = 'EcomCine';
+	}
+
+	return sprintf( '%s profile page on %s', $full_name, $site_name );
+}, 20 );
+
+// Prevent core canonical redirects from hijacking person routes when slugs collide with attachments.
+add_filter( 'redirect_canonical', function( $redirect_url, $requested_url ) {
+	$slug = (string) get_query_var( 'ecomcine_person', '' );
+	if ( '' !== $slug ) {
+		return false;
+	}
+
+	return $redirect_url;
+}, 10, 2 );
+
+// Route single person pages to the standalone profile template.
+add_filter( 'template_include', function( string $template ): string {
+	$slug = (string) get_query_var( 'ecomcine_person', '' );
+	if ( '' === $slug ) {
+		return $template;
+	}
+
+	$user_id = function_exists( 'ecomcine_resolve_person_user_id_by_slug' )
+		? ecomcine_resolve_person_user_id_by_slug( $slug )
+		: 0;
+	if ( $user_id <= 0 ) {
+		global $wp_query;
+		if ( $wp_query instanceof WP_Query ) {
+			$wp_query->set_404();
+		}
+		status_header( 404 );
+		nocache_headers();
+		$not_found = get_404_template();
+		return $not_found ? $not_found : $template;
+	}
+
+	set_query_var( 'author', $user_id );
+	$GLOBALS['tm_showcase_page'] = true;
+
+	$person_template = defined( 'TM_STORE_UI_DIR' )
+		? TM_STORE_UI_DIR . 'templates/page-templates/template-person-profile.php'
+		: '';
+
+	if ( $person_template && file_exists( $person_template ) ) {
+		return $person_template;
+	}
+
+	return $template;
+}, 91 );
 
 if ( ! function_exists( 'ecomcine_is_person_page' ) ) {
 	/**

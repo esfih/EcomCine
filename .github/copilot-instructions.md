@@ -8,10 +8,10 @@ Read `README-FIRST.md` at the start of every meaningful response before taking a
 
 ## What this project is
 
-EcomCiné is a productized suite of cinematic customizations for WordPress / WooCommerce / Dokan marketplaces.
+EcomCiné is a productized WordPress-native cinematic marketplace suite.
 Phase 1 is live at `castingagency.co`.
 
-Custom artifacts: `theme/` (astra-child), `tm-media-player/`, `tm-account-panel/`, `tm-vendor-booking-modal/`, `dokan-category-attributes/`.
+Custom artifacts: `ecomcine/bundled-theme/` (`ecomcine-base` minimal theme), `tm-media-player/`, `tm-account-panel/`, `tm-vendor-booking-modal/`, `dokan-category-attributes/`.
 
 ---
 
@@ -21,7 +21,7 @@ Custom artifacts: `theme/` (astra-child), `tm-media-player/`, `tm-account-panel/
 |---|---|
 | Project structure, goals, setup steps | `README-FIRST.md` |
 | Feature specs and product intent | `specs/` and `specs/app-features/` |
-| Theme PHP / template logic | `theme/` |
+| Theme PHP / template logic | `ecomcine/bundled-theme/` |
 | Plugin logic | `tm-*/` or `dokan-category-attributes/` |
 | Docker / WP-CLI / container ops | `foundation/wp/` |
 | Shared workflow and AI-context rules | `foundation/core/` |
@@ -84,6 +84,7 @@ See `New-Migrate-WP-Local-Setup.md` → "EcomCine — Re-Setup on a New Computer
 - Exit code is canonical pass/fail signal; warning text alone must not be treated as failure.
 - Never run interactive package-manager installs (`apt install`, `npm install -g`, `pip install --user`) via the IDE AI integrated terminal path.
 - For host tooling installs, use catalog command `host.tool.install` and run it from an external WSL terminal session.
+- Exception: catalog command `qa.playwright.browsers.install` is approved in the IDE integrated terminal because local Playwright browser/system dependencies are part of the canonical self-test workflow.
 - PreToolUse runtime enforcement for this rule is defined in `.github/hooks/block-interactive-package-installs.json`.
 - PreToolUse guardrail enforcement also denies Windows-mounted path usage and out-of-workspace file mutation attempts; operate only under the active WSL workspace root.
 

@@ -117,7 +117,7 @@ function tm_render_vendor_completeness_admin() {
 			<tbody>
 			<?php foreach ( $sellers as $seller ) :
 				$vid        = (int) $seller->ID;
-			$enabled    = function_exists( 'ecomcine_is_person_enabled' ) ? ecomcine_is_person_enabled( $vid ) : ( get_user_meta( $vid, 'dokan_enable_selling', true ) === 'yes' );
+			$enabled    = function_exists( 'ecomcine_is_person_enabled' ) ? ecomcine_is_person_enabled( $vid ) : false;
 			$l1_stored  = get_user_meta( $vid, 'tm_l1_complete', true );
 			$l2_stored  = get_user_meta( $vid, 'tm_l2_complete', true );
 			if ( function_exists( 'ecomcine_get_person_info' ) ) {

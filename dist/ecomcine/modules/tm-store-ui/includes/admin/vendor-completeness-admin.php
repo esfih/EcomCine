@@ -9,7 +9,7 @@
  *
  * URL: /wp-admin/themes.php?page=tm_vendor_completeness
  *
- * @package Astra Child
+ * @package TM_Store_UI
  */
 
 defined( 'ABSPATH' ) || exit;

@@ -1,0 +1,82 @@
+{
+  "name": "Talents page interactions",
+  "pages": [
+    {
+      "name": "Talents page renders restored filter bar and cards",
+      "url": "/talents/",
+      "waitFor": "a[aria-label^='Open profile:']",
+      "steps": [
+        {
+          "action": "assertVisible",
+          "target": "#ecomcine-person-listing-filter-form"
+        },
+        {
+          "action": "assertVisible",
+          "target": "#ecomcine-apply-filters-btn"
+        },
+        {
+          "action": "assertVisible",
+          "target": [
+            ".store-banner img",
+            ".store-banner .tm-store-fallback-banner"
+          ]
+        },
+        {
+          "action": "assertVisible",
+          "target": ".seller-avatar img"
+        },
+        {
+          "action": "click",
+          "target": ".store-lists-category .category-input"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".store-lists-category .category-box"
+        },
+        {
+          "action": "assertVisible",
+          "target": "#tm-pager-bar"
+        },
+        {
+          "action": "assertVisible",
+          "target": "#tm-showcase-btn"
+        },
+        {
+          "action": "assertHidden",
+          "target": ".pagination-container"
+        },
+        {
+          "action": "click",
+          "target": "#tm-sort-btn"
+        },
+        {
+          "action": "assertVisible",
+          "target": "#tm-sort-dropdown.is-open"
+        },
+        {
+          "action": "click",
+          "target": "#tm-sort-dropdown li[data-url*='tm_order=name_az']"
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "tm_order=name_az"
+        }
+      ]
+    },
+    {
+      "name": "Talents card links navigate to a profile",
+      "url": "/talents/",
+      "waitFor": "a[aria-label^='Open profile:']",
+      "steps": [
+        {
+          "action": "click",
+          "target": "a[aria-label^='Open profile:']"
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "/person/"
+        }
+      ]
+    }
+  ]
+}

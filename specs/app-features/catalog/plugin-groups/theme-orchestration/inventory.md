@@ -36,6 +36,11 @@ Current theme layer orchestrates asset loading, template overrides, Dokan/Woo ho
 - Core logic candidate: ratio-safe grid fit solver constrained by viewport and reserved UI regions
 - Default WP adapter target: native EcomCine listing fit mode with no-scroll UX contract
 
+7. Cinematic header CTA actions cluster
+- Current dependencies: TM_Icons header SVG set, WooCommerce cart count, cinematic header shell in `tm-store-ui/includes/hooks.php`
+- Core logic candidate: right-edge header action registry and render contract
+- Default WP adapter target: WP-native header action slot registry with reusable button/count badge styling
+
 ## Migration Risk Notes
 
 - High coupling hotspot: many behaviors are implemented as hook-level interventions.
@@ -47,3 +52,4 @@ Current theme layer orchestrates asset loading, template overrides, Dokan/Woo ho
 - Same vendor profile state after save/update events.
 - Same vendor identity blocks on product and listing surfaces.
 - With No Scroll Grid enabled, configured rows/columns and pagination fit without page scroll on supported desktop viewports.
+- Same cinematic header CTA action styling and icon inventory can be restored from the preserved feature contract.

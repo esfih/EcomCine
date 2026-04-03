@@ -6,7 +6,7 @@
 
 "EcomCiné" is a productized suite of visual and functional customizations designed to turn any standard eCommerce website into a cinematic shopping experience. It is engineered to be portable and licensable, allowing it to be installed on a wide variety of websites.
 
-The suite is platform-agnostic in its ambition. Phase 1 has been developed and proven on WordPress (using WooCommerce and Dokan), with future phases planned to cover Shopify, Wix, Square, Magento, PrestaShop, and other top-tier marketplace platforms.
+The suite is platform-agnostic in its ambition. The canonical product target is WordPress-native operation on a minimal theme shell plus EcomCine-owned plugin infrastructure. Legacy compatibility adapters still support WooCommerce, Dokan, and WooCommerce Bookings during migration and parity work. Future phases are planned to cover Shopify, Wix, Square, Magento, PrestaShop, and other top-tier marketplace platforms.
 
 The core of the project deviates from traditional e-commerce layouts, which often involve extensive clicking, reading, and multi-page navigation. Instead, it prioritizes a "lean-back" cinematic experience where users can browse and watch product or talent portfolios seamlessly. This is coupled with an equally streamlined process for administration, vendor/talent onboarding, and customer transactions.
 
@@ -68,20 +68,20 @@ The architecture and custom features are guided by five key principles:
 
 ## 2. System Architecture
 
-The platform is built on a standard, robust WordPress stack, which is then heavily extended by a custom-developed suite of themes and plugins.
+The platform is built on WordPress with a minimal EcomCine-owned theme shell and plugin-controlled runtime.
 
 ### 2.1. Base Stack (Phase 1: WordPress)
 
 *   **Core:** WordPress
-*   **E-commerce Engine:** WooCommerce
-*   **Marketplace Engine:** Dokan Pro
-*   **Base Theme:** Astra
+*   **Canonical Theme Shell:** `ecomcine-base` (minimal theme shipped inside the EcomCine plugin)
+*   **Canonical Product Runtime:** EcomCine-owned plugins and WP-native CPT/meta/taxonomy flows
+*   **Optional Compatibility Adapters:** WooCommerce, Dokan Pro, WooCommerce Bookings when parity with legacy marketplace flows is required
 
 ### 2.2. Customization Stack
 
 This is the collection of custom components that deliver the unique functionality and experience.
 
-*   **`astra-child` (Child Theme):** The central controller. It customizes the appearance, manages all custom assets (CSS/JS), and contains the core business logic that integrates the various plugins and overrides the base stack's behavior.
+*   **`ecomcine-base` (Minimal Theme):** The required WordPress shell. It provides the document structure, `wp_head()` / `wp_footer()`, menu registration, and basic theme supports. It is intentionally minimal so the EcomCine plugin stack controls the experience.
 *   **`tm-media-player` (Plugin):** The heart of the cinematic experience. This plugin transforms the vendor store into a media portfolio, generates dynamic playlists, and provides the full-screen "Showcase" player.
 *   **`tm-account-panel` (Plugin):** Handles all user account functions from a front-end modal. It provides the seamless login/registration and the admin-driven "Talent Onboarding" workflow.
 *   **`tm-vendor-booking-modal` (Plugin):** Manages the entire frictionless booking and checkout process within a single, self-contained modal window.
@@ -103,19 +103,18 @@ This requirement is mandatory for all new-machine setup and migration workflows.
 
 ---
 
-## 3. Component Breakdown: `astra-child` Theme
+## 3. Component Breakdown: `ecomcine-base` Theme
 
-The child theme is the orchestrator of the entire custom experience.
+The canonical theme is a minimal shell. The plugin stack orchestrates the custom experience.
 
 | File / Directory | Description |
 | :--- | :--- |
-| **`functions.php`** | **The Core Controller.** This file contains the bulk of the custom logic. <br/>- **Asset Optimization:** Aggressively dequeues (removes) default CSS/JS from other plugins on store pages and loads only the minimal assets required. <br/>- **Feature Integration:** Includes and initializes all custom modules from the `/includes/` directory (e.g., vendor attributes, social metrics, profile completeness). <br/>- **Dokan/WooCommerce Overrides:** Injects the "cinematic" header, adds vendor avatar badges to product listings, and customizes location display. <br/>- **Dynamic Forms:** Contains the JavaScript logic that dynamically shows/hides vendor profile fields based on the selected talent categories. |
-| **`style.css`** | Contains minimal, high-level CSS for base branding, such as the gold "Featured" vendor label. The majority of styles are in the `assets/css/` directory. |
-| **`page-platform.php`** | A custom page template that provides the layout for the main talent discovery page (the page containing the `[dokan-stores]` shortcode). |
-| **`template-talent-showcase-full.php`** | A full-width, header/footer-less page template used by the `tm-media-player` plugin to create the immersive showcase experience. |
-| **`/assets/`** | Contains the primary custom CSS and JavaScript files for the theme, including `vendor-store.css` (styles for the store page) and `vendor-store.js` (handles UI like the biography lightbox and inline editing). |
-| **`/dokan/`** | **Dokan Template Overrides.** Contains customized versions of Dokan's template files. For example, `dokan/store-header.php` is heavily modified to include the media player and custom attribute displays. |
-| **`/woocommerce/`** | **WooCommerce Template Overrides.** Contains customized versions of WooCommerce templates to control the appearance of shop and product elements. |
+| **`ecomcine/bundled-theme/functions.php`** | Registers the `ecomcine-base-css` handle, menu locations, and essential theme supports only. |
+| **`ecomcine/bundled-theme/style.css`** | Contains only minimal base typography and document-level styling. |
+| **`ecomcine/bundled-theme/header.php`** | Outputs the document head, body wrapper, and lightweight site header shell. |
+| **`ecomcine/bundled-theme/footer.php`** | Outputs `wp_footer()` and closes the document. |
+| **`ecomcine/bundled-theme/template-talent-showcase-full.php`** | A plugin-shipped showcase template used by the immersive showcase flow. |
+| **`tm-store-ui/` + `ecomcine/`** | Own the actual storefront behavior, CSS/JS, template routing, and runtime logic. |
 | **`/includes/`** | **Modular PHP Functions.** Organizes backend functionality into logical sub-directories. <br/>- `vendor-attributes/`: Manages the saving and display of custom talent data (e.g., physical attributes). <br/>- `social-metrics/`: The engine for fetching and displaying social media statistics. <br/>- `vendor-profile/`: The "Profile Completeness" engine and AJAX handlers for inline editing. <br/>- `admin/`: Tools for administrators, including vendor edit logs. |
 
 ---

@@ -79,7 +79,7 @@ if ( ! class_exists( 'TVBM_Parity_Check' ) ) {
 
 echo "\n=== THO Parity Check ===\n";
 
-$tho_parity_file = ABSPATH . 'wp-content/themes/astra-child/includes/parity/class-parity-check.php';
+$tho_parity_file = ABSPATH . 'wp-content/themes/ecomcine-base/includes/parity/class-parity-check.php';
 
 if ( ! file_exists( $tho_parity_file ) ) {
 	echo "[SKIP] THO parity file not found at: {$tho_parity_file}\n";

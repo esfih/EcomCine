@@ -18,9 +18,8 @@ class THO_Compat_Template_Router implements THO_Template_Router {
 		$plugin_dokan = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/dokan/' : '';
 
 		if ( ! empty( $context['is_showcase'] ) ) {
-			$full = $plugin_tpl . 'template-talent-showcase-full.php';
-			$std  = $plugin_tpl . 'template-talent-showcase.php';
-			return file_exists( $full ) ? $full : ( file_exists( $std ) ? $std : '' );
+			$tpl = $plugin_tpl . 'template-talent-showcase.php';
+			return file_exists( $tpl ) ? $tpl : '';
 		}
 
 		if ( ! empty( $context['is_platform'] ) ) {

@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: TM Media Player
- * Description: Standalone talent media player — playlist, A/B buffers, REST API, showcase shortcodes, and all enqueue logic extracted from the Astra child theme.
+ * Description: Standalone talent media player — playlist, A/B buffers, REST API, showcase shortcodes, and enqueue logic extracted from the legacy theme layer into the EcomCine plugin stack.
  * Version:     1.0.0
  * Author:      TM
  * Requires PHP: 8.2
@@ -520,7 +520,7 @@ add_filter( 'template_include', function( $template ) {
 	// Plugin path takes priority over theme locate_template.
 	$forced = defined( 'TM_STORE_UI_SHOWCASE_FULL_TEMPLATE' ) ? TM_STORE_UI_SHOWCASE_FULL_TEMPLATE : '';
 	if ( ! $forced || ! file_exists( $forced ) ) {
-		$forced = locate_template( 'template-talent-showcase-full.php' );
+		$forced = locate_template( 'template-talent-showcase.php' );
 	}
 	return $forced ? $forced : $template;
 }, 99 );
@@ -586,6 +586,15 @@ class TM_Media_Player_Assets {
 
 	public static function handle_enqueue() {
 		if ( self::is_dashboard() ) { return; }
+		$should_enqueue = ! empty( $GLOBALS['tm_showcase_page'] );
+		if ( ! $should_enqueue && function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
+			$should_enqueue = true;
+		}
+
+		if ( ! $should_enqueue ) {
+			return;
+		}
+
 		// Showcase pages call enqueue_for_showcase() directly from the template before
 		// get_header(). If we let handle_enqueue() also run here it would call
 		// enqueue_for_profile() (because set_query_var('author',...) makes dokan_is_store_page()
@@ -594,7 +603,7 @@ class TM_Media_Player_Assets {
 			self::enqueue_css();
 			return;
 		}
-		self::enqueue_css();
+
 		if ( function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
 			$vendor_id = self::get_current_vendor_id();
 			if ( $vendor_id ) {

@@ -472,8 +472,8 @@ MSYS_NO_PATHCONV=1 docker exec ecomcine_dev-wordpress-1 sh -c \
 ./scripts/setup-deps.sh
 ```
 
-This activates plugins in the correct dependency order:
-WooCommerce → Dokan Lite → Dokan Pro → WooCommerce Bookings → EcomCine plugins → Astra Child theme.
+This activates plugins in the correct dependency order for legacy parity environments:
+WooCommerce → Dokan Lite → Dokan Pro → WooCommerce Bookings → EcomCine plugins → `ecomcine-base` theme.
 
 ### 7. Verify
 

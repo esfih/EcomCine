@@ -4,7 +4,7 @@
 
 ## Objective
 
-**Full pixel-level UX ownership**: every visual and interactive element on the EcomCine store pages — icons, modals, tabs, overlays, panels, navigation — must be rendered and controlled exclusively by `tm-store-ui` (plugin) and `tm-theme` (Astra child theme). Zero runtime dependency on:
+**Full pixel-level UX ownership**: every visual and interactive element on the EcomCine store pages — icons, modals, tabs, overlays, panels, navigation — must be rendered and controlled exclusively by `tm-store-ui` (plugin), `ecomcine` core, and the minimal `ecomcine-base` theme shell. Zero runtime dependency on:
 
 - FontAwesome (font files, CSS)
 - Dokan's bundled CSS/JS beyond data layer
@@ -99,7 +99,7 @@ Left side panel (`.profile-info-head` collapse), nav Sign-in/Sign-up links (`.tm
 | `tm-account-panel` | `/wp-content/plugins/tm-account-panel/` | **inactive** (superseded by `ecomcine/modules/tm-account-panel`) |
 
 ### CSS Enqueue Order (frontend, homepage)
-1. `tm-theme-css` (style.css)
+1. `ecomcine-base-css` (style.css)
 2. `tm-store-ui-responsive` (responsive-config.css)
 3. `tm-store-ui-css` (vendor-store.css)
 4. `tm-player-css` (player.css)

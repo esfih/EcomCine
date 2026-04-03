@@ -14,11 +14,91 @@ class EcomCine_Admin_Settings {
 	public static function init() {
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_external_admin_assets' ), 999 );
 		add_action( 'wp_head', array( __CLASS__, 'render_style_tokens_css' ), 30 );
 		add_action( 'init', array( __CLASS__, 'register_bootstrap_shortcodes' ) );
 		add_action( 'admin_post_ecomcine_create_bootstrap_pages', array( __CLASS__, 'handle_create_bootstrap_pages' ) );
 		add_action( 'admin_post_ecomcine_install_activate_theme', array( __CLASS__, 'handle_install_activate_theme' ) );
 		add_action( 'admin_post_ecomcine_import_demo_data', array( __CLASS__, 'handle_import_demo_data' ) );
+	}
+
+	/**
+	 * Keep wp_cpt mode admin pages isolated from Dokan global admin bundles.
+	 *
+	 * @param string $hook_suffix Current admin page hook suffix.
+	 */
+	public static function maybe_dequeue_external_admin_assets( $hook_suffix ) {
+		if ( 'wp_cpt' !== self::get_runtime_mode() ) {
+			return;
+		}
+
+		if ( ! self::is_ecomcine_admin_page( $hook_suffix ) ) {
+			return;
+		}
+
+		$explicit_script_handles = array(
+			'dokan-pro-react-admin',
+			'dokan-pro-admin-dashboard',
+			'dokan-seller-badge-admin',
+			'dokan-seller-badge-admin-vendor',
+			'dokan-seller-badge-vendor-tab',
+		);
+
+		$explicit_style_handles = array(
+			'dokan-pro-admin-dashboard',
+			'dokan-seller-badge-admin',
+			'dokan-seller-badge-vendor-tab',
+		);
+
+		foreach ( $explicit_script_handles as $handle ) {
+			wp_dequeue_script( $handle );
+		}
+
+		foreach ( $explicit_style_handles as $handle ) {
+			wp_dequeue_style( $handle );
+		}
+
+		global $wp_scripts, $wp_styles;
+
+		if ( $wp_scripts instanceof WP_Scripts ) {
+			foreach ( (array) $wp_scripts->queue as $handle ) {
+				if ( ! is_string( $handle ) ) {
+					continue;
+				}
+
+				if ( str_starts_with( $handle, 'dokan-' ) || false !== strpos( $handle, 'dokan' ) ) {
+					wp_dequeue_script( $handle );
+				}
+			}
+		}
+
+		if ( $wp_styles instanceof WP_Styles ) {
+			foreach ( (array) $wp_styles->queue as $handle ) {
+				if ( ! is_string( $handle ) ) {
+					continue;
+				}
+
+				if ( str_starts_with( $handle, 'dokan-' ) || false !== strpos( $handle, 'dokan' ) ) {
+					wp_dequeue_style( $handle );
+				}
+			}
+		}
+	}
+
+	/**
+	 * Determine whether current admin request is an EcomCine-managed page.
+	 *
+	 * @param string $hook_suffix Current admin page hook suffix.
+	 * @return bool
+	 */
+	private static function is_ecomcine_admin_page( $hook_suffix ) {
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+
+		if ( '' !== $page && ( 'ecomcine-settings' === $page || 0 === strpos( $page, 'ecomcine-' ) ) ) {
+			return true;
+		}
+
+		return is_string( $hook_suffix ) && false !== strpos( $hook_suffix, 'ecomcine' );
 	}
 
 	/**
@@ -129,7 +209,7 @@ class EcomCine_Admin_Settings {
 			array(
 				'title'     => 'Talents',
 				'slug'      => 'talents',
-				'shortcode' => '[tm_talent_player]',
+				'shortcode' => '[ecomcine-stores]',
 			),
 			array(
 				'title'     => 'Categories',
@@ -1003,7 +1083,7 @@ class EcomCine_Admin_Settings {
 							<?php submit_button( 'Import Demo Data', 'secondary', 'submit', false, array( 'onclick' => "return confirm('Create 9 demo vendor/talent profiles? Existing demo usernames will be skipped. This also creates a shared demo video attachment.');" ) ); ?>
 						</form>
 					</p>
-					<p class="description">Pages: Showcase [tm_talent_showcase], Talents [tm_talent_player], Categories [ecomcine_categories], Locations [ecomcine_locations]. &nbsp;|&nbsp; Demo Data: creates 9 vendor profiles with bios, banners, avatars, and a shared demo video so they appear in the showcase.</p>
+					<p class="description">Pages: Showcase [tm_talent_showcase], Talents [ecomcine-stores], Categories [ecomcine_categories], Locations [ecomcine_locations]. &nbsp;|&nbsp; Demo Data: creates 9 vendor profiles with bios, banners, avatars, and a shared demo video so they appear in the showcase.</p>
 				</div>
 
 				<form method="post" action="options.php">

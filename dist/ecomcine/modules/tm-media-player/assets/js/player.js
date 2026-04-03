@@ -2828,7 +2828,7 @@ jQuery(document).ready(function($) {
 	var currentVendorIndex = -1;
 	var isVendorSwitching = false;
 	var lastManualSwipeAt = 0;
-	var VENDOR_NAV_CACHE_KEY = "tm_vendor_nav_list_v2_video";
+	var VENDOR_NAV_CACHE_KEY = "tm_vendor_nav_list_v3_showcase";
 	var VENDOR_NAV_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12 hours
 	var VENDOR_PAYLOAD_PRELOAD_KEY = "tm_vendor_payloads_preloaded_v1";
 	var vendorPayloadPreload = {

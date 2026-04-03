@@ -1,6 +1,6 @@
 <?php
 /**
- * All WordPress hook registrations extracted from astra-child/functions.php.
+ * All WordPress hook registrations extracted from the legacy theme layer.
  *
  * These fire regardless of which theme is active.
  *
@@ -31,6 +31,21 @@ add_action( 'template_redirect', function() {
 	if ( ( defined( 'DOING_AJAX' ) && DOING_AJAX ) || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) { return; }
 	ob_start( 'tm_cleanup_frontend_shell_markup' );
 }, 0 );
+
+// =============================================================================
+// Suppress bundled theme header when tm-store-ui renders the cinematic header.
+// =============================================================================
+add_action( 'template_redirect', function() {
+	if (
+		( function_exists( 'tm_store_lists_is_listing_page' ) && tm_store_lists_is_listing_page() )
+		|| ( function_exists( 'ecomcine_is_person_page' ) && ecomcine_is_person_page() )
+		|| ( function_exists( 'tm_is_showcase_page' ) && tm_is_showcase_page() )
+		|| ( function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() )
+	) {
+		$GLOBALS['ecomcine_suppress_site_header'] = true;
+		$GLOBALS['ecomcine_suppress_header'] = true;
+	}
+}, 1 );
 
 // =============================================================================
 // Eliminate Dokan Mapbox assets on store pages (loaded on-demand instead).
@@ -161,12 +176,9 @@ add_action( 'dokan_store_profile_saved', function( $store_id, $dokan_settings ) 
 	if ( ! is_array( $settings_categories ) ) { $settings_categories = $settings_categories ? [ $settings_categories ] : []; }
 	$categories = array_filter( array_unique( array_map( 'intval', ! empty( $posted ) ? $posted : $settings_categories ) ) );
 	if ( empty( $categories ) ) { return; }
-	update_user_meta( $store_id, 'dokan_store_categories', $categories );
-	$profile_settings = get_user_meta( $store_id, 'dokan_profile_settings', true );
-	if ( ! is_array( $profile_settings ) ) { $profile_settings = []; }
-	$profile_settings['categories']     = $categories;
-	$profile_settings['dokan_category'] = $categories;
-	update_user_meta( $store_id, 'dokan_profile_settings', $profile_settings );
+	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+		EcomCine_Person_Category_Registry::set_person_categories( (int) $store_id, $categories );
+	}
 }, 20, 2 );
 
 // =============================================================================
@@ -195,14 +207,8 @@ add_action( 'wp_footer', function() {
 	if ( false === strpos( $current_url, '/dashboard/settings' ) ) { return; }
 	$user_id          = get_current_user_id();
 	$stored_categories = [];
-	$settings = get_user_meta( $user_id, 'dokan_profile_settings', true );
-	if ( is_array( $settings ) ) {
-		if ( ! empty( $settings['dokan_category'] ) )  { $stored_categories = $settings['dokan_category']; }
-		elseif ( ! empty( $settings['categories'] ) )  { $stored_categories = $settings['categories']; }
-	}
-	if ( empty( $stored_categories ) ) {
-		$meta_cats = get_user_meta( $user_id, 'dokan_store_categories', true );
-		if ( is_array( $meta_cats ) ) { $stored_categories = $meta_cats; }
+	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+		$stored_categories = array_map( 'intval', wp_list_pluck( (array) EcomCine_Person_Category_Registry::get_for_person( $user_id ), 'id' ) );
 	}
 	if ( ! is_array( $stored_categories ) ) { $stored_categories = $stored_categories ? [ $stored_categories ] : []; }
 	$stored_categories = array_values( array_filter( array_map( 'intval', $stored_categories ) ) );
@@ -299,10 +305,10 @@ add_action( 'woocommerce_before_shop_loop_item_title', function() {
 add_action( 'dokan_store_profile_saved', function( $store_id, $dokan_settings ) {
 	if ( ! isset( $_POST['dokan_banner_video'] ) && ! isset( $_POST['banner_video_position'] ) ) { return; }
 	if ( isset( $_POST['dokan_banner_video'] ) ) {
-		update_user_meta( $store_id, 'dokan_banner_video', absint( $_POST['dokan_banner_video'] ) );
+		update_user_meta( $store_id, 'ecomcine_banner_video', absint( $_POST['dokan_banner_video'] ) );
 	}
 	if ( isset( $_POST['banner_video_position'] ) ) {
-		update_user_meta( $store_id, 'dokan_banner_video_position', sanitize_text_field( $_POST['banner_video_position'] ) );
+		update_user_meta( $store_id, 'ecomcine_banner_video_position', sanitize_text_field( $_POST['banner_video_position'] ) );
 	}
 }, 10, 2 );
 
@@ -418,15 +424,16 @@ add_action( 'wp_body_open', function() {
 		'echo'           => false,
 		'depth'          => 1,
 	] );
+	$account_icon = class_exists( 'TM_Icons' )
+		? TM_Icons::svg( 'user', 'tm-header-account-icon' )
+		: '<i class="fas fa-user tm-header-account-icon" aria-hidden="true"></i>';
+	$header_account_html = '';
 
 	if ( $menu_html ) {
 		$home_icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>';
 		$company_icon = class_exists( 'TM_Icons' )
 			? TM_Icons::svg( 'building', 'tm-menu-icon' )
 			: '<i class="fas fa-building tm-menu-icon" aria-hidden="true"></i>';
-		$account_icon = class_exists( 'TM_Icons' )
-			? TM_Icons::svg( 'user', 'tm-header-account-icon' )
-			: '<i class="fas fa-user tm-header-account-icon" aria-hidden="true"></i>';
 		$home_li = '<li class="menu-item tm-header-home-item">'
 			. '<a href="' . esc_url( home_url( '/' ) ) . '" class="menu-link tm-header-home-link" aria-label="Home">'
 			. $home_icon_svg . '</a></li>';
@@ -440,54 +447,51 @@ add_action( 'wp_body_open', function() {
 			1
 		);
 		$menu_html = tm_store_ui_convert_menu_fa_to_svg( $menu_html );
-		if ( ! is_user_logged_in() ) {
-			$account_li = '<li class="menu-item tm-header-account-item">'
-				. '<span class="tm-header-account-pill">'
-				. $account_icon
-				. '<a href="#" class="tm-header-account-link tm-open-signin">Sign in</a>'
-				. '<span class="tm-header-account-sep" aria-hidden="true">/</span>'
-				. '<a href="#" class="tm-header-account-link tm-open-signup">Sign up</a>'
-				. '</span></li>';
-			$menu_html = preg_replace( '/<\/ul>/', $account_li . '</ul>', $menu_html, 1 );
-		} else {
-			$current_user = wp_get_current_user();
-			$user_id      = (int) $current_user->ID;
-			$full_name    = trim( (string) get_user_meta( $user_id, 'first_name', true ) . ' ' . (string) get_user_meta( $user_id, 'last_name', true ) );
-			if ( '' === $full_name ) { $full_name = $current_user->display_name; }
-			$is_seller = function_exists( 'dokan_is_user_seller' )
-				? (bool) dokan_is_user_seller( $user_id )
-				: user_can( $user_id, 'dokandar' );
-			$avatar_url = '';
-			if ( $is_seller && function_exists( 'mp_get_vendor_avatar_url' ) ) {
-				$avatar_url = mp_get_vendor_avatar_url( $user_id, 80 );
-			}
-			if ( empty( $avatar_url ) ) { $avatar_url = get_avatar_url( $user_id, [ 'size' => 80 ] ); }
-			$account_href    = $is_seller ? '#' : ( function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) );
-			$account_classes = $is_seller ? 'tm-header-account-link tm-open-account-seller' : 'tm-header-account-link tm-open-account-customer';
-			$account_aria    = $is_seller ? 'Open account panel' : 'Open customer dashboard';
-			$account_li = '<li class="menu-item tm-header-account-item tm-header-account-item--logged-in ' . ( $is_seller ? 'tm-header-account-item--seller' : 'tm-header-account-item--customer' ) . '">'
-				. '<a href="' . esc_url( $account_href ) . '" class="' . esc_attr( $account_classes ) . '" aria-label="' . esc_attr( $account_aria ) . '">'
-				. '<span class="tm-header-account-pill tm-header-account-pill--logged-in">'
-				. '<span class="tm-header-account-avatar"><img src="' . esc_url( $avatar_url ) . '" alt="' . esc_attr( $full_name ) . '" /></span>'
-				. '<span class="tm-header-account-name">' . esc_html( $full_name ) . '</span>'
-				. '</span></a></li>';
-			$menu_html = preg_replace( '/<\/ul>/', $account_li . '</ul>', $menu_html, 1 );
-		}
 	}
 
-	$cart_count = 0;
-	if ( class_exists( 'WooCommerce' ) && function_exists( 'WC' ) && WC()->cart ) {
-		$cart_count = (int) WC()->cart->get_cart_contents_count();
+	if ( ! is_user_logged_in() ) {
+		$header_account_html = '<div class="tm-header-account-slot tm-header-account-slot--guest">'
+			. '<span class="tm-header-account-pill">'
+			. $account_icon
+			. '<a href="#" class="tm-header-account-link tm-open-signin">Sign in</a>'
+			. '<span class="tm-header-account-sep" aria-hidden="true">/</span>'
+			. '<a href="#" class="tm-header-account-link tm-open-signup">Sign up</a>'
+			. '</span></div>';
+	} else {
+		$current_user = wp_get_current_user();
+		$user_id      = (int) $current_user->ID;
+		$full_name    = trim( (string) get_user_meta( $user_id, 'first_name', true ) . ' ' . (string) get_user_meta( $user_id, 'last_name', true ) );
+		if ( '' === $full_name ) { $full_name = $current_user->display_name; }
+		$display_name = preg_split( '/\s+/', trim( $full_name ) );
+		$display_name = is_array( $display_name ) && ! empty( $display_name[0] ) ? $display_name[0] : $full_name;
+		if ( function_exists( 'mb_substr' ) ) {
+			$display_name = mb_substr( $display_name, 0, 15 );
+		} else {
+			$display_name = substr( $display_name, 0, 15 );
+		}
+		$is_seller = function_exists( 'dokan_is_user_seller' )
+			? (bool) dokan_is_user_seller( $user_id )
+			: user_can( $user_id, 'dokandar' );
+		$avatar_url = '';
+		if ( $is_seller && function_exists( 'mp_get_vendor_avatar_url' ) ) {
+			$avatar_url = mp_get_vendor_avatar_url( $user_id, 80 );
+		}
+		if ( empty( $avatar_url ) ) { $avatar_url = get_avatar_url( $user_id, [ 'size' => 80 ] ); }
+		$account_href    = $is_seller ? '#' : ( function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' ) );
+		$account_classes = $is_seller ? 'tm-header-account-link tm-open-account-seller' : 'tm-header-account-link tm-open-account-customer';
+		$account_aria    = $is_seller ? 'Open account panel' : 'Open customer dashboard';
+		$header_account_html = '<div class="tm-header-account-slot tm-header-account-slot--logged-in ' . ( $is_seller ? 'tm-header-account-slot--seller' : 'tm-header-account-slot--customer' ) . '">'
+			. '<a href="' . esc_url( $account_href ) . '" class="' . esc_attr( $account_classes ) . '" aria-label="' . esc_attr( $account_aria ) . '">'
+			. '<span class="tm-header-account-avatar"><img src="' . esc_url( $avatar_url ) . '" alt="' . esc_attr( $full_name ) . '" /></span>'
+			. '<span class="tm-header-account-name">' . esc_html( $display_name ) . '</span>'
+			. '</a></div>';
 	}
+
 	$social_youtube = class_exists( 'TM_Icons' ) ? TM_Icons::svg( 'youtube', 'social-icon-svg' ) : '<i class="fab fa-youtube" aria-hidden="true"></i>';
 	$social_facebook = class_exists( 'TM_Icons' ) ? TM_Icons::svg( 'facebook', 'social-icon-svg' ) : '<i class="fab fa-facebook" aria-hidden="true"></i>';
 	$social_instagram = class_exists( 'TM_Icons' ) ? TM_Icons::svg( 'instagram', 'social-icon-svg' ) : '<i class="fab fa-instagram" aria-hidden="true"></i>';
 	$social_x = class_exists( 'TM_Icons' ) ? TM_Icons::svg( 'x-twitter', 'social-icon-svg' ) : '<i class="fab fa-x-twitter" aria-hidden="true"></i>';
 	$social_linkedin = class_exists( 'TM_Icons' ) ? TM_Icons::svg( 'linkedin', 'social-icon-svg' ) : '<i class="fab fa-linkedin" aria-hidden="true"></i>';
-	$header_icon_menu = class_exists( 'TM_Icons' ) ? TM_Icons::svg( 'bars', 'tm-header-icon-svg' ) : '<i class="fas fa-bars" aria-hidden="true"></i>';
-	$header_icon_favorites = class_exists( 'TM_Icons' ) ? TM_Icons::svg( 'heart', 'tm-header-icon-svg' ) : '<i class="fas fa-heart" aria-hidden="true"></i>';
-	$header_icon_cart = class_exists( 'TM_Icons' ) ? TM_Icons::svg( 'cart-shopping', 'tm-header-icon-svg' ) : '<i class="fas fa-shopping-cart" aria-hidden="true"></i>';
-	$header_icon_notifications = class_exists( 'TM_Icons' ) ? TM_Icons::svg( 'bell', 'tm-header-icon-svg' ) : '<i class="fas fa-bell" aria-hidden="true"></i>';
 	?>
 	<div class="tm-cinematic-header" role="banner">
 		<div class="tm-cinematic-header__inner">
@@ -508,21 +512,7 @@ add_action( 'wp_body_open', function() {
 				<nav class="tm-header-nav" aria-label="Primary"><?php echo $menu_html; ?></nav>
 			<?php } ?>
 			<div class="tm-header-actions" aria-label="Header actions">
-				<button class="tm-header-icon tm-header-toggle" type="button" aria-label="Menu" aria-expanded="false">
-					<?php echo $header_icon_menu; ?>
-				</button>
-				<button class="tm-header-icon" type="button" aria-label="Favorites">
-					<?php echo $header_icon_favorites; ?>
-					<span class="tm-header-count">0</span>
-				</button>
-				<button class="tm-header-icon" type="button" aria-label="Shopping cart">
-					<?php echo $header_icon_cart; ?>
-					<span class="tm-header-count"><?php echo (int) $cart_count; ?></span>
-				</button>
-				<button class="tm-header-icon" type="button" aria-label="Notifications">
-					<?php echo $header_icon_notifications; ?>
-					<span class="tm-header-count">0</span>
-				</button>
+				<?php echo $header_account_html; ?>
 			</div>
 		</div>
 	</div>

@@ -1,6 +1,6 @@
 <?php
 /**
- * Template helper functions previously living in astra-child/functions.php.
+ * Template helper functions previously living in the legacy theme layer.
  *
  * These are utility functions called from templates and from hooks.php.
  *

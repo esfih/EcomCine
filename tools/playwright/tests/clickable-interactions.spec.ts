@@ -5,7 +5,7 @@ import path from 'path';
 type SelectorInput = string | string[];
 
 type InteractionStep = {
-  action: 'click' | 'assertVisible' | 'assertHidden' | 'assertHasClass' | 'assertNotHasClass' | 'assertUrlContains' | 'waitFor';
+  action: 'click' | 'assertVisible' | 'assertHidden' | 'assertHasClass' | 'assertNotHasClass' | 'assertUrlContains' | 'waitFor' | 'loginAsAdmin';
   target?: SelectorInput;
   within?: SelectorInput;
   shadowHosts?: string[];
@@ -99,9 +99,33 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-async function executeStep(page: Page, step: InteractionStep): Promise<void> {
+async function loginAsAdmin(page: Page, baseURL?: string): Promise<void> {
+  const alreadyLoggedIn = await page.locator('#wpadminbar').count();
+  if (alreadyLoggedIn > 0) {
+    return;
+  }
+
+  const hasLoginForm = await page.locator('#loginform').count();
+  if (hasLoginForm < 1) {
+    const loginUrl = new URL('/wp-login.php', baseURL || 'http://localhost:8180').toString();
+    await page.goto(loginUrl, { waitUntil: 'domcontentloaded' });
+  }
+
+  await page.locator('#user_login').fill(process.env.ECOMCINE_ADMIN_USER || 'admin');
+  await page.locator('#user_pass').fill(process.env.ECOMCINE_ADMIN_PASS || 'admin');
+  await page.locator('#wp-submit').click();
+
+  await page.waitForLoadState('networkidle');
+}
+
+async function executeStep(page: Page, step: InteractionStep, baseURL?: string): Promise<void> {
   const timeout = step.timeoutMs ?? 8000;
   try {
+    if (step.action === 'loginAsAdmin') {
+      await loginAsAdmin(page, baseURL);
+      return;
+    }
+
     if (step.action === 'assertUrlContains') {
       if (!step.value) {
         throw new Error('assertUrlContains requires value');
@@ -188,7 +212,7 @@ test.describe('Generic clickable interactions', () => {
         }
 
         for (const step of scenario.steps) {
-          await executeStep(page, step);
+          await executeStep(page, step, baseURL || 'http://localhost:8180');
         }
       });
     }

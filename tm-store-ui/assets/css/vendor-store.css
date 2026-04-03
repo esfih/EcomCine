@@ -33,7 +33,7 @@
 /* Container for all filter fields - 6-COLUMN TOP ROW */
 .store-lists-other-filter-wrap {
 	display: grid !important;
-	grid-template-columns: minmax(180px, 220px) minmax(180px, 220px) minmax(180px, 220px) auto auto auto !important;
+	grid-template-columns: minmax(180px, 220px) minmax(180px, 220px) minmax(180px, 220px) minmax(180px, 220px) auto auto auto !important;
 	gap: 10px 16px !important;
 	background: transparent !important;
 	padding: 0 !important;
@@ -41,13 +41,14 @@
 	margin-top: 0 !important;
 }
 
-/* Visual order: Search → Category → Profile Level → Featured → Verified → Actions */
+/* Visual order: Search → Category → Country → Level → Featured → Verified → Actions */
 .store-lists-other-filter-wrap .store-search-field                        { order: 1; }
 .store-lists-other-filter-wrap .store-lists-category                      { order: 2; }
-.store-lists-other-filter-wrap .tm-level-filter-wrap                      { order: 3; }
-.store-lists-other-filter-wrap .featured.item                             { order: 4; }
-.store-lists-other-filter-wrap .open-now.item:not(.tm-profile-level-filter) { order: 5; }
-.store-lists-other-filter-wrap #filter-actions-cell                       { order: 6; }
+.store-lists-other-filter-wrap .tm-country-filter-wrap                    { order: 3; }
+.store-lists-other-filter-wrap .tm-level-filter-wrap                      { order: 4; }
+.store-lists-other-filter-wrap .featured.item                             { order: 5; }
+.store-lists-other-filter-wrap .open-now.item:not(.tm-profile-level-filter) { order: 6; }
+.store-lists-other-filter-wrap #filter-actions-cell                       { order: 7; }
 
 /* Style all filter items consistently */
 .store-lists-other-filter-wrap .item,
@@ -97,6 +98,10 @@
 	justify-content: space-between !important;
 }
 
+.store-lists-category {
+	position: relative;
+}
+
 .store-lists-category .category-label {
 	margin-right: 5px !important;
 }
@@ -117,8 +122,17 @@
 	background: #1a1a1a !important;
 	border: 1px solid #D4AF37 !important;
 	border-radius: 3px !important;
-	margin-top: 5px !important;
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35) !important;
+	left: 0 !important;
+	margin-top: 0 !important;
+	max-height: 320px !important;
+	min-width: 380px !important;
+	overflow-y: auto !important;
 	padding: 10px !important;
+	position: absolute;
+	top: calc(100% + 5px);
+	width: 100% !important;
+	z-index: 100;
 }
 
 .store-lists-category .category-box ul {
@@ -1038,6 +1052,346 @@ a.dokan-clear-filters-link:hover {
 	height: 100% !important;
 	object-fit: cover !important;
 	border-radius: 50% !important;
+}
+
+/* Standalone Talents listing contract */
+#ecomcine-person-listing.grid-view {
+	margin-top: 40px !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+	padding-left: 20px !important;
+	padding-right: 20px !important;
+}
+
+#ecomcine-person-listing.grid-view .ecomcine-person-listing__content {
+	padding-left: 0 !important;
+	padding-right: 0 !important;
+}
+
+#ecomcine-person-listing.grid-view ul.ecomcine-person-cards {
+	padding: 0 !important;
+	margin: 0 !important;
+	list-style: none !important;
+	display: flex !important;
+	flex-wrap: wrap !important;
+	row-gap: 60px !important;
+	column-gap: 0 !important;
+}
+
+#ecomcine-person-listing.grid-view ul.ecomcine-person-cards li {
+	box-sizing: border-box !important;
+	padding-left: 15px !important;
+	padding-right: 15px !important;
+}
+
+#ecomcine-person-listing.grid-view.ecomcine-store-grid {
+	--tm-grid-columns: 4;
+}
+
+#ecomcine-person-listing.grid-view ul.ecomcine-person-cards li.ecomcine-person-card--grid {
+	width: calc(100% / var(--tm-grid-columns, 4)) !important;
+	box-sizing: border-box !important;
+	margin-bottom: 0 !important;
+}
+
+@media (max-width: 1100px) {
+	#ecomcine-person-listing.grid-view ul.ecomcine-person-cards li.ecomcine-person-card--grid {
+		width: 33.3333% !important;
+	}
+}
+
+@media (max-width: 932px) {
+	#ecomcine-person-listing.grid-view ul.ecomcine-person-cards li.ecomcine-person-card--grid {
+		width: 50% !important;
+	}
+}
+
+@media (max-width: 600px) {
+	#ecomcine-person-listing.grid-view ul.ecomcine-person-cards li.ecomcine-person-card--grid {
+		width: 100% !important;
+	}
+}
+
+#ecomcine-person-listing.grid-view .store-data h2,
+#ecomcine-person-listing.grid-view .store-data h2 a {
+	color: #D4AF37 !important;
+}
+
+#ecomcine-person-listing.grid-view .store-data p,
+#ecomcine-person-listing.grid-view .store-data {
+	color: #C0C0C0 !important;
+}
+
+#ecomcine-person-listing ul.ecomcine-person-cards li .store-wrapper {
+	box-shadow: none !important;
+	background: transparent !important;
+	position: relative !important;
+	overflow: visible !important;
+}
+
+#ecomcine-person-listing ul.ecomcine-person-cards li.ecomcine-person-card {
+	overflow: visible !important;
+}
+
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner {
+	aspect-ratio: 16 / 9 !important;
+	min-height: 0 !important;
+	position: relative !important;
+	overflow: hidden !important;
+}
+
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner a,
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner img,
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner .tm-store-fallback-banner {
+	display: block !important;
+	width: 100% !important;
+	height: 100% !important;
+}
+
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner img {
+	object-fit: cover !important;
+	object-position: center center !important;
+}
+
+#ecomcine-person-listing.grid-view .store-content {
+	position: absolute !important;
+	top: 0 !important;
+	bottom: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 55%, transparent 100%) !important;
+	padding: 0 12px 38px 12px !important;
+	z-index: 5 !important;
+	text-align: left !important;
+	display: block !important;
+}
+
+#ecomcine-person-listing.grid-view .store-content .store-data-container {
+	position: absolute !important;
+	top: 5px !important;
+	left: 12px !important;
+	right: 12px !important;
+	width: auto !important;
+	text-align: left !important;
+}
+
+#ecomcine-person-listing.grid-view .store-content .store-data,
+#ecomcine-person-listing.grid-view .store-content .store-data h2,
+#ecomcine-person-listing.grid-view .store-content .store-data h2 a,
+#ecomcine-person-listing.grid-view .store-content .store-data p,
+#ecomcine-person-listing.grid-view .store-content .store-categories-wrapper,
+#ecomcine-person-listing.grid-view .store-content .location-wrapper {
+	text-align: left !important;
+	display: block !important;
+	width: 100% !important;
+}
+
+#ecomcine-person-listing.grid-view .store-content .store-data h2 {
+	margin: 0 0 4px 0 !important;
+	font-size: 16px !important;
+	line-height: 1.2 !important;
+}
+
+#ecomcine-person-listing.grid-view .store-content .store-data p,
+#ecomcine-person-listing.grid-view .store-content .store-data span {
+	font-size: 12px !important;
+	margin: 0 !important;
+}
+
+#ecomcine-person-listing ul.ecomcine-person-cards li .store-footer {
+	position: absolute !important;
+	bottom: 0 !important;
+	left: 15px !important;
+	transform: translateY(50%) !important;
+	height: auto !important;
+	padding: 0 !important;
+	background: transparent !important;
+	overflow: visible !important;
+	z-index: 10 !important;
+}
+
+#ecomcine-person-listing.grid-view .store-footer .seller-avatar {
+	width: 80px !important;
+	height: 80px !important;
+	border-radius: 50% !important;
+	overflow: hidden !important;
+	border: 3px solid #D4AF37 !important;
+	background: #000 !important;
+	box-shadow: 0 0 15px rgba(255, 255, 255, 0.3) !important;
+	position: relative !important;
+	top: 0 !important;
+}
+
+#ecomcine-person-listing.grid-view .store-footer .seller-avatar img {
+	width: 100% !important;
+	height: 100% !important;
+	object-fit: cover !important;
+	border-radius: 50% !important;
+}
+
+#tm-card-pager > #ecomcine-person-listing {
+	width: 100%;
+}
+
+#ecomcine-person-listing.ecomcine-store-listing-wrap .store-wrapper {
+	position: relative;
+}
+
+#ecomcine-person-listing.ecomcine-store-listing-wrap .store-wrapper .tm-store-card-link {
+	position: absolute;
+	inset: 0;
+	z-index: 20;
+	display: block;
+	text-decoration: none;
+}
+
+#ecomcine-person-listing.ecomcine-store-listing-wrap .store-wrapper > *:not(.tm-store-card-link) {
+	position: relative;
+	z-index: 5;
+}
+
+#ecomcine-person-listing .store-data {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	align-items: flex-start;
+	min-width: 0;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured h2 {
+	margin: 0;
+	max-width: 100%;
+	min-width: 0;
+	line-height: 1.2;
+	text-align: left !important;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured .vendor-name-pill {
+	display: inline-block;
+	max-width: 100%;
+	padding: 2px 10px;
+	border-radius: 999px;
+	background: rgba(0, 0, 0, 0.72);
+	color: #D4AF37;
+	border: 1px solid rgba(212, 175, 55, 0.35);
+	white-space: normal;
+	word-break: break-word;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured .tm-card-status-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	min-height: 22px;
+	align-items: center;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured .tm-card-status-row.tm-card-status-row--empty {
+	visibility: hidden;
+	margin: 0;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured .tm-card-status-row .featured-label,
+#ecomcine-person-listing .store-data .vendor-name-featured .tm-card-status-row .verified-label {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 3px 9px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	line-height: 1;
+}
+
+#ecomcine-person-listing .store-data .store-categories-wrapper,
+#ecomcine-person-listing .store-data .location-wrapper {
+	margin-top: 0 !important;
+	min-width: 0;
+}
+
+#ecomcine-person-listing .store-data .store-categories-wrapper .field-display,
+#ecomcine-person-listing .store-data .location-wrapper .field-display {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	min-width: 0;
+	width: 100%;
+}
+
+#ecomcine-person-listing .store-data .store-categories-display,
+#ecomcine-person-listing .store-data .location-display {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	max-width: 100%;
+	background: rgba(0, 0, 0, 0.5);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 999px;
+	padding: 4px 10px;
+	color: #f5f5f5;
+}
+
+#ecomcine-person-listing .store-data .location-display .geo-address {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
+}
+
+.ecomcine-person-listing__empty,
+.dokan-error {
+	padding: 16px 20px;
+	border-radius: 14px;
+	background: rgba(10, 10, 10, 0.86);
+	border: 1px solid rgba(212, 175, 55, 0.2);
+	color: #f4efe2;
+}
+
+.ecomcine-person-listing__filters {
+	display: block;
+	margin: 0 20px 12px;
+}
+
+.ecomcine-form-control {
+	width: 100%;
+	min-height: 40px;
+	padding: 8px 12px;
+	border-radius: 10px;
+	border: 1px solid rgba(212, 175, 55, 0.25);
+	background: rgba(15, 15, 15, 0.86);
+	color: #f3ede0;
+}
+
+.ecomcine-toggle-checkbox {
+	accent-color: #d4af37;
+}
+
+.ecomcine-filter-link {
+	color: #d4af37;
+	text-decoration: none;
+	font-size: 13px;
+}
+
+.ecomcine-filter-apply {
+	min-height: 40px;
+	padding: 0 16px;
+	border-radius: 999px;
+	border: 1px solid rgba(212, 175, 55, 0.45);
+	background: linear-gradient(180deg, #2f2610 0%, #171208 100%);
+	color: #f4e4b8;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
 }
 
 /* Featured and Verified badges styling */
@@ -4574,7 +4928,8 @@ body.tm-mobile-portrait .tm-header-platforms {
 /* 3) Hide top-right header action icons on mobile/tablet */
 body.tm-mobile-landscape .tm-header-actions,
 body.tm-mobile-portrait .tm-header-actions {
-	display: none !important;
+	display: inline-flex !important;
+	align-items: center !important;
 }
 
 /* 2) Talent loop button — bottom-left of viewport on mobile/tablet.
@@ -4708,7 +5063,8 @@ body.tm-mobile-portrait .hero-toggle-row {
 
 	/* 3) Header action icons */
 	.tm-header-actions {
-		display: none !important;
+		display: inline-flex !important;
+		align-items: center !important;
 	}
 
 	/* 2) Talent loop button — bottom-left */
@@ -5330,6 +5686,14 @@ body.dokan-store .tm-header-menu > li {
 	flex-shrink: 0 !important;
 }
 
+.tm-header-account-slot {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: flex-end !important;
+	flex-shrink: 0 !important;
+	max-width: 100% !important;
+}
+
 .tm-header-account-pill {
 	display: inline-flex !important;
 	align-items: center !important;
@@ -5377,11 +5741,47 @@ body.dokan-store .tm-header-menu > li {
 .tm-header-account-item--logged-in .tm-header-account-link {
 	display: inline-flex !important;
 	align-items: center !important;
+	gap: 8px !important;
+	padding: 6px 10px !important;
+	border-radius: 14px !important;
+	border: 1px solid rgba(212, 175, 55, 0.35) !important;
+	background: rgba(0, 0, 0, 0.55) !important;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
 	text-transform: none !important;
 	letter-spacing: 0.03em !important;
 	font-size: 11px !important;
 	font-weight: 600 !important;
 	max-width: 220px !important;
+	transition: border-color 180ms ease, box-shadow 180ms ease, color 0.2s, opacity 0.2s !important;
+}
+
+.tm-header-account-slot--logged-in .tm-header-account-link {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 8px !important;
+	padding: 6px 10px !important;
+	border-radius: 14px !important;
+	border: 1px solid rgba(212, 175, 55, 0.35) !important;
+	background: rgba(0, 0, 0, 0.55) !important;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+	text-transform: none !important;
+	letter-spacing: 0.03em !important;
+	font-size: 11px !important;
+	font-weight: 600 !important;
+	max-width: 220px !important;
+	transition: border-color 180ms ease, box-shadow 180ms ease, color 0.2s, opacity 0.2s !important;
+}
+
+.tm-header-account-item--logged-in .tm-header-account-link:hover,
+.tm-header-account-item--logged-in .tm-header-account-link:focus-visible {
+	border-color: rgba(212, 175, 55, 0.7) !important;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+.tm-header-account-slot--logged-in .tm-header-account-link:hover,
+.tm-header-account-slot--logged-in .tm-header-account-link:focus-visible {
+	border-color: rgba(212, 175, 55, 0.7) !important;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
 }
 
 .tm-open-account-seller {
@@ -5393,11 +5793,6 @@ body.dokan-store .tm-header-menu > li {
 	border-bottom: 0 !important;
 	border-left: 0 !important;
 	outline: none !important;
-}
-
-.tm-header-account-pill--logged-in {
-	gap: 8px !important;
-	padding: 6px 10px !important;
 }
 
 .tm-header-account-avatar {
@@ -5420,7 +5815,7 @@ body.dokan-store .tm-header-menu > li {
 
 .tm-header-account-name {
 	display: inline-block !important;
-	max-width: 165px !important;
+	max-width: 15ch !important;
 	overflow: hidden !important;
 	text-overflow: ellipsis !important;
 	white-space: nowrap !important;
@@ -5525,6 +5920,244 @@ body.tm-platform-page #tm-platform-content {
 	overflow-y: auto;
 }
 
+body.tm-platform-page.tm-listing-page #tm-platform-content {
+	padding-top: var(--tm-listing-header-clearance) !important;
+}
+
+/* Listing pages: suppress the base theme shell header and keep the cinematic
+	header in normal layout flow using sticky positioning. This ensures the
+	filter/content stack always starts beneath the header on first paint. */
+
+body.tm-listing-page .ecomcine-site-header,
+body.tm-listing-page #masthead,
+body.tm-listing-page #ast-desktop-header,
+body.tm-listing-page #ast-mobile-header,
+body.tm-listing-page .entry-header,
+body.tm-listing-page .page-header {
+	display: none !important;
+	height: 0 !important;
+	min-height: 0 !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	border: 0 !important;
+	overflow: hidden !important;
+}
+
+body.tm-listing-page {
+	--tm-listing-header-top: calc(20px + var(--wp-admin--admin-bar--height, 0px));
+	--tm-listing-header-height: 72px;
+	--tm-listing-header-gap: 12px;
+	--tm-listing-header-clearance: calc(20px + var(--tm-listing-header-height) + var(--tm-listing-header-gap));
+}
+
+body.tm-listing-page .tm-cinematic-header,
+body.tm-listing-page.dokan-store .tm-cinematic-header {
+	position: fixed !important;
+	top: var(--tm-listing-header-top) !important;
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	width: calc(100% - 40px) !important;
+	max-width: 1920px !important;
+	margin: 0 !important;
+	z-index: 110 !important;
+	pointer-events: none !important;
+	display: block !important;
+}
+
+body.tm-listing-page .tm-cinematic-header__inner {
+	position: relative !important;
+	display: grid !important;
+	grid-template-columns: auto minmax(0, 1fr) auto !important;
+	align-items: center !important;
+	column-gap: 12px !important;
+	padding: 8px 14px !important;
+	--tm-header-size: 48px;
+	background: rgba(0, 0, 0, 0.45) !important;
+	border: 1px solid rgba(212, 175, 55, 0.25) !important;
+	border-radius: 18px !important;
+	backdrop-filter: blur(18px) !important;
+	-webkit-backdrop-filter: blur(18px) !important;
+	box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35) !important;
+	pointer-events: auto !important;
+}
+
+body.tm-listing-page .tm-header-left {
+	display: flex !important;
+	align-items: center !important;
+	gap: 12px !important;
+	flex-wrap: nowrap !important;
+	min-width: 0 !important;
+}
+
+body.tm-listing-page .tm-header-left .custom-logo-link img,
+body.tm-listing-page .tm-header-left .custom-logo-link svg {
+	max-height: 42px !important;
+	width: auto !important;
+}
+
+body.tm-listing-page .tm-header-platforms {
+	flex-wrap: nowrap !important;
+	white-space: nowrap !important;
+	padding: 0 12px !important;
+	gap: 8px !important;
+}
+
+body.tm-listing-page .tm-header-platforms__label {
+	display: inline-flex !important;
+	align-items: center !important;
+	white-space: nowrap !important;
+	line-height: 1 !important;
+	letter-spacing: 0.08em !important;
+}
+
+body.tm-listing-page .tm-header-platforms__icons {
+	flex-wrap: nowrap !important;
+}
+
+body.tm-listing-page .tm-header-nav {
+	justify-self: center !important;
+	max-width: min(980px, 76vw) !important;
+	margin: 0 auto !important;
+	overflow: visible !important;
+	min-width: 0 !important;
+	width: 100% !important;
+}
+
+body.tm-listing-page .tm-header-menu {
+	list-style: none !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	display: flex !important;
+	gap: 8px !important;
+	align-items: center !important;
+	justify-content: center !important;
+	flex-wrap: nowrap !important;
+	overflow: visible !important;
+}
+
+body.tm-listing-page .tm-header-menu > li {
+	margin: 0 !important;
+	flex: 0 0 auto !important;
+}
+
+body.tm-listing-page .tm-header-menu > li > a {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	padding: 8px 12px !important;
+	border-radius: 14px !important;
+	border: 1px solid rgba(212, 175, 55, 0.35) !important;
+	background: rgba(0, 0, 0, 0.55) !important;
+	color: #f2d889 !important;
+	font-size: 11px !important;
+	letter-spacing: 0.14em !important;
+	text-transform: uppercase !important;
+	font-weight: 700 !important;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+	transition: transform 180ms ease, box-shadow 180ms ease, color 180ms ease, border-color 180ms ease !important;
+}
+
+body.tm-listing-page .tm-header-menu > li > a:hover,
+body.tm-listing-page .tm-header-menu > li > a:focus-visible {
+	color: #ffffff !important;
+	border-color: rgba(212, 175, 55, 0.7) !important;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+	transform: translateY(-1px) !important;
+}
+
+body.tm-listing-page .tm-header-actions {
+	justify-self: end !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 10px !important;
+}
+
+body.tm-listing-page .tm-header-icon {
+	position: relative !important;
+	width: var(--tm-header-size) !important;
+	height: var(--tm-header-size) !important;
+	border-radius: 12px !important;
+	border: 1px solid rgba(255, 255, 255, 0.18) !important;
+	background: rgba(0, 0, 0, 0.65) !important;
+	color: #D4AF37 !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+	transition: transform 180ms ease, box-shadow 180ms ease, color 180ms ease !important;
+	cursor: pointer !important;
+}
+
+body.tm-listing-page .tm-header-icon:hover,
+body.tm-listing-page .tm-header-icon:focus-visible {
+	color: #ffffff !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+body.tm-listing-page .tm-header-icon i {
+	font-size: 16px !important;
+}
+
+body.tm-listing-page .tm-header-icon .tm-header-icon-svg {
+	width: 16px !important;
+	height: 16px !important;
+	display: inline-block !important;
+	fill: currentColor !important;
+}
+
+body.tm-listing-page .tm-header-count {
+	position: absolute !important;
+	top: -5px !important;
+	right: -5px !important;
+	min-width: 18px !important;
+	height: 18px !important;
+	padding: 0 6px !important;
+	border-radius: 999px !important;
+	background: #D4AF37 !important;
+	color: #000000 !important;
+	font-size: 10px !important;
+	font-weight: 700 !important;
+	line-height: 18px !important;
+	text-align: center !important;
+	box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.tm-listing-page .tm-header-toggle {
+	display: none !important;
+}
+
+body.tm-listing-page #page {
+	margin-top: 0 !important;
+	padding-top: var(--tm-listing-header-clearance) !important;
+}
+
+body.tm-listing-page #tm-platform-content {
+	margin-top: 0 !important;
+}
+
+body.tm-listing-page #content.site-content,
+body.tm-listing-page .site-content,
+body.tm-listing-page .ast-container,
+body.tm-listing-page main.site-main,
+body.tm-listing-page article,
+body.tm-listing-page .entry-content {
+	margin-top: 0 !important;
+	padding-top: 0 !important;
+}
+
+body.tm-listing-page .ecomcine-person-listing__filters {
+	display: block !important;
+	margin-top: 0 !important;
+	margin-bottom: 10px !important;
+	padding-bottom: 10px !important;
+	box-sizing: border-box !important;
+}
+
+body.tm-listing-page #ecomcine-person-listing.grid-view {
+	margin-top: 0 !important;
+}
+
 /* FluentCart checkout modal: keep out of layout until opened by JS.
    The plugin renders it on every page-load; display:none avoids any
    height contribution before the cart flow is triggered. */
@@ -5535,6 +6168,20 @@ body.tm-platform-page #tm-platform-content {
 .fct-checkout-modal-container.is-active,
 .fct-checkout-modal-container[data-open="true"] {
 	display: block !important;
+}
+
+body.tm-listing-page .tm-booking-modal {
+	display: none !important;
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
+body.tm-listing-page .tm-booking-modal.is-open,
+body.tm-listing-page.tm-booking-modal-open .tm-booking-modal,
+body.tm-listing-page .tm-booking-modal[aria-hidden="false"] {
+	display: block !important;
+	visibility: visible !important;
+	pointer-events: auto !important;
 }
 
 body.tm-platform-page #page {
@@ -5587,6 +6234,53 @@ body.tm-platform-page #content.site-content {
 
 .tm-showcase-takeover .dokan-store-wrap {
 	width: 100%;
+	margin: 0;
+}
+
+body.ecomcine-person-unavailable:not(.ecomcine-person-editable) .dokan-store-wrap {
+	min-height: calc(100vh - var(--tm-header-height, 70px));
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: calc(var(--tm-header-height, 70px) + 32px) 24px 32px;
+	box-sizing: border-box;
+}
+
+body.ecomcine-person-unavailable:not(.ecomcine-person-editable) #dokan-primary,
+body.ecomcine-person-unavailable:not(.ecomcine-person-editable) .dokan-single-store {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.tm-person-unavailable-state {
+	width: min(560px, 100%);
+}
+
+.tm-person-unavailable-state__card {
+	border: 1px solid rgba(212, 175, 55, 0.34);
+	border-radius: 22px;
+	padding: 32px 36px;
+	background: linear-gradient(180deg, rgba(18, 18, 18, 0.96) 0%, rgba(8, 8, 8, 0.96) 100%);
+	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+	text-align: center;
+	backdrop-filter: blur(10px);
+}
+
+.tm-person-unavailable-state__eyebrow {
+	margin-bottom: 12px;
+	color: #d4af37;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.24em;
+	text-transform: uppercase;
+}
+
+.tm-person-unavailable-state__message {
+	color: #f3e7b3;
+	font-size: 20px;
+	line-height: 1.6;
 	margin: 0;
 }
 
@@ -5812,6 +6506,445 @@ body.tm-showcase-page {
 	flex-shrink: 0 !important;
 	display: inline-block !important;
 	vertical-align: middle !important;
+}
+
+/* ========================================
+	TALENTS STANDALONE PARITY RECOVERY
+	Re-apply the pre-independence Talents visual contract to the
+	standalone ecomcine DOM after the Dokan/Astra wrapper removal.
+	======================================== */
+
+.store-lists-other-filter-wrap #ecomcine-filter-actions-cell {
+	order: 6;
+}
+
+.store-search-field label[for="ecomcine-person-search"] {
+	display: none !important;
+}
+
+.store-lists-other-filter-wrap .featured.item > label[for="ecomcine-featured"],
+.store-lists-other-filter-wrap .open-now.item:not(.tm-profile-level-filter) > label[for="ecomcine-verified"] {
+	color: #D4AF37 !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+	margin: 0 !important;
+	text-align: center !important;
+}
+
+#ecomcine-filter-actions-cell {
+	display: flex !important;
+	flex-direction: row !important;
+	align-items: flex-end !important;
+	justify-content: flex-end !important;
+	gap: 10px !important;
+	white-space: nowrap !important;
+}
+
+#ecomcine-filter-links-wrap {
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: flex-end !important;
+	justify-content: center !important;
+	align-self: center !important;
+	gap: 2px !important;
+	text-align: right !important;
+	margin: 0 !important;
+	line-height: 1 !important;
+}
+
+#ecomcine-apply-filters-btn {
+	background: #D4AF37 !important;
+	color: #000000 !important;
+	border: none !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	width: 52px !important;
+	height: 42px !important;
+	min-height: 42px !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	letter-spacing: 1px !important;
+	border-radius: 3px !important;
+	cursor: pointer !important;
+	line-height: 1 !important;
+	box-shadow: none !important;
+	text-transform: uppercase !important;
+}
+
+#ecomcine-apply-filters-btn:hover {
+	background: #C09F2F !important;
+	color: #000000 !important;
+}
+
+#ecomcine-view-all-filters-btn,
+#ecomcine-clear-all-filters-btn {
+	display: inline-block !important;
+	text-decoration: none !important;
+	font-size: 0.85em !important;
+	font-weight: 400 !important;
+	cursor: pointer !important;
+	line-height: 1.2 !important;
+}
+
+#ecomcine-view-all-filters-btn {
+	color: #D4AF37 !important;
+}
+
+#ecomcine-clear-all-filters-btn {
+	color: #aaaaaa !important;
+}
+
+#ecomcine-view-all-filters-btn:hover,
+#ecomcine-clear-all-filters-btn:hover {
+	color: #ffffff !important;
+	text-decoration: underline !important;
+}
+
+#ecomcine-person-listing.grid-view {
+	margin-top: 34px !important;
+	padding-left: 20px !important;
+	padding-right: 20px !important;
+}
+
+#ecomcine-person-listing.grid-view .ecomcine-person-listing__content {
+	padding-left: 0 !important;
+	padding-right: 0 !important;
+	width: 100% !important;
+	max-width: none !important;
+}
+
+#ecomcine-person-listing.grid-view ul.ecomcine-person-cards {
+	padding: 0 !important;
+	margin: 0 !important;
+	list-style: none !important;
+	display: flex !important;
+	flex-wrap: wrap !important;
+	row-gap: 60px !important;
+	column-gap: 0 !important;
+	align-items: stretch !important;
+}
+
+#ecomcine-person-listing.grid-view ul.ecomcine-person-cards li.ecomcine-person-card--grid {
+	width: calc(100% / var(--tm-grid-columns, 4)) !important;
+	box-sizing: border-box !important;
+	padding-left: 15px !important;
+	padding-right: 15px !important;
+	padding-bottom: 0 !important;
+	margin-bottom: 0 !important;
+	overflow: visible !important;
+	align-self: stretch !important;
+}
+
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper {
+	position: relative !important;
+	background: transparent !important;
+	box-shadow: none !important;
+	overflow: visible !important;
+	border-radius: 0 !important;
+	min-height: 100% !important;
+}
+
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header {
+	position: relative !important;
+	z-index: 1 !important;
+}
+
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner {
+	position: relative !important;
+	display: block !important;
+	width: 100% !important;
+	overflow: hidden !important;
+	height: clamp(170px, 13vw, 210px) !important;
+	min-height: 170px !important;
+	background: linear-gradient(180deg, rgba(26,26,26,0.35) 0%, rgba(0,0,0,0.7) 100%) !important;
+	border-radius: 0 !important;
+}
+
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner a,
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner img,
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner .tm-store-fallback-banner {
+	display: block !important;
+	width: 100% !important;
+	height: 100% !important;
+	border-radius: 0 !important;
+}
+
+#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner img {
+	position: absolute !important;
+	inset: 0 !important;
+	object-fit: cover !important;
+	object-position: center center !important;
+	filter: saturate(1.02) contrast(1.02) !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+}
+
+#ecomcine-person-listing.grid-view .store-content {
+	position: absolute !important;
+	inset: 0 !important;
+	display: block !important;
+	text-align: left !important;
+	z-index: 5 !important;
+	padding: 0 18px 44px 18px !important;
+	background: linear-gradient(to top, rgba(0, 0, 0, 0.84) 0%, rgba(0, 0, 0, 0.52) 42%, rgba(0, 0, 0, 0.12) 68%, transparent 100%) !important;
+	pointer-events: none !important;
+}
+
+#ecomcine-person-listing.grid-view .store-content .store-data-container {
+	position: absolute !important;
+	left: 18px !important;
+	right: 18px !important;
+	top: 14px !important;
+	width: auto !important;
+	text-align: left !important;
+}
+
+#ecomcine-person-listing.grid-view .store-content .store-data,
+#ecomcine-person-listing.grid-view .store-content .store-data h2,
+#ecomcine-person-listing.grid-view .store-content .store-data h2 a,
+#ecomcine-person-listing.grid-view .store-content .store-data p,
+#ecomcine-person-listing.grid-view .store-content .store-categories-wrapper,
+#ecomcine-person-listing.grid-view .store-content .location-wrapper {
+	display: block !important;
+	width: 100% !important;
+	text-align: left !important;
+}
+
+#ecomcine-person-listing.grid-view .store-content .store-data h2 {
+	margin: 0 0 8px 0 !important;
+	font-size: 16px !important;
+	line-height: 1.18 !important;
+	min-height: 20px !important;
+	display: flex !important;
+	align-items: center !important;
+}
+
+#ecomcine-person-listing.grid-view .store-content .store-data p,
+#ecomcine-person-listing.grid-view .store-content .store-data span {
+	font-size: 12px !important;
+	margin: 0 !important;
+}
+
+#ecomcine-person-listing ul.ecomcine-person-cards li .store-footer {
+	position: absolute !important;
+	left: 18px !important;
+	bottom: 0 !important;
+	transform: translateY(50%) !important;
+	z-index: 10 !important;
+	height: auto !important;
+	padding: 0 !important;
+	background: transparent !important;
+	overflow: visible !important;
+}
+
+#ecomcine-person-listing.grid-view .store-footer .seller-avatar {
+	width: 80px !important;
+	height: 80px !important;
+	border-radius: 50% !important;
+	overflow: hidden !important;
+	border: 3px solid #D4AF37 !important;
+	background: #000 !important;
+	box-shadow: 0 0 15px rgba(255, 255, 255, 0.3) !important;
+	position: relative !important;
+	top: 0 !important;
+}
+
+#ecomcine-person-listing.grid-view .store-footer .seller-avatar img {
+	width: 100% !important;
+	height: 100% !important;
+	object-fit: cover !important;
+	border-radius: 50% !important;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured {
+	gap: 4px !important;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured h2 {
+	margin: 0 !important;
+	min-height: 20px !important;
+	display: flex !important;
+	align-items: center !important;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured .vendor-name-pill {
+	display: inline-flex !important;
+	align-items: center !important;
+	padding: 3px 10px !important;
+	border-radius: 999px !important;
+	background: rgba(0, 0, 0, 0.45) !important;
+	line-height: 1.2 !important;
+	font-size: 16px !important;
+	color: #D4AF37 !important;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55) !important;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured .tm-card-status-row {
+	display: flex !important;
+	gap: 6px !important;
+	align-items: center !important;
+	margin-top: 2px !important;
+	flex-wrap: nowrap !important;
+	height: 24px !important;
+	min-height: 24px !important;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured .tm-card-status-row.tm-card-status-row--empty {
+	visibility: hidden !important;
+}
+
+#ecomcine-person-listing .store-data .vendor-name-featured .tm-card-status-row .featured-label,
+#ecomcine-person-listing .store-data .vendor-name-featured .tm-card-status-row .verified-label {
+	position: static !important;
+	margin: 0 !important;
+	padding: 3px 10px !important;
+	border-radius: 999px !important;
+	font-size: 11px !important;
+	line-height: 1 !important;
+	height: 20px !important;
+	min-height: 20px !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	box-shadow: none !important;
+}
+
+#ecomcine-person-listing .store-data .store-categories-wrapper,
+#ecomcine-person-listing .store-data .location-wrapper {
+	display: block !important;
+	width: 100% !important;
+	text-align: left !important;
+	justify-content: flex-start !important;
+	margin-top: 6px !important;
+}
+
+#ecomcine-person-listing .store-data .store-categories-wrapper .field-display,
+#ecomcine-person-listing .store-data .location-wrapper .field-display {
+	display: block !important;
+	text-align: left !important;
+	justify-content: flex-start !important;
+}
+
+#ecomcine-person-listing .store-data .store-categories-display {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: flex-start !important;
+	text-align: left !important;
+	gap: 6px !important;
+	padding: 3px 10px !important;
+	border-radius: 999px !important;
+	background: rgba(0, 0, 0, 0.45) !important;
+	border: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+#ecomcine-person-listing .store-data .store-categories-display .tm-card-category-value {
+	font-size: 12px !important;
+	color: #C0C0C0 !important;
+	font-style: italic !important;
+	text-align: left !important;
+}
+
+#ecomcine-person-listing .store-data .location-display {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 6px !important;
+	padding: 3px 10px !important;
+	border-radius: 999px !important;
+	background: rgba(0, 0, 0, 0.45) !important;
+	border: 1px solid rgba(255,255,255,0.08) !important;
+	font-size: 12px !important;
+	color: #C0C0C0 !important;
+	font-style: italic !important;
+	max-width: 100% !important;
+}
+
+#ecomcine-person-listing .store-data .location-display .geo-address {
+	color: #C0C0C0 !important;
+	white-space: nowrap !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+	max-width: 100% !important;
+}
+
+#ecomcine-person-listing .store-data .location-display .country-flag,
+#ecomcine-person-listing .store-data .location-display .country-flag img {
+	width: 18px !important;
+	height: 18px !important;
+	min-width: 18px !important;
+	min-height: 18px !important;
+	max-width: 18px !important;
+	max-height: 18px !important;
+	flex-shrink: 0 !important;
+	display: inline-block !important;
+	vertical-align: middle !important;
+}
+
+@media (max-width: 1180px) {
+	.store-lists-other-filter-wrap {
+		grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(180px, 1fr) minmax(180px, 1fr) auto auto !important;
+	}
+}
+
+@media (max-width: 900px) {
+	.store-lists-other-filter-wrap {
+		grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+	}
+
+	#ecomcine-filter-actions-cell {
+		grid-column: 1 / -1;
+		justify-content: space-between !important;
+	}
+
+	#ecomcine-person-listing.grid-view ul.ecomcine-person-cards li.ecomcine-person-card--grid {
+		width: 50% !important;
+	}
+}
+
+@media (max-width: 600px) {
+	.store-lists-other-filter-wrap {
+		grid-template-columns: 1fr !important;
+	}
+
+	.store-lists-other-filter-wrap .featured.item,
+	.store-lists-other-filter-wrap .open-now.item:not(.tm-profile-level-filter) {
+		align-items: flex-start !important;
+	}
+
+	#ecomcine-filter-actions-cell {
+		flex-direction: column !important;
+		align-items: stretch !important;
+	}
+
+	#ecomcine-filter-links-wrap {
+		align-items: flex-start !important;
+		text-align: left !important;
+	}
+
+	#ecomcine-apply-filters-btn {
+		width: 100% !important;
+	}
+
+	#ecomcine-person-listing.grid-view ul.ecomcine-person-cards li.ecomcine-person-card--grid {
+		width: 100% !important;
+	}
+
+	#ecomcine-person-listing .ecomcine-person-card .store-wrapper .store-header .store-banner {
+		height: 210px !important;
+		min-height: 210px !important;
+	}
+
+	#ecomcine-person-listing.grid-view .store-content {
+		padding-left: 14px !important;
+		padding-right: 14px !important;
+	}
+
+	#ecomcine-person-listing.grid-view .store-content .store-data-container {
+		left: 14px !important;
+		right: 14px !important;
+	}
+
+	#ecomcine-person-listing ul.ecomcine-person-cards li .store-footer {
+		left: 14px !important;
+	}
 }
 
 /* ==========================================================================

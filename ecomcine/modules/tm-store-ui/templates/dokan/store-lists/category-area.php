@@ -1,6 +1,6 @@
 <?php
 /**
- * Store listing category-area template — Astra Child theme override.
+ * Store listing category-area template migrated from the legacy theme layer.
  *
  * Overrides: dokan-pro/templates/store-lists/category-area.php (v3.0.0)
  *

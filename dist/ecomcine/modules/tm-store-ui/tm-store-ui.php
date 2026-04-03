@@ -2,10 +2,10 @@
 /**
  * Plugin Name: TM Store UI
  * Plugin URI:  https://ecomcine.com
- * Description: Theme-agnostic store UI layer for EcomCine — Dokan template overrides,
+ * Description: Theme-agnostic store UI layer for EcomCine — compatibility template overrides,
  *              vendor attributes, social metrics, cinematic header, store-listing filters,
- *              and all hooks previously coupled to the astra-child theme. Works with Astra,
- *              Twenty Twenty-Five, or any other WordPress theme.
+ *              and hooks migrated out of the legacy theme layer. Works with the canonical
+ *              ecomcine-base minimal theme or any standards-compliant WordPress theme.
  * Version:     1.0.1
  * Author:      EcomCine
  * Requires at least: 6.3
@@ -46,8 +46,12 @@ function tm_store_ui_bootstrap() {
 	// Vendor profile
 	require_once TM_STORE_UI_DIR . 'includes/vendor-profile/vendor-completeness.php';
 	require_once TM_STORE_UI_DIR . 'includes/vendor-profile/vendor-profile-ajax.php';
+	// Standalone bridge (wp_cpt mode): render store header without Dokan/Woo.
+	require_once TM_STORE_UI_DIR . 'includes/standalone/store-header-bridge.php';
 	// Vendors map shortcode
 	require_once TM_STORE_UI_DIR . 'includes/vendors-map/vendors-map-shortcode.php';
+	// Native standalone stores listing shortcode.
+	require_once TM_STORE_UI_DIR . 'includes/shortcodes/ecomcine-stores-shortcode.php';
 	// Store-listing hooks (lives in templates/dokan/store-lists/ since it ships with templates)
 	require_once TM_STORE_UI_DIR . 'templates/dokan/store-lists/store-lists-hooks.php';
 	// THO adapter layer
@@ -68,7 +72,7 @@ function tm_store_ui_bootstrap() {
 	require_once TM_STORE_UI_DIR . 'includes/adapters/default-wp/class-wp-metrics-provider.php';
 	require_once TM_STORE_UI_DIR . 'includes/adapters/class-adapter-registry.php';
 
-	// Register all hooks extracted from astra-child/functions.php.
+	// Register hooks extracted from the legacy theme layer into the plugin runtime.
 	require_once TM_STORE_UI_DIR . 'includes/hooks.php';
 	// Dokan template override registration.
 	require_once TM_STORE_UI_DIR . 'includes/dokan-templates.php';

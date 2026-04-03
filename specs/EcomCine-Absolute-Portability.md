@@ -35,7 +35,7 @@ Items are grouped by dependency **domain**. Each entry states the current coupli
 16. [Booking / Checkout — WooCommerce + WC Bookings](#16-booking--checkout--woocommerce--wc-bookings)
 17. [WooCommerce Product Taxonomy — `product_cat`](#17-woocommerce-product-taxonomy--product_cat)
 18. [Astra Theme Filters](#18-astra-theme-filters)
-19. [Bundled Theme — Astra Child Inheritance](#19-bundled-theme--astra-child-inheritance)
+19. [Bundled Theme — Canonical Minimal Theme](#19-bundled-theme--canonical-minimal-theme)
 20. [Dokan Template Parts — `dokan_get_template_part()`](#20-dokan-template-parts--dokan_get_template_part)
 21. [WooCommerce Thank-You Page Template Override](#21-woocommerce-thank-you-page-template-override)
 22. [Demo Importer — Dokan-specific setup](#22-demo-importer--dokan-specific-setup)
@@ -363,17 +363,18 @@ Items are grouped by dependency **domain**. Each entry states the current coupli
 
 ---
 
-## 19. Bundled Theme — Astra Child Inheritance
+## 19. Bundled Theme — Canonical Minimal Theme
 
-**Current coupling:** `theme/` (`castingagency.co` child) is declared as a child of Astra (`Template: astra`). The `ecomcine-base` bundled theme inherits from it. Neither can function without Astra installed.
+**Current canonical model:** `ecomcine-base` (`ecomcine/bundled-theme/`) is the only required theme for standalone operation. It is a minimal shell theme with no parent dependency and exists specifically so EcomCine can own the runtime without fighting third-party theme behavior.
 
 **Affected files:**
-- `theme/functions.php` — `CHILD_THEME_ASTRA_CHILD_VERSION`, Astra-specific function signatures
-- `theme/style.css` — `Template: astra`
+- `ecomcine/bundled-theme/functions.php` — base style handle and essential theme supports
+- `ecomcine/bundled-theme/style.css` — minimal base styling only
+- `ecomcine/bundled-theme/header.php` / `footer.php` — document shell and hook points
 
-**Proposed portable alternative:**
-- The `ecomcine-base` bundled theme (`ecomcine/bundled-theme/`) is already a standalone theme — no parent declaration. This is correct. **No change needed for the bundled theme.**
-- The `theme/` folder is the live production child theme for `castingagency.co` which runs on Astra. That coupling is intentional and site-specific — not a plugin concern. The plugin must work without this theme being active.
+**Portable rule:**
+- `ecomcine-base` remains the canonical theme for standalone installs.
+- Third-party themes may still be supported through compatibility layers, but are not required by product design.
 - **Action:** Audit `tm-media-player` and `ecomcine` core to ensure no code path does `locate_template('dokan/store-header.php')` without a fallback to the bundled-theme path. (One instance confirmed in `tm-media-player.php` line 213.)
 
 ---
@@ -464,7 +465,7 @@ Items are grouped by dependency **domain**. Each entry states the current coupli
 | **P4 — UI / templates** | #13 (CSS classes), #15 (registration form), #18 (Astra filters), #20 (template loader), #22 (demo importer) | Medium | Medium |
 | **P5 — Asset cleanup** | #12 (dequeue guards), #17 (product_cat), #23 (completeness admin), #24 (settings UI) | Low | Low |
 | **P6 — Booking modal** | #16 (WC Bookings adapter gating) | High | High |
-| **Out of scope** | #9 (WooDokan order adapter — correct by design), #19 (Astra child theme — site-specific), #21 (WC thankyou template — theme territory) | — | — |
+| **Out of scope** | #9 (WooDokan order adapter — correct by design), #21 (WC thankyou template — theme territory) | — | — |
 
 ---
 

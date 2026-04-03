@@ -35,7 +35,7 @@
  *       in includes/vendor-profile/vendor-profile-ajax.php (admin-only panel).
  *       They will be consolidated here in a future pass.
  *
- * @package Astra Child
+ * @package TM_Store_UI
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -497,7 +497,7 @@ add_filter( 'cron_schedules', function( $schedules ) {
 	if ( ! isset( $schedules['tm_monthly'] ) ) {
 		$schedules['tm_monthly'] = [
 			'interval' => defined( 'MONTH_IN_SECONDS' ) ? MONTH_IN_SECONDS : 30 * DAY_IN_SECONDS,
-			'display'  => __( 'Every 30 days (Talent Marketplace)', 'astra-child' ),
+			'display'  => __( 'Every 30 days (Talent Marketplace)', 'tm-store-ui' ),
 		];
 	}
 	return $schedules;
