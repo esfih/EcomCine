@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
 
 /** Manifest URL — override via wp-config.php define or filter. */
 if ( ! defined( 'ECOMCINE_DEMO_MANIFEST_URL' ) ) {
-	define( 'ECOMCINE_DEMO_MANIFEST_URL', 'https://raw.githubusercontent.com/esfih/EcomCine/main/demos/manifest.json' );
+	define( 'ECOMCINE_DEMO_MANIFEST_URL', 'https://raw.githubusercontent.com/esfih/EcomCine/master/demos/manifest.json' );
 }
 
 class EcomCine_Demo_Importer {
