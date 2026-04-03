@@ -152,14 +152,15 @@ add_shortcode( 'vendors_map', function() {
 	// ── Build vendor data ─────────────────────────────────────────────────────
 
 	// Use ecomcine_get_persons() for role portability (seller ↔ ecomcine_person).
-// Use a broad meta_query: accept vendors with either EcomCine-native geo keys
-	// OR the legacy Dokan geo keys. This ensures Dokan-era vendors are included.
-	// Published and coordinate checks are applied per-vendor below via
-	// ecomcine_is_person_enabled() and numeric/bounds validation.
+	// Strict canonical query: only persons with all required EcomCine meta set.
+	// Dokan-era vendors must be upgraded via the migration (v0.1.26 upgrade path
+	// or wp.data.migration.dokan catalog command) before they appear here.
 	$geo_meta_query = array(
-		'relation' => 'OR',
+		'relation' => 'AND',
 		array( 'key' => 'ecomcine_geo_lat',  'compare' => 'EXISTS' ),
-		array( 'key' => 'dokan_geo_latitude', 'compare' => 'EXISTS' ),
+		array( 'key' => 'ecomcine_geo_lng',  'compare' => 'EXISTS' ),
+		array( 'key' => 'ecomcine_enabled',  'value'   => '1',      'compare' => '=' ),
+		array( 'key' => 'tm_l1_complete',    'value'   => '1',      'compare' => '=' ),
 	);
 	$users = function_exists( 'ecomcine_get_persons' )
 		? ecomcine_get_persons( array( 'meta_query' => $geo_meta_query ) )
@@ -168,13 +169,6 @@ add_shortcode( 'vendors_map', function() {
 			'number'     => -1,
 			'meta_query' => $geo_meta_query,
 		) );
-
-	// Portability: filter to enabled persons only using EcomCine canonical check.
-	if ( function_exists( 'ecomcine_is_person_enabled' ) ) {
-		$users = array_values( array_filter( $users, static function ( $u ) {
-			return ecomcine_is_person_enabled( $u->ID );
-		} ) );
-	}
 
 	if ( empty( $users ) ) {
 		return '<p>No vendors with location data found.</p>';
