@@ -45,6 +45,21 @@ function tm_get_vendor_media_playlist( $vendor_id ) {
 	$source = TMP_Adapter_Registry::get_provider();
 	$bio    = $source->get_biography( $vendor_id );
 
+	$detect_media_type = static function( $mime ) {
+		$mime = is_string( $mime ) ? strtolower( $mime ) : '';
+		if ( 0 === strpos( $mime, 'image/' ) ) {
+			return 'image';
+		}
+		if ( 0 === strpos( $mime, 'video/' ) ) {
+			return 'video';
+		}
+		if ( 0 === strpos( $mime, 'audio/' ) ) {
+			return 'audio';
+		}
+
+		return '';
+	};
+
 	$shortcode_pattern = get_shortcode_regex( array( 'gallery', 'playlist' ) );
 	if ( is_string( $bio ) && $bio !== '' && $shortcode_pattern ) {
 		if ( preg_match_all( '/'. $shortcode_pattern .'/s', $bio, $matches, PREG_SET_ORDER ) ) {
@@ -69,13 +84,14 @@ function tm_get_vendor_media_playlist( $vendor_id ) {
 						$duration = (int) $meta['length'];
 					}
 					$mime = get_post_mime_type( $id );
-					if ( $type === 'image' && ( ! $mime || stripos( $mime, 'image/' ) !== 0 ) ) { continue; }
+					$actual_type = $detect_media_type( $mime );
+					if ( '' === $actual_type || $actual_type !== $type ) { continue; }
 					$poster = '';
-					if ( $type === 'video' ) {
+					if ( $actual_type === 'video' ) {
 						$poster = wp_get_attachment_image_url( $id, 'large' );
 					}
 					$title = '';
-					if ( $type === 'image' ) {
+					if ( $actual_type === 'image' ) {
 						$title = trim( (string) get_post_meta( $id, '_wp_attachment_image_alt', true ) );
 						if ( $title === '' ) { $title = wp_basename( $src ); }
 					} else {
@@ -84,7 +100,7 @@ function tm_get_vendor_media_playlist( $vendor_id ) {
 					}
 					$payload['items'][] = array(
 						'id'       => $id,
-						'type'     => $type,
+						'type'     => $actual_type,
 						'src'      => $src,
 						'poster'   => $poster ? $poster : '',
 						'title'    => $title,
@@ -154,7 +170,13 @@ function tm_vendor_has_video_playlist_media( $vendor_id ) {
 			$ids  = isset( $atts['ids'] ) ? (string) $atts['ids'] : '';
 			if ( $ids === '' ) { continue; }
 			$type = isset( $atts['type'] ) ? strtolower( (string) $atts['type'] ) : '';
-			if ( $type === 'video' ) { return true; }
+			if ( $type !== 'video' ) { continue; }
+			foreach ( array_filter( array_map( 'absint', explode( ',', $ids ) ) ) as $attachment_id ) {
+				$mime = (string) get_post_mime_type( $attachment_id );
+				if ( 0 === strpos( strtolower( $mime ), 'video/' ) ) {
+					return true;
+				}
+			}
 		}
 	}
 
@@ -167,7 +189,13 @@ function tm_vendor_has_video_playlist_media( $vendor_id ) {
 			$ids  = isset( $atts['ids'] ) ? (string) $atts['ids'] : '';
 			if ( $ids === '' ) { continue; }
 			$type = isset( $atts['type'] ) ? strtolower( (string) $atts['type'] ) : '';
-			if ( $type === 'video' ) { return true; }
+			if ( $type !== 'video' ) { continue; }
+			foreach ( array_filter( array_map( 'absint', explode( ',', $ids ) ) ) as $attachment_id ) {
+				$mime = (string) get_post_mime_type( $attachment_id );
+				if ( 0 === strpos( strtolower( $mime ), 'video/' ) ) {
+					return true;
+				}
+			}
 		}
 	}
 
@@ -199,10 +227,13 @@ if ( ! has_action( 'wp_ajax_get_vendor_navigation_list', 'get_vendor_navigation_
 if ( ! function_exists( 'tm_get_vendor_store_content_payload' ) ) :
 function tm_get_vendor_store_content_payload( $vendor_id ) {
 	$vendor_id = absint( $vendor_id );
-	if ( ! $vendor_id || ! function_exists( 'dokan' ) ) {
+	if ( ! $vendor_id ) {
 		return new WP_Error( 'invalid_vendor', 'Invalid vendor', array( 'vendor_id' => $vendor_id ) );
 	}
-	$store_user = dokan()->vendor->get( $vendor_id );
+	$store_user = function_exists( 'tm_store_ui_get_store_user' ) ? tm_store_ui_get_store_user( $vendor_id ) : null;
+	if ( ! $store_user ) {
+		$store_user = get_userdata( $vendor_id );
+	}
 	if ( ! $store_user ) {
 		return new WP_Error( 'vendor_not_found', 'Vendor not found', array( 'vendor_id' => $vendor_id ) );
 	}
@@ -288,7 +319,9 @@ function tm_get_vendor_store_content_payload( $vendor_id ) {
 	return array(
 		'html'        => $content_html,
 		'vendor_id'   => $vendor_id,
-		'store_name'  => $store_user->get_shop_name(),
+		'store_name'  => function_exists( 'ecomcine_get_person_info' )
+			? ( (string) ( ecomcine_get_person_info( $vendor_id )['store_name'] ?? '' ) ?: ( method_exists( $store_user, 'get_shop_name' ) ? (string) $store_user->get_shop_name() : '' ) )
+			: ( method_exists( $store_user, 'get_shop_name' ) ? (string) $store_user->get_shop_name() : '' ),
 		'vendorMedia' => $vendor_media,
 	);
 }
@@ -443,6 +476,57 @@ function tm_is_showcase_page() {
 }
 endif;
 
+if ( ! function_exists( 'tm_is_showcase_takeover_page' ) ) :
+function tm_is_showcase_takeover_page() {
+	return tm_is_showcase_page() && ! ( function_exists( 'ecomcine_is_person_page' ) && ecomcine_is_person_page() );
+}
+endif;
+
+if ( ! function_exists( 'tm_render_showcase_shell' ) ) :
+function tm_render_showcase_shell( $vendor_id, $vendor_ids = array() ) {
+	$vendor_id  = absint( $vendor_id );
+	$vendor_ids = array_values( array_filter( array_map( 'absint', (array) $vendor_ids ) ) );
+
+	if ( ! $vendor_id ) {
+		return '<div class="tm-talent-showcase-empty">No talent available.</div>';
+	}
+
+	set_query_var( 'author', $vendor_id );
+
+	if ( function_exists( 'tm_account_panel_enqueue_assets' ) ) {
+		tm_account_panel_enqueue_assets( true );
+	}
+
+	ob_start();
+	?>
+	<style>
+		.tm-showcase-takeover { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); }
+		.tm-showcase-takeover .dokan-store-wrap { width: 100%; margin: 0; }
+		.tm-showcase-takeover #dokan-primary { width: 100%; }
+		.tm-showcase-takeover .dokan-single-store { width: 100%; }
+		.tm-showcase-takeover .profile-frame { min-height: 100vh; }
+	</style>
+	<div class="tm-showcase-takeover">
+		<?php if ( function_exists( 'tm_store_ui_render_cinematic_header' ) ) { tm_store_ui_render_cinematic_header( true ); } ?>
+		<div class="dokan-store-wrap layout-full">
+			<div id="dokan-primary" class="dokan-single-store dokan-store-full-width">
+				<?php
+				$tm_rendered = function_exists( 'tm_store_ui_render_store_header' )
+					? tm_store_ui_render_store_header( $vendor_id )
+					: false;
+				if ( ! $tm_rendered ) {
+					echo '<div class="tm-talent-showcase-empty">Unable to render talent profile.</div>';
+				}
+				?>
+			</div>
+		</div>
+		<?php if ( function_exists( 'tm_account_panel_render_modal_markup' ) ) { tm_account_panel_render_modal_markup( true ); } ?>
+	</div>
+	<?php
+	return ob_get_clean();
+}
+endif;
+
 if ( ! function_exists( 'tm_talent_showcase_shortcode' ) ) :
 function tm_talent_showcase_shortcode( $atts = array() ) {
 	if ( is_admin() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
@@ -460,25 +544,7 @@ function tm_talent_showcase_shortcode( $atts = array() ) {
 	$payload    = tm_get_vendor_store_content_payload( $vendor_id );
 	if ( is_wp_error( $payload ) ) { return '<div class="tm-talent-showcase-empty">Unable to load talent showcase.</div>'; }
 	TM_Media_Player_Assets::enqueue_for_showcase( $vendor_id, $mode, $vendor_ids );
-	set_query_var( 'author', $vendor_id );
-	ob_start();
-	?>
-	<style>
-		.tm-showcase-takeover { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); }
-		.tm-showcase-takeover .dokan-store-wrap { width: 100%; margin: 0; }
-		.tm-showcase-takeover #dokan-primary { width: 100%; }
-		.tm-showcase-takeover .dokan-single-store { width: 100%; }
-		.tm-showcase-takeover .profile-frame { min-height: 100vh; }
-	</style>
-	<div class="tm-showcase-takeover">
-		<div class="dokan-store-wrap layout-full">
-			<div id="dokan-primary" class="dokan-single-store dokan-store-full-width">
-			<?php dokan_get_template_part( 'store-header' ); ?>
-			</div>
-		</div>
-	</div>
-	<?php
-	return ob_get_clean();
+	return tm_render_showcase_shell( $vendor_id, $vendor_ids );
 }
 endif;
 
@@ -842,9 +908,7 @@ class TM_Media_Player_Assets {
 	}
 
 	private static function get_current_vendor_id() {
-		if ( ! function_exists( 'dokan' ) ) { return 0; }
-		$store_user = dokan()->vendor->get( get_query_var( 'author' ) );
-		return $store_user ? (int) $store_user->get_id() : 0;
+		return absint( get_query_var( 'author' ) );
 	}
 
 	private static function is_dashboard() {

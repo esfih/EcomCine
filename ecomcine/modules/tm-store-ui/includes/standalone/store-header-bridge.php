@@ -221,7 +221,19 @@ if ( ! function_exists( 'tm_store_ui_render_store_header' ) ) {
 			return false;
 		}
 
+		$is_showcase_context = ! empty( $GLOBALS['tm_showcase_page'] )
+			|| ( function_exists( 'tm_is_showcase_page' ) && tm_is_showcase_page() );
+
 		set_query_var( 'author', $vendor_id );
+
+		if ( $is_showcase_context && class_exists( 'TM_Media_Player_Assets', false ) && ! wp_script_is( 'tm-player-js', 'enqueued' ) ) {
+			$showcase_ids = function_exists( 'tm_get_showcase_vendor_ids' ) ? tm_get_showcase_vendor_ids() : array( $vendor_id );
+			TM_Media_Player_Assets::enqueue_for_showcase( $vendor_id, 'showcase', $showcase_ids );
+		}
+
+		if ( $is_showcase_context && function_exists( 'tm_account_panel_enqueue_assets' ) && ! wp_script_is( 'tm-account-panel-js', 'enqueued' ) ) {
+			tm_account_panel_enqueue_assets( true );
+		}
 
 		ob_start();
 		if ( function_exists( 'dokan_get_template_part' ) ) {
@@ -235,6 +247,15 @@ if ( ! function_exists( 'tm_store_ui_render_store_header' ) ) {
 		$html = trim( (string) ob_get_clean() );
 		if ( '' === $html ) {
 			return false;
+		}
+
+		if ( $is_showcase_context && function_exists( 'tm_account_panel_render_modal_markup' ) && false === strpos( $html, 'tm-account-modal' ) ) {
+			ob_start();
+			tm_account_panel_render_modal_markup( true );
+			$modal_html = trim( (string) ob_get_clean() );
+			if ( '' !== $modal_html ) {
+				$html .= "\n" . $modal_html;
+			}
 		}
 
 		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
