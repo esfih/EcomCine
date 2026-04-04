@@ -103,12 +103,81 @@ class EcomCine_Debug_Page {
 			'EcomCine_Person_Category_Registry',
 			'TMP_WP_Vendor_CPT',
 			'EcomCine_Demo_Importer',
+			'tm_load_qr_library',
+			'tm_get_vendor_qr_svg_markup',
 		);
 		$fn_status = array();
 		foreach ( $key_fns as $fn ) {
 			$fn_status[ $fn ] = function_exists( $fn ) || class_exists( $fn, false ) ? 'present' : 'MISSING';
 		}
 		$report['key_functions'] = $fn_status;
+
+		// ── 7b. QR library diagnostics ──────────────────────────────────────
+		$qr = array();
+
+		// Map each autoload path and whether the file exists on disk.
+		$qr_paths = array(
+			'plugin_vendor'      => defined( 'ECOMCINE_DIR' ) ? ECOMCINE_DIR . 'vendor/autoload.php' : '',
+			'store_ui_vendor'    => defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'vendor/autoload.php' : '',
+			'stylesheet_vendor'  => get_stylesheet_directory() . '/vendor/autoload.php',
+			'stylesheet_lib'     => get_stylesheet_directory() . '/lib/php-qrcode/vendor/autoload.php',
+			'template_vendor'    => get_template_directory() . '/vendor/autoload.php',
+			'template_lib'       => get_template_directory() . '/lib/php-qrcode/vendor/autoload.php',
+			'wpcontent_theme_vendor' => defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/ecomcine-base/vendor/autoload.php' : '',
+			'wpcontent_theme_lib'    => defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/themes/ecomcine-base/lib/php-qrcode/vendor/autoload.php' : '',
+		);
+		$qr['paths'] = array();
+		foreach ( $qr_paths as $label => $path ) {
+			$qr['paths'][ $label ] = array(
+				'path'   => $path ?: '(undefined constant)',
+				'exists' => $path ? file_exists( $path ) : false,
+			);
+		}
+
+		// Class already loaded before we attempt?
+		$qr['class_before_load'] = class_exists( '\\chillerlan\\QRCode\\QRCode' );
+
+		// Call tm_load_qr_library() if available.
+		$qr['tm_load_qr_library_present'] = function_exists( 'tm_load_qr_library' );
+		if ( function_exists( 'tm_load_qr_library' ) ) {
+			$qr['tm_load_result'] = tm_load_qr_library();
+		} else {
+			$qr['tm_load_result'] = false;
+		}
+
+		$qr['class_after_load']   = class_exists( '\\chillerlan\\QRCode\\QRCode' );
+		$qr['options_class']      = class_exists( '\\chillerlan\\QRCode\\QROptions' );
+		$qr['svg_output_class']   = class_exists( '\\chillerlan\\QRCode\\Output\\QRMarkupSVG' );
+
+		// Try to render a test QR for the first live vendor.
+		$qr['test_render'] = 'skipped';
+		if ( function_exists( 'tm_get_vendor_qr_svg_markup' ) ) {
+			// Pick first live vendor.
+			$test_uid = 0;
+			foreach ( $vendor_rows as $row ) {
+				if ( ! empty( $row['is_live'] ) ) {
+					$test_uid = (int) $row['id'];
+					break;
+				}
+			}
+			if ( $test_uid ) {
+				$svg = tm_get_vendor_qr_svg_markup( $test_uid );
+				if ( ! empty( $svg ) ) {
+					$qr['test_render'] = 'ok';
+					$qr['test_vendor_id'] = $test_uid;
+					$qr['test_output_len'] = strlen( $svg );
+				} else {
+					$qr['test_render'] = 'empty_output';
+					$qr['test_vendor_id'] = $test_uid;
+				}
+			} else {
+				$qr['test_render'] = 'no_live_vendor_found';
+			}
+		} else {
+			$qr['test_render'] = 'function_missing';
+		}
+
+		$report['qr_diagnostics'] = $qr;
 
 		// ── 8. Demo manifest ──────────────────────────────────────────────────
 		$report['demo_manifest'] = array( 'status' => 'skipped' );
