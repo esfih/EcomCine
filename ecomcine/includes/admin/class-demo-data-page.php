@@ -16,6 +16,7 @@ class EcomCine_Demo_Data_Page {
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_submenu' ), 20 );
 		add_action( 'wp_ajax_ecomcine_import_demo_remote', array( __CLASS__, 'ajax_import_demo_remote' ) );
+		add_action( 'wp_ajax_ecomcine_talent_debug', array( __CLASS__, 'ajax_talent_debug' ) );
 	}
 
 	public static function register_submenu() {
@@ -55,6 +56,12 @@ class EcomCine_Demo_Data_Page {
 			<h1><?php esc_html_e( 'EcomCine — Demo Data', 'ecomcine' ); ?></h1>
 			<p class="description">
 				<?php esc_html_e( 'Import a demo content pack to populate your site with sample talent profiles, media and categories.', 'ecomcine' ); ?>
+			</p>
+
+			<?php // Expose diagnostic nonce for browser-console debugging (admin only). ?>
+			<script>window.ecomcineDiagNonce = '<?php echo esc_js( wp_create_nonce( 'ecomcine_diag' ) ); ?>';</script>
+			<p style="font-size:11px;color:#999;margin:0 0 16px;">
+				<?php esc_html_e( 'Diagnostic nonce injected for console debugging (visible to admins only).', 'ecomcine' ); ?>
 			</p>
 
 			<?php if ( $manifest_error ) : ?>
@@ -188,6 +195,100 @@ class EcomCine_Demo_Data_Page {
 			wp_send_json_error( 'Missing zip_url parameter.' );
 		}
 		wp_send_json_success( EcomCine_Demo_Importer::run_remote( $zip_url ) );
+	}
+
+	/**
+	 * AJAX handler: talent-listing diagnostic.
+	 *
+	 * Traces every filter stage of tm_store_ui_collect_person_ids_for_listing()
+	 * and returns a structured JSON report.  Admin-only.
+	 *
+	 * Call via browser console (logged-in admin):
+	 *   fetch('/wp-admin/admin-ajax.php', {method:'POST', credentials:'include',
+	 *     headers:{'Content-Type':'application/x-www-form-urlencoded'},
+	 *     body:'action=ecomcine_talent_debug&nonce='+ecomcineDiagNonce})
+	 *   .then(r=>r.json()).then(d=>console.log(JSON.stringify(d,null,2)));
+	 */
+	public static function ajax_talent_debug() {
+		if ( ! check_ajax_referer( 'ecomcine_diag', 'nonce', false ) ) {
+			wp_send_json_error( 'Bad nonce.', 403 );
+		}
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions.', 403 );
+		}
+
+		$report = array();
+
+		// ── Environment ───────────────────────────────────────────────────────
+		$report['environment'] = array(
+			'plugin_version'        => defined( 'ECOMCINE_VERSION' ) ? ECOMCINE_VERSION : 'unknown',
+			'stored_version'        => get_option( 'ecomcine_version', 'none' ),
+			'php_version'           => PHP_VERSION,
+			'home_url'              => home_url(),
+			'tm_vendor_cpt_exists'  => post_type_exists( 'tm_vendor' ),
+			'TMP_WP_Vendor_CPT_cls' => class_exists( 'TMP_WP_Vendor_CPT', false ),
+			'media_player_enabled'  => function_exists( 'ecomcine_feature_enabled' ) ? (bool) ecomcine_feature_enabled( 'media_player' ) : null,
+			'ecomcine_settings'     => get_option( 'ecomcine_settings', array() ),
+		);
+
+		// ── Stage 0: raw seller/ecomcine_person users ─────────────────────────
+		$all_sellers = get_users( array(
+			'role__in' => array( 'seller', 'ecomcine_person', 'vendor' ),
+			'number'   => -1,
+		) );
+		$stage0_ids = array_map( function( $u ) { return (int) $u->ID; }, $all_sellers );
+		$report['stage0_all_roles'] = count( $stage0_ids );
+
+		// ── Stage 1: ecomcine_get_persons ────────────────────────────────────
+		$persons = function_exists( 'ecomcine_get_persons' )
+			? ecomcine_get_persons( array( 'number' => -1 ) )
+			: $all_sellers;
+		$stage1_ids = array_map( function( $u ) { return (int) $u->ID; }, $persons );
+		$report['stage1_ecomcine_get_persons'] = count( $stage1_ids );
+
+		// ── Per-vendor detail ─────────────────────────────────────────────────
+		$vendor_details = array();
+		foreach ( $stage1_ids as $uid ) {
+			$u = get_userdata( $uid );
+			$is_enabled  = function_exists( 'ecomcine_is_person_enabled' ) ? ecomcine_is_person_enabled( $uid ) : null;
+			$is_live     = function_exists( 'tm_store_ui_is_person_live' ) ? tm_store_ui_is_person_live( $uid ) : null;
+			$has_profile = function_exists( 'ecomcine_has_public_person_profile' ) ? ecomcine_has_public_person_profile( $uid ) : null;
+			$person_url  = function_exists( 'ecomcine_get_person_url' ) ? ecomcine_get_person_url( $uid ) : null;
+			$cpt_id      = (int) get_user_meta( $uid, '_tm_vendor_cpt_id', true );
+
+			$vendor_details[] = array(
+				'id'           => $uid,
+				'name'         => $u ? $u->display_name : '?',
+				'roles'        => $u ? $u->roles : array(),
+				'ec_enabled'   => get_user_meta( $uid, 'ecomcine_enabled', true ),
+				'dokan_sell'   => get_user_meta( $uid, 'dokan_enable_selling', true ),
+				'tm_l1'        => get_user_meta( $uid, 'tm_l1_complete', true ),
+				'geo_lat'      => get_user_meta( $uid, 'ecomcine_geo_lat', true ),
+				'cpt_id'       => $cpt_id,
+				'cpt_status'   => $cpt_id ? get_post_status( $cpt_id ) : 'no_cpt',
+				'is_enabled'   => $is_enabled,
+				'is_live'      => $is_live,
+				'has_profile'  => $has_profile,
+				'has_url'      => $person_url !== null ? ( '' !== trim( $person_url ) ) : null,
+				'url'          => $person_url,
+				'passes_all'   => $is_enabled && $is_live && $has_profile && $person_url !== '',
+			);
+		}
+		$report['vendors'] = $vendor_details;
+
+		// ── Stage summaries ───────────────────────────────────────────────────
+		$report['stage2_is_enabled']   = count( array_filter( $vendor_details, fn($v) => $v['is_enabled'] ) );
+		$report['stage3_is_live']      = count( array_filter( $vendor_details, fn($v) => $v['is_enabled'] && $v['is_live'] ) );
+		$report['stage4_has_profile']  = count( array_filter( $vendor_details, fn($v) => $v['is_enabled'] && $v['is_live'] && $v['has_profile'] ) );
+		$report['stage5_has_url']      = count( array_filter( $vendor_details, fn($v) => $v['passes_all'] ) );
+
+		// ── Final collect result ──────────────────────────────────────────────
+		if ( function_exists( 'tm_store_ui_collect_person_ids_for_listing' ) ) {
+			$final = tm_store_ui_collect_person_ids_for_listing();
+			$report['final_collect_result'] = count( $final );
+		}
+
+		wp_send_json_success( $report );
 	}
 }
 
