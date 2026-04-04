@@ -434,9 +434,10 @@ endif;
 if ( ! function_exists( 'tm_is_showcase_page' ) ) :
 function tm_is_showcase_page() {
 	if ( ! empty( $GLOBALS['tm_showcase_page'] ) ) { return true; }
-	if ( ! is_page() ) { return false; }
 	$queried = get_queried_object();
-	if ( ! $queried || empty( $queried->post_content ) ) { return false; }
+	if ( ! ( $queried instanceof WP_Post ) ) { return false; }
+	if ( 'page' !== get_post_type( $queried ) ) { return false; }
+	if ( empty( $queried->post_content ) ) { return false; }
 	return has_shortcode( $queried->post_content, 'tm_talent_showcase' )
 		|| has_shortcode( $queried->post_content, 'tm_talent_player' );
 }
@@ -447,6 +448,9 @@ function tm_talent_showcase_shortcode( $atts = array() ) {
 	if ( is_admin() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
 		return '<div class="tm-talent-showcase-placeholder">[tm_talent_showcase]</div>';
 	}
+	// Latch showcase context at render time so late hooks (for example wp_footer)
+	// do not depend on mutable query flags to recognize the current page.
+	$GLOBALS['tm_showcase_page'] = true;
 	$atts      = shortcode_atts( array( 'mode' => 'showcase' ), $atts, 'tm_talent_showcase' );
 	$mode      = strtolower( (string) $atts['mode'] );
 	if ( '' === $mode ) { $mode = 'showcase'; }
@@ -520,9 +524,10 @@ add_filter( 'template_include', function( $template ) {
 	if ( is_admin() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
 		return $template;
 	}
-	if ( ! is_page() ) { return $template; }
 	$queried = get_queried_object();
-	if ( ! $queried || empty( $queried->post_content ) ) { return $template; }
+	if ( ! ( $queried instanceof WP_Post ) ) { return $template; }
+	if ( 'page' !== get_post_type( $queried ) ) { return $template; }
+	if ( empty( $queried->post_content ) ) { return $template; }
 	$has_showcase = has_shortcode( $queried->post_content, 'tm_talent_showcase' )
 		|| has_shortcode( $queried->post_content, 'tm_talent_player' );
 	if ( ! $has_showcase ) { return $template; }
