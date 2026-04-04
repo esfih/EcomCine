@@ -150,13 +150,19 @@ class EcomCine_Debug_Page {
 		$qr['svg_output_class']   = class_exists( '\\chillerlan\\QRCode\\Output\\QRMarkupSVG' );
 
 		// Try to render a test QR for the first live vendor.
+		// Note: $vendor_rows is populated in section 9, so we do a direct query here.
 		$qr['test_render'] = 'skipped';
 		if ( function_exists( 'tm_get_vendor_qr_svg_markup' ) ) {
-			// Pick first live vendor.
-			$test_uid = 0;
-			foreach ( $vendor_rows as $row ) {
-				if ( ! empty( $row['is_live'] ) ) {
-					$test_uid = (int) $row['id'];
+			$test_uid     = 0;
+			$qr_candidates = get_users( array(
+				'role__in' => array( 'seller', 'ecomcine_person' ),
+				'number'   => 50,
+				'fields'   => array( 'ID' ),
+			) );
+			foreach ( $qr_candidates as $u ) {
+				$uid = (int) $u->ID;
+				if ( function_exists( 'tm_store_ui_is_person_live' ) && tm_store_ui_is_person_live( $uid ) ) {
+					$test_uid = $uid;
 					break;
 				}
 			}

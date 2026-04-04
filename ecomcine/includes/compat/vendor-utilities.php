@@ -124,19 +124,17 @@ if ( ! function_exists( 'tm_get_vendor_qr_svg_markup' ) ) {
 		$svg_markup = '';
 		try {
 			$qr_output_options = array(
-				'eccLevel'               => 3,
-				'addQuietzone'           => true,
-				'quietzoneSize'          => 4,
-				'scale'                  => 8,
-				'outputBase64'           => false,
-				'svgAddXmlHeader'        => false,
-				'svgPreserveAspectRatio' => 'xMidYMid meet',
+				'eccLevel'     => 3,
+				'addQuietzone' => true,
+				'quietzoneSize' => 4,
+				'scale'        => 8,
+				'imageBase64'  => false,
+				'outputType'   => 'svg',
 			);
 
+			// Use QRMarkupSVG interface if available (newer library versions).
 			if ( class_exists( '\\chillerlan\\QRCode\\Output\\QRMarkupSVG' ) ) {
 				$qr_output_options['outputInterface'] = \chillerlan\QRCode\Output\QRMarkupSVG::class;
-			} else {
-				$qr_output_options['outputType'] = 'svg';
 			}
 
 			$options = new \chillerlan\QRCode\QROptions( $qr_output_options );
