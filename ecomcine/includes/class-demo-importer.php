@@ -85,7 +85,7 @@ class EcomCine_Demo_Importer {
 			return $result;
 		}
 
-		$media_dir = dirname( $json_path ) . '/media';
+		$media_dir = dirname( $json_path );
 
 		// ── Import ────────────────────────────────────────────────────────────
 		$raw     = file_get_contents( $json_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions
