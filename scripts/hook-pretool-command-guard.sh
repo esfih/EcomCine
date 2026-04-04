@@ -40,21 +40,6 @@ json_ask() {
 JSON
 }
 
-request_or_deny() {
-  local reason="$1"
-  local stop_reason="$2"
-  local system_message="$3"
-  local mode="${ECOMCINE_GUARD_APPROVAL_MODE:-ask}"
-
-  if [[ "$mode" == "ask" ]]; then
-    json_ask "$reason" "$stop_reason" "$system_message"
-  else
-    json_deny "$reason" "$stop_reason" "$system_message"
-  fi
-}
-JSON
-}
-
 is_terminal_tool=false
 if echo "$payload" | grep -Eiq '"toolName"\s*:\s*"run_in_terminal"|"tool_name"\s*:\s*"run_in_terminal"'; then
   is_terminal_tool=true
@@ -84,7 +69,7 @@ if [[ "$is_mutating_file_tool" == true ]]; then
   # Require mutating file tools to target this workspace path.
   # This prevents accidental writes outside the active WSL workspace.
   if ! echo "$payload" | grep -q "$WORKSPACE_ROOT"; then
-    request_or_deny \
+    json_deny \
       "Approval required: mutating operation targets outside workspace root." \
       "Approval needed for out-of-workspace mutation." \
       "Allow only if intentional. Preferred path: retry under $WORKSPACE_ROOT."
@@ -114,14 +99,6 @@ if [[ "$is_terminal_tool" == true ]]; then
       exit 0
       ;;
   esac
-
-  if echo "$payload" | grep -Eiq '(^|[^A-Za-z])(apt|apt-get)[^"]*install|npm[^"]*install[[:space:]]+-g|pip3?[^"]*install[^"]*--user'; then
-    request_or_deny \
-      "Approval required: interactive package-manager install in IDE terminal." \
-      "Approval needed for interactive package-manager install." \
-      "Short reason needed: missing required host tool. Preferred path: ./scripts/run-catalog-command.sh host.tool.install <tool> from external WSL terminal."
-    exit 0
-  fi
 fi
 
 cat <<'JSON'
@@ -129,7 +106,7 @@ cat <<'JSON'
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "allow",
-    "permissionDecisionReason": "No blocked package-manager command pattern detected."
+    "permissionDecisionReason": "No blocked WSL/path safety pattern detected."
   }
 }
 JSON

@@ -125,6 +125,15 @@ Each command contract defines:
 - failure_class: `auth`
 - remediation_type: `source-fix`
 
+`id`: `wp.remote.app.deploy.ecomcine`
+- goal: Deploy a specific published EcomCine release to app.topdoctorchannel.us by installing the canonical GitHub release ZIP over the active plugin
+- command: `./scripts/wp-remote.sh plugin install https://github.com/esfih/EcomCine/releases/download/v<version>/ecomcine-<version>.zip --force --activate`
+- args: required `version`; optional `slug` default `ecomcine`
+- success: exit `0`; remote `plugin get ecomcine --fields=name,status,version` reports the requested version and `active`
+- failure: non-zero; resolve remote WP-CLI/plugin filesystem/download/auth issues before proceeding
+- failure_class: `auth`
+- remediation_type: `source-fix`
+
 ### Database and Seed Contracts
 
 `id`: `db.seed.import.core`

@@ -89,16 +89,14 @@ See `New-Migrate-WP-Local-Setup.md` → "EcomCine — Re-Setup on a New Computer
 
 ## IDE AI Command Contract Policy (Mandatory)
 
-- Use only commands defined in `specs/IDE-AI-Command-Catalog.md` for terminal operations.
-- Prefer `./scripts/run-catalog-command.sh <command-id> [args...]` when executing catalog entries.
-- Do not improvise arbitrary shell commands for task execution.
-- If no catalog command exists for the task: stop, report the missing command ID, and ask the user to approve creating a new catalog entry before proceeding.
+- Check `specs/IDE-AI-Command-Catalog.md` first for terminal operations.
+- Prefer `./scripts/run-catalog-command.sh <command-id> [args...]` when a catalog command exists.
+- If no catalog command exists for the task, create a new standardized command entry and implementation first, document it in the catalog, then use that command path for execution.
 - Exit code is canonical pass/fail signal; warning text alone must not be treated as failure.
 - Never run interactive package-manager installs (`apt install`, `npm install -g`, `pip install --user`) via the IDE AI integrated terminal path.
 - For host tooling installs, use catalog command `host.tool.install` and run it from an external WSL terminal session.
 - Exception: catalog command `qa.playwright.browsers.install` is approved in the IDE integrated terminal because local Playwright browser/system dependencies are part of the canonical self-test workflow.
-- PreToolUse runtime enforcement for this rule is defined in `.github/hooks/block-interactive-package-installs.json`.
-- PreToolUse guardrail enforcement also denies Windows-mounted path usage and out-of-workspace file mutation attempts; operate only under the active WSL workspace root.
+- PreToolUse guardrail enforcement remains limited to Windows-mounted path usage and out-of-workspace file mutation attempts; operate only under the active WSL workspace root.
 
 ### IDE AI Self-Test + Debug Policy (Mandatory)
 

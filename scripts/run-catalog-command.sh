@@ -79,6 +79,26 @@ case "$COMMAND_ID" in
     ./scripts/wp-remote.sh "$@"
     ;;
 
+  wp.remote.app.deploy.ecomcine)
+    if [[ $# -lt 1 ]]; then
+      echo "ERROR: wp.remote.app.deploy.ecomcine requires <version> [slug]" >&2
+      exit 2
+    fi
+    VERSION="$1"
+    SLUG="${2:-ecomcine}"
+    PACKAGE_URL="https://github.com/esfih/EcomCine/releases/download/v${VERSION}/${SLUG}-${VERSION}.zip"
+    REMOTE_KEY_PATH="$HOME/.ssh/ecomcine-dev"
+    if [[ ! -f "$REMOTE_KEY_PATH" ]]; then
+      REMOTE_KEY_PATH="$HOME/.ssh/ecomcine_n0c"
+    fi
+    REMOTE_USER="efttsqrtff" \
+    REMOTE_HOST="209.16.158.249" \
+    REMOTE_PORT="5022" \
+    REMOTE_WPATH="/home/efttsqrtff/app.topdoctorchannel.us" \
+    REMOTE_KEY="$REMOTE_KEY_PATH" \
+    ./scripts/wp-remote.sh plugin install "$PACKAGE_URL" --force --activate
+    ;;
+
   db.seed.import.core)
     ./scripts/wp.sh wp db import db/seed.sql
     ;;
