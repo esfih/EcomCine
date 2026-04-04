@@ -133,6 +133,7 @@ if [[ "$PUSH" == "--push" ]]; then
         --repo "$REPO" \
         --title "Demo Data $VERSION" \
         --notes "Demo pack release $VERSION. Packs: $pack_names" \
+        --prerelease \
         "${zip_files[@]}"
 
     echo "[demos-release] Updating $MANIFEST …"
