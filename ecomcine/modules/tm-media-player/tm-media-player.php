@@ -382,6 +382,10 @@ function get_vendor_navigation_list() {
 	foreach ( $vendors as $vendor ) {
 		$vendor_id = absint( $vendor );
 		if ( ! $vendor_id ) { continue; }
+		// Only include live vendors in the navigation list.
+		if ( function_exists( 'tm_store_ui_is_person_live' ) && ! tm_store_ui_is_person_live( $vendor_id ) ) {
+			continue;
+		}
 		if ( function_exists( 'dokan_get_store_url' ) ) {
 			$store_url = dokan_get_store_url( $vendor_id );
 		} else {
@@ -417,6 +421,10 @@ function tm_get_showcase_vendor_ids() {
 	foreach ( $vendors as $vendor ) {
 		$vendor_id = absint( $vendor );
 		if ( ! $vendor_id ) { continue; }
+		// Only include vendors that pass the is_live check.
+		if ( function_exists( 'tm_store_ui_is_person_live' ) && ! tm_store_ui_is_person_live( $vendor_id ) ) {
+			continue;
+		}
 		$vendor_ids[] = $vendor_id;
 	}
 	return $vendor_ids;
@@ -447,7 +455,7 @@ function tm_talent_showcase_shortcode( $atts = array() ) {
 	$vendor_id  = (int) $vendor_ids[0];
 	$payload    = tm_get_vendor_store_content_payload( $vendor_id );
 	if ( is_wp_error( $payload ) ) { return '<div class="tm-talent-showcase-empty">Unable to load talent showcase.</div>'; }
-	TM_Media_Player_Assets::enqueue_for_showcase( $vendor_id, $mode );
+	TM_Media_Player_Assets::enqueue_for_showcase( $vendor_id, $mode, $vendor_ids );
 	set_query_var( 'author', $vendor_id );
 	ob_start();
 	?>
@@ -554,12 +562,12 @@ class TM_Media_Player_Assets {
 	// Public context entry-points
 	// -----------------------------------------------------------------------
 
-	public static function enqueue_for_showcase( $vendor_id, $mode = 'showcase' ) {
+	public static function enqueue_for_showcase( $vendor_id, $mode = 'showcase', $all_vendor_ids = array() ) {
 		if ( is_admin() ) { return; }
 		self::enqueue_css();
 		self::enqueue_js( array( 'jquery' ) );
 		self::bootstrap_media( $vendor_id );
-		self::localize_showcase( $vendor_id, $mode );
+		self::localize_showcase( $vendor_id, $mode, $all_vendor_ids );
 	}
 
 	public static function enqueue_for_profile( $vendor_id ) {
@@ -659,7 +667,7 @@ class TM_Media_Player_Assets {
 		wp_add_inline_script( 'tm-player-js', $media_bootstrap, 'before' );
 	}
 
-	private static function localize_showcase( $vendor_id, $mode ) {
+	private static function localize_showcase( $vendor_id, $mode, $all_vendor_ids = array() ) {
 		$nonce = wp_create_nonce( 'vendor_inline_edit' );
 		$mapbox_token = function_exists( 'ecomcine_get_mapbox_token' )
 			? ecomcine_get_mapbox_token()
@@ -694,8 +702,14 @@ class TM_Media_Player_Assets {
 		// These run as an inline <script> immediately BEFORE player.js loads.
 		$safe_mode     = $mode ? $mode : 'showcase';
 		$rest_url      = rest_url( 'tm/v1/vendor-store-content' );
+		$showcase_ids  = array_values( array_filter( array_map( 'absint', (array) $all_vendor_ids ) ) );
 		$inline_config = 'window.tmPlayerMode=' . json_encode( $safe_mode ) . ';'
 			. 'window.tmVendorStoreRestUrl=' . json_encode( $rest_url ) . ';';
+		// Seed window.tmShowcaseIds so player.js never needs an AJAX call to build the
+		// vendor navigation list — it uses this array directly.
+		if ( ! empty( $showcase_ids ) ) {
+			$inline_config .= 'window.tmShowcaseIds=' . json_encode( $showcase_ids ) . ';';
+		}
 		wp_add_inline_script( 'tm-player-js', $inline_config, 'before' );
 	}
 

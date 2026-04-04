@@ -23,7 +23,10 @@
                             <div class="store-header">
                                 <div class="store-banner">
                                     <a href="<?php echo esc_url( $store_url ); ?>">
-                                        <img src="<?php echo is_array( $store_banner_url ) ? esc_attr( $store_banner_url[0] ) : esc_attr( $store_banner_url ); ?>">
+                                        <img src="<?php echo is_array( $store_banner_url ) ? esc_attr( $store_banner_url[0] ) : esc_attr( $store_banner_url ); ?>"
+                                            loading="lazy"
+                                            decoding="async"
+                                            width="640" height="360">
                                     </a>
                                 </div>
                                 <!-- Featured label removed from header, will be rendered below vendor name -->
@@ -123,7 +126,9 @@
                                     <a href="<?php echo esc_url( $store_url ); ?>">
                                         <img src="<?php echo esc_url( $vendor->get_avatar() ); ?>"
                                             alt="<?php echo esc_attr( $vendor->get_shop_name() ); ?>"
-                                            size="150" />
+                                            width="150" height="150"
+                                            loading="lazy"
+                                            decoding="async" />
                                     </a>
                                 </div>
 
