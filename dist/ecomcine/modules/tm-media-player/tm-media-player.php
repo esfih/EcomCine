@@ -740,7 +740,7 @@ class TM_Media_Player_Assets {
 			TM_MEDIA_PLAYER_URL . 'assets/js/player.js',
 			$deps,
 			self::JS_VERSION,
-			true
+			false
 		);
 	}
 
