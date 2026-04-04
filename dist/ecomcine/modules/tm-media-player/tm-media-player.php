@@ -507,8 +507,10 @@ add_filter( 'body_class', function( $classes ) {
 // Theme-agnostic header/footer suppression via EcomCine globals.
 // A thin theme-compat layer (ecomcine/includes/theme-compat/) translates these
 // globals into each theme's native suppression mechanism.
+// NOTE: Person profile pages are NOT suppressed here — they use template-person-profile.php
+// which calls get_header('shop') / get_footer('shop') directly and handles suppression itself.
 add_action( 'template_redirect', function() {
-	if ( tm_is_showcase_page() ) {
+	if ( tm_is_showcase_page() && ! ( function_exists( 'ecomcine_is_person_page' ) && ecomcine_is_person_page() ) ) {
 		$GLOBALS['ecomcine_suppress_header'] = true;
 		$GLOBALS['ecomcine_suppress_footer'] = true;
 	}
@@ -594,6 +596,17 @@ class TM_Media_Player_Assets {
 
 	public static function handle_enqueue() {
 		if ( self::is_dashboard() ) { return; }
+
+		// Person profile pages (wp_cpt mode) — enqueue_for_showcase() is called directly
+		// from template-person-profile.php via tm_enqueue_talent_showcase_assets() before
+		// get_header(), so by the time we arrive here player.js is already queued.
+		// We still need to ensure CSS is registered; the early return prevents a second
+		// localize_script call that would overwrite playerMode:'profile' with 'default'.
+		if ( function_exists( 'ecomcine_is_person_page' ) && ecomcine_is_person_page() ) {
+			self::enqueue_css();
+			return;
+		}
+
 		$should_enqueue = ! empty( $GLOBALS['tm_showcase_page'] );
 		if ( ! $should_enqueue && function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
 			$should_enqueue = true;
@@ -841,10 +854,12 @@ TM_Media_Player_Assets::init();
 
 // ---------------------------------------------------------------------------
 // Back-compat shim — keep tm_enqueue_talent_showcase_assets() callable from
-// any code that still references it directly (theme, third-party code).
+// any code that still references it directly (theme, third-party code, profile template).
+// Pass all showcase vendor IDs so window.tmShowcaseIds is seeded for navigation.
 // ---------------------------------------------------------------------------
 if ( ! function_exists( 'tm_enqueue_talent_showcase_assets' ) ) {
 	function tm_enqueue_talent_showcase_assets( $vendor_id, $mode = 'showcase' ) {
-		TM_Media_Player_Assets::enqueue_for_showcase( $vendor_id, $mode );
+		$all_vendor_ids = function_exists( 'tm_get_showcase_vendor_ids' ) ? tm_get_showcase_vendor_ids() : array();
+		TM_Media_Player_Assets::enqueue_for_showcase( $vendor_id, $mode, $all_vendor_ids );
 	}
 }
