@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.26
+ * Version: 0.1.34
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.26' );
+define( 'ECOMCINE_VERSION', '0.1.34' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -124,8 +124,12 @@ EcomCine_Admin_Categories_Tab::init();
 $_demo_errors = [];
 ecomcine_require_file( 'includes/class-demo-importer.php', $_demo_errors );
 ecomcine_require_file( 'includes/admin/class-demo-data-page.php', $_demo_errors );
+ecomcine_require_file( 'includes/admin/class-debug-page.php', $_demo_errors );
 if ( class_exists( 'EcomCine_Demo_Data_Page', false ) ) {
 	EcomCine_Demo_Data_Page::init();
+}
+if ( class_exists( 'EcomCine_Debug_Page', false ) ) {
+	EcomCine_Debug_Page::init();
 }
 unset( $_demo_errors );
 
@@ -223,6 +227,43 @@ add_action( 'init', function() {
 	// Always re-deploy debug infrastructure on every version bump so that
 	// plugin updates (which skip the activation hook) also provision the files.
 	ecomcine_deploy_debug_infrastructure();
+
+	// v0.1.32 — Backfill ecomcine_geo_lat/lng from dokan_profile_settings.geolocation
+	// for vendors that have DPS geo but not the canonical flat meta keys.
+	// The v0.1.26 migration covers dokan_geo_latitude, but not the geolocation array
+	// inside dokan_profile_settings which is where the demo importer stores coords.
+	if ( version_compare( $stored, '0.1.32', '<' ) ) {
+		$geo_users = get_users( array(
+			'role__in' => array( 'seller', 'ecomcine_person' ),
+			'number'   => -1,
+			'fields'   => array( 'ID' ),
+		) );
+		$geo_backfilled = 0;
+		foreach ( $geo_users as $gu ) {
+			$uid = (int) $gu->ID;
+			if ( '' !== get_user_meta( $uid, 'ecomcine_geo_lat', true ) ) {
+				continue; // Already set.
+			}
+			$dps = get_user_meta( $uid, 'dokan_profile_settings', true );
+			if ( ! is_array( $dps ) ) {
+				continue;
+			}
+			$geo = isset( $dps['geolocation'] ) && is_array( $dps['geolocation'] ) ? $dps['geolocation'] : array();
+			if ( empty( $geo['latitude'] ) || empty( $geo['longitude'] ) ) {
+				continue;
+			}
+			update_user_meta( $uid, 'ecomcine_geo_lat', (string) $geo['latitude'] );
+			update_user_meta( $uid, 'ecomcine_geo_lng', (string) $geo['longitude'] );
+			$addr = isset( $dps['location'] ) ? sanitize_text_field( (string) $dps['location'] ) : '';
+			if ( '' !== $addr ) {
+				update_user_meta( $uid, 'ecomcine_geo_address', $addr );
+			}
+			$geo_backfilled++;
+		}
+		if ( $geo_backfilled > 0 ) {
+			error_log( "[EcomCine 0.1.32] ecomcine_geo_lat/lng backfill: set {$geo_backfilled} vendors." );
+		}
+	}
 
 	// v0.1.26 — Migrate Dokan-era vendor meta to EcomCine canonical keys and
 	//            recalculate L1 completeness from actual profile data.

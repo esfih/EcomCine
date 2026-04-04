@@ -301,11 +301,26 @@ class EcomCine_Demo_Importer {
 		}
 
 		// Write canonical geo keys so the vendors-map shortcode meta_query finds them.
+		// Resolve lat/lng: prefer explicit geolocation object, fall back to parsing dps['location'] as "lat,lng".
 		$geo_data = isset( $dps['geolocation'] ) && is_array( $dps['geolocation'] ) ? $dps['geolocation'] : array();
+		if ( ( empty( $geo_data['latitude'] ) || empty( $geo_data['longitude'] ) ) ) {
+			$loc_raw = (string) ( $dps['location'] ?? '' );
+			if ( preg_match( '/^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*$/', $loc_raw, $coord_m ) ) {
+				$geo_data['latitude']  = $coord_m[1];
+				$geo_data['longitude'] = $coord_m[2];
+			}
+		}
 		if ( ! empty( $geo_data['latitude'] ) && ! empty( $geo_data['longitude'] ) ) {
 			update_user_meta( $user_id, 'ecomcine_geo_lat', (string) $geo_data['latitude'] );
 			update_user_meta( $user_id, 'ecomcine_geo_lng', (string) $geo_data['longitude'] );
-			$geo_address = sanitize_text_field( (string) ( $dps['location'] ?? '' ) );
+			// Human-readable address: prefer find_address, then non-coordinate location string.
+			$geo_address = sanitize_text_field( (string) ( $dps['find_address'] ?? '' ) );
+			if ( '' === $geo_address ) {
+				$loc_candidate = sanitize_text_field( (string) ( $dps['location'] ?? '' ) );
+				if ( ! preg_match( '/^\s*-?\d+\.?\d*\s*,\s*-?\d+\.?\d*\s*$/', $loc_candidate ) ) {
+					$geo_address = $loc_candidate;
+				}
+			}
 			if ( '' !== $geo_address ) {
 				update_user_meta( $user_id, 'ecomcine_geo_address', $geo_address );
 			}

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.33
+ * Version: 0.1.34
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.33' );
+define( 'ECOMCINE_VERSION', '0.1.34' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -124,8 +124,12 @@ EcomCine_Admin_Categories_Tab::init();
 $_demo_errors = [];
 ecomcine_require_file( 'includes/class-demo-importer.php', $_demo_errors );
 ecomcine_require_file( 'includes/admin/class-demo-data-page.php', $_demo_errors );
+ecomcine_require_file( 'includes/admin/class-debug-page.php', $_demo_errors );
 if ( class_exists( 'EcomCine_Demo_Data_Page', false ) ) {
 	EcomCine_Demo_Data_Page::init();
+}
+if ( class_exists( 'EcomCine_Debug_Page', false ) ) {
+	EcomCine_Debug_Page::init();
 }
 unset( $_demo_errors );
 

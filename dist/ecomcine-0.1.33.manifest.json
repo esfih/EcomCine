@@ -1,0 +1,9 @@
+{
+  "plugin": "ecomcine",
+  "version": "0.1.33",
+  "artifact": "ecomcine-0.1.33.zip",
+  "artifact_type": "zip",
+  "sha256": "3f618277f832caaa754cff8ca62129c67f34539d22088fe45ad631f4a77ac112",
+  "built_at_utc": "2026-04-04T00:43:51Z",
+  "source": "local"
+}

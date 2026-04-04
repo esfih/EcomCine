@@ -476,6 +476,14 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 			return false;
 		}
 
+		// When the tm_vendor CPT is not registered (e.g. media-player module is
+		// disabled or not yet initialised), there is no profile-artifact system
+		// active on this site.  Treat every enabled person as having a public
+		// profile — the listing layer already gates on ecomcine_enabled + tm_l1_complete.
+		if ( ! post_type_exists( 'tm_vendor' ) ) {
+			return true;
+		}
+
 		if ( class_exists( 'TMP_WP_Vendor_CPT', false ) && method_exists( 'TMP_WP_Vendor_CPT', 'get_post_id_for_vendor' ) ) {
 			$post_id = (int) TMP_WP_Vendor_CPT::get_post_id_for_vendor( $user_id );
 			if ( $post_id > 0 ) {
@@ -782,7 +790,15 @@ if ( ! function_exists( 'ecomcine_get_geo' ) ) {
 		if ( '' === $address ) {
 			$address = (string) get_user_meta( $user_id, 'dokan_geo_address', true );
 			if ( '' === $address && is_array( $dps ) ) {
-				$address = sanitize_text_field( (string) ( $dps['location'] ?? '' ) );
+				$candidate = sanitize_text_field( (string) ( $dps['location'] ?? '' ) );
+				// Only use as human-readable address — skip raw coordinate strings ("lat,lng").
+				if ( ! preg_match( '/^\s*-?\d+\.?\d*\s*,\s*-?\d+\.?\d*\s*$/', $candidate ) ) {
+					$address = $candidate;
+				}
+			}
+			// find_address fallback: more readable than dokan location.
+			if ( '' === $address && is_array( $dps ) ) {
+				$address = sanitize_text_field( (string) ( $dps['find_address'] ?? '' ) );
 			}
 		}
 		if ( '' === $lat ) {
@@ -790,11 +806,25 @@ if ( ! function_exists( 'ecomcine_get_geo' ) ) {
 			if ( '' === $lat && is_array( $dps ) && isset( $dps['geolocation']['latitude'] ) ) {
 				$lat = (string) $dps['geolocation']['latitude'];
 			}
+			// Parse lat from coordinate-format dps['location'] when geolocation is absent.
+			if ( '' === $lat && is_array( $dps ) ) {
+				$loc = (string) ( $dps['location'] ?? '' );
+				if ( preg_match( '/^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*$/', $loc, $m ) ) {
+					$lat = $m[1];
+				}
+			}
 		}
 		if ( '' === $lng ) {
 			$lng = (string) get_user_meta( $user_id, 'dokan_geo_longitude', true );
 			if ( '' === $lng && is_array( $dps ) && isset( $dps['geolocation']['longitude'] ) ) {
 				$lng = (string) $dps['geolocation']['longitude'];
+			}
+			// Parse lng from coordinate-format dps['location'] when geolocation is absent.
+			if ( '' === $lng && is_array( $dps ) ) {
+				$loc = (string) ( $dps['location'] ?? '' );
+				if ( preg_match( '/^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*$/', $loc, $m ) ) {
+					$lng = $m[2];
+				}
 			}
 		}
 
