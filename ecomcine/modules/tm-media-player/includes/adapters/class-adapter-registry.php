@@ -5,8 +5,8 @@
  * Returns the active TMP_Media_Source_Provider for the current runtime.
  * Selection logic:
  *   - If the `TMP_ADAPTER` constant is set to 'default-wp', use the WP CPT adapter.
- *   - If Dokan is active, use the compat adapter (Dokan user-meta sources).
- *   - Default fallback: compat adapter (safest for existing data).
+ *   - If runtime_mode is `wp_cpt`, use the WP CPT adapter.
+ *   - Otherwise use the compat adapter for legacy marketplace stacks.
  *
  * @package TM_Media_Player
  * @since   1.1.0
@@ -64,23 +64,14 @@ final class TMP_Adapter_Registry {
 			return new TMP_WP_Media_Source_Provider();
 		}
 
-		// In standalone runtime, source media from tm_vendor CPT records.
-		if ( class_exists( 'EcomCine_Admin_Settings', false ) && method_exists( 'EcomCine_Admin_Settings', 'get_runtime_mode' ) ) {
-			$runtime_mode = (string) EcomCine_Admin_Settings::get_runtime_mode();
-			if ( 'wp_cpt' === $runtime_mode ) {
-				return new TMP_WP_Media_Source_Provider();
-			}
+		$runtime_mode = ( class_exists( 'EcomCine_Admin_Settings', false ) && method_exists( 'EcomCine_Admin_Settings', 'get_runtime_mode' ) )
+			? (string) EcomCine_Admin_Settings::get_runtime_mode()
+			: 'wp_cpt';
+		if ( 'wp_cpt' === $runtime_mode ) {
+			return new TMP_WP_Media_Source_Provider();
 		}
 
-		$settings = get_option( 'ecomcine_settings', array() );
-		if ( is_array( $settings ) ) {
-			$runtime_mode = isset( $settings['runtime_mode'] ) ? (string) $settings['runtime_mode'] : '';
-			if ( 'wp_cpt' === $runtime_mode ) {
-				return new TMP_WP_Media_Source_Provider();
-			}
-		}
-
-		// Compat adapter whenever Dokan is available.
+		// Compat adapter for explicit legacy marketplace stacks.
 		return new TMP_Compat_Media_Source_Provider();
 	}
 }

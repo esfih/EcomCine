@@ -19,7 +19,7 @@ class EcomCine_Runtime_Adapters {
 
 		$mode = class_exists( 'EcomCine_Admin_Settings', false )
 			? EcomCine_Admin_Settings::get_runtime_mode()
-			: 'wp_woo_dokan_booking';
+			: 'wp_cpt';
 
 		switch ( $mode ) {
 			case 'wp_woo_dokan':
@@ -43,7 +43,7 @@ class EcomCine_Runtime_Adapters {
 
 		$mode = class_exists( 'EcomCine_Admin_Settings', false )
 			? EcomCine_Admin_Settings::get_runtime_mode()
-			: 'wp_woo_dokan_booking';
+			: 'wp_cpt';
 
 		switch ( $mode ) {
 			case 'wp_woo_dokan':

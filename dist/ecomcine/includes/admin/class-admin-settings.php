@@ -7,6 +7,10 @@ defined( 'ABSPATH' ) || exit;
 
 class EcomCine_Admin_Settings {
 	const OPTION_KEY = 'ecomcine_settings';
+	const DEFAULT_RUNTIME_MODE = 'wp_cpt';
+
+	/** @var array<string,bool> Prevent duplicate runtime fallback logs per request. */
+	private static array $runtime_mode_log_flags = array();
 
 	/**
 	 * Register admin hooks.
@@ -519,7 +523,7 @@ class EcomCine_Admin_Settings {
 	 */
 	public static function defaults() {
 		return array(
-			'runtime_mode' => 'wp_woo_dokan_booking',
+			'runtime_mode' => self::DEFAULT_RUNTIME_MODE,
 			'persons_grid' => array(
 				'rows'    => 2,
 				'columns' => 4,
@@ -559,11 +563,16 @@ class EcomCine_Admin_Settings {
 	public static function get_settings() {
 		$stored = get_option( self::OPTION_KEY, array() );
 		if ( ! is_array( $stored ) ) {
+			self::log_runtime_mode_issue( 'settings_not_array', $stored );
 			$stored = array();
 		}
 
 		$defaults = self::defaults();
 		$settings = wp_parse_args( $stored, $defaults );
+		$settings['runtime_mode'] = self::normalize_runtime_mode(
+			isset( $stored['runtime_mode'] ) ? $stored['runtime_mode'] : null,
+			'get_settings'
+		);
 
 		$settings['features'] = wp_parse_args(
 			isset( $stored['features'] ) && is_array( $stored['features'] ) ? $stored['features'] : array(),
@@ -606,7 +615,58 @@ class EcomCine_Admin_Settings {
 	 */
 	public static function get_runtime_mode() {
 		$settings = self::get_settings();
-		return isset( $settings['runtime_mode'] ) ? (string) $settings['runtime_mode'] : 'wp_woo_dokan_booking';
+		return self::normalize_runtime_mode(
+			isset( $settings['runtime_mode'] ) ? $settings['runtime_mode'] : null,
+			'get_runtime_mode'
+		);
+	}
+
+	/**
+	 * Normalize runtime mode and surface missing/invalid values instead of
+	 * silently dropping into a legacy marketplace stack.
+	 *
+	 * @param mixed  $runtime_mode Raw runtime mode value.
+	 * @param string $context      Call-site context for diagnostics.
+	 * @return string
+	 */
+	private static function normalize_runtime_mode( $runtime_mode, string $context ): string {
+		if ( ! is_string( $runtime_mode ) || '' === trim( $runtime_mode ) ) {
+			self::log_runtime_mode_issue( 'missing_runtime_mode', $context );
+			return self::DEFAULT_RUNTIME_MODE;
+		}
+
+		$runtime_mode = trim( $runtime_mode );
+		if ( ! in_array( $runtime_mode, self::allowed_modes(), true ) ) {
+			self::log_runtime_mode_issue( 'invalid_runtime_mode', $runtime_mode . ' @ ' . $context );
+			return self::DEFAULT_RUNTIME_MODE;
+		}
+
+		return $runtime_mode;
+	}
+
+	/**
+	 * Emit a one-time per-request log entry for runtime mode issues.
+	 *
+	 * @param string $reason Diagnostic reason key.
+	 * @param mixed  $detail Optional detail payload.
+	 * @return void
+	 */
+	private static function log_runtime_mode_issue( string $reason, $detail = null ): void {
+		$key = $reason . '|' . ( is_scalar( $detail ) ? (string) $detail : gettype( $detail ) );
+		if ( isset( self::$runtime_mode_log_flags[ $key ] ) ) {
+			return;
+		}
+
+		self::$runtime_mode_log_flags[ $key ] = true;
+		$message = '[EcomCine runtime] ' . $reason . ' -> defaulting runtime_mode to ' . self::DEFAULT_RUNTIME_MODE;
+		if ( null !== $detail ) {
+			if ( is_scalar( $detail ) ) {
+				$message .= ' | detail=' . (string) $detail;
+			} else {
+				$message .= ' | detail_type=' . gettype( $detail );
+			}
+		}
+		error_log( $message );
 	}
 
 	/**
@@ -742,6 +802,7 @@ class EcomCine_Admin_Settings {
 	public static function sanitize_settings( $input ) {
 		$defaults = self::defaults();
 		if ( ! is_array( $input ) ) {
+			self::log_runtime_mode_issue( 'sanitize_non_array_input', gettype( $input ) );
 			return $defaults;
 		}
 
@@ -750,14 +811,14 @@ class EcomCine_Admin_Settings {
 
 		$runtime_mode = isset( $input['runtime_mode'] ) ? sanitize_text_field( $input['runtime_mode'] ) : (string) $sanitized['runtime_mode'];
 
-		// Migrate legacy slugs from old two-option system.
-		if ( 'preferred_stack' === $runtime_mode ) {
-			$runtime_mode = 'wp_woo_dokan_booking';
-		} elseif ( 'baseline_wp' === $runtime_mode ) {
-			$runtime_mode = 'wp_cpt';
-		}
-
 		if ( ! in_array( $runtime_mode, self::allowed_modes(), true ) ) {
+			self::log_runtime_mode_issue( 'sanitize_invalid_runtime_mode', $runtime_mode );
+			add_settings_error(
+				self::OPTION_KEY,
+				'runtime_mode_invalid',
+				__( 'Runtime mode not saved as requested: the submitted value is missing, obsolete, or invalid. EcomCine fell back to the canonical wp_cpt mode.', 'ecomcine' ),
+				'error'
+			);
 			$runtime_mode = $defaults['runtime_mode'];
 		}
 
