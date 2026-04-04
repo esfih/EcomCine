@@ -1540,6 +1540,12 @@ jQuery(document).ready(function($) {
 		}
 	}
 
+	function restoreShowcaseInteractionState(isPageReload) {
+		if (isPageReload || !hasShowcaseStarted()) return;
+		userHasInteracted = true;
+		userHasMadeRealGesture = true;
+	}
+
 	function unmuteForUserAction() {
 		state.muted = false;
 		hideUnmuteStrip();
@@ -1788,18 +1794,30 @@ jQuery(document).ready(function($) {
 		var nextIndex = getNextVendorIndex();
 
 		transitionTimers.collapse = setTimeout(function() {
-			if (!state.isPlaying || isAutoplayBlocked()) return;
+			if (!state.isPlaying || isAutoplayBlocked()) {
+				clearTransitionTimers();
+				stopBlackout();
+				return;
+			}
 			setCollapsedLoadingState();
 		}, collapseDelay);
 
 		transitionTimers.blackout = setTimeout(function() {
-			if (!state.isPlaying || isAutoplayBlocked()) return;
+			if (!state.isPlaying || isAutoplayBlocked()) {
+				clearTransitionTimers();
+				stopBlackout();
+				return;
+			}
 			startBlackout();
 			prefetchVendorByIndex(nextIndex);
 		}, blackoutDelay);
 
 		transitionTimers.swap = setTimeout(function() {
-			if (!state.isPlaying || isAutoplayBlocked()) return;
+			if (!state.isPlaying || isAutoplayBlocked()) {
+				clearTransitionTimers();
+				stopBlackout();
+				return;
+			}
 			var preloaded = (vendorPrefetch.index === nextIndex && vendorPrefetch.data)
 				? vendorPrefetch.data
 				: null;
@@ -2702,9 +2720,6 @@ jQuery(document).ready(function($) {
 		state.type = null;
 		state.fullDuration = readStoredBool(STORAGE_KEYS.fullDuration, false);
 		state.loopMode = readStoredBool(STORAGE_KEYS.loopMode, false);
-		if (!state.muted) {
-			userHasInteracted = true;
-		}
 		var playerMode = _playerMode;
 		var showcaseMode = playerMode === "showcase";
 		// Detect F5 / Ctrl+R page reloads (performance.navigation.type === 1).
@@ -2713,6 +2728,7 @@ jQuery(document).ready(function($) {
 		// the Netflix muted-start to fire briefly then fail — showing a jarring flash.
 		// Treat reloads as a first load so we skip the attempt and go straight to the overlay.
 		var isPageReload = !!(window.performance && window.performance.navigation && window.performance.navigation.type === 1);
+		restoreShowcaseInteractionState(isPageReload);
 		if (showcaseMode) {
 			// Showcase: always reset loop/swap flags so talent rotation is ready from the start.
 			// On the very first page load the session hasn't started yet — pause and show the
@@ -3133,6 +3149,30 @@ jQuery(document).ready(function($) {
 			? window.vendorStoreData.ajaxurl
 			: '/wp-admin/admin-ajax.php';
 
+		function clearVendorSwitchingState() {
+			isVendorSwitching = false;
+			$(".keyboard-nav-btn").removeClass("is-loading");
+			$(".profile-frame").removeClass("tm-vendor-transitioning");
+			transitionSequenceActive = false;
+		}
+
+		function restoreTransitionState() {
+			stopBlackout();
+			if (transitionState.avatarSrc) {
+				$(".profile-img img").attr("src", transitionState.avatarSrc);
+			}
+			if (transitionState.collapsedAvatarSrc) {
+				$(".profile-img img").attr("src", transitionState.collapsedAvatarSrc);
+			}
+			if (transitionState.collapsedName) {
+				$(".collapsed-tab-name").text(transitionState.collapsedName);
+			}
+			if (!transitionState.wasCollapsed) {
+				$(".profile-info-head").removeClass("is-collapsed");
+				updateTalentPanelOpenState();
+			}
+		}
+
 		function finishSwapSuccess(response, index, vendor) {
 			if (!response || !response.data || !response.data.html) {
 				return false;
@@ -3223,9 +3263,7 @@ jQuery(document).ready(function($) {
 					: options.expandDelayMs);
 			}
 
-			isVendorSwitching = false;
-			$(".keyboard-nav-btn").removeClass("is-loading");
-			transitionSequenceActive = false;
+			clearVendorSwitchingState();
 			vendorPrefetch.data = null;
 			vendorPrefetch.index = null;
 			return true;
@@ -3234,24 +3272,8 @@ jQuery(document).ready(function($) {
 		function requestVendorByIndex(index) {
 			var vendor = vendorList[index];
 			if (!vendor || !vendor.id) {
-				isVendorSwitching = false;
-				$(".keyboard-nav-btn").removeClass("is-loading");
-				$(".profile-frame").removeClass("tm-vendor-transitioning");
-				stopBlackout();
-				if (transitionState.avatarSrc) {
-					$(".profile-img img").attr("src", transitionState.avatarSrc);
-				}
-				if (transitionState.collapsedAvatarSrc) {
-					$(".profile-img img").attr("src", transitionState.collapsedAvatarSrc);
-				}
-				if (transitionState.collapsedName) {
-					$(".collapsed-tab-name").text(transitionState.collapsedName);
-				}
-				if (!transitionState.wasCollapsed) {
-					$(".profile-info-head").removeClass("is-collapsed");
-					updateTalentPanelOpenState();
-				}
-				transitionSequenceActive = false;
+				clearVendorSwitchingState();
+				restoreTransitionState();
 				return;
 			}
 
@@ -3266,24 +3288,8 @@ jQuery(document).ready(function($) {
 			// Abort the transition cleanly and let the showcase advance to the next vendor.
 			function abortAndAdvance(reason) {
 				console.warn('[TM] ' + reason + ' — skipping vendor ' + vendor.id + ' (index ' + index + ')');
-				isVendorSwitching = false;
-				$('.keyboard-nav-btn').removeClass('is-loading');
-				$('.profile-frame').removeClass('tm-vendor-transitioning');
-				stopBlackout();
-				if (transitionState.avatarSrc) {
-					$('.profile-img img').attr('src', transitionState.avatarSrc);
-				}
-				if (transitionState.collapsedAvatarSrc) {
-					$('.profile-img img').attr('src', transitionState.collapsedAvatarSrc);
-				}
-				if (transitionState.collapsedName) {
-					$('.collapsed-tab-name').text(transitionState.collapsedName);
-				}
-				if (!transitionState.wasCollapsed) {
-					$('.profile-info-head').removeClass('is-collapsed');
-					updateTalentPanelOpenState();
-				}
-				transitionSequenceActive = false;
+				clearVendorSwitchingState();
+				restoreTransitionState();
 				// In showcase mode keep the loop alive: skip to the next vendor directly.
 				if (isShowcaseMode() && vendorList.length > 1) {
 					var nextIndex = index + 1 < vendorList.length ? index + 1 : 0;
@@ -3298,6 +3304,7 @@ jQuery(document).ready(function($) {
 			$.ajax({
 				url: request.url,
 				type: request.type,
+				timeout: 12000,
 				data: request.data || {},
 				success: function(response) {
 					if (response.success && response.data && response.data.html) {
@@ -3317,6 +3324,7 @@ jQuery(document).ready(function($) {
 						$.ajax({
 							url: ajaxReq.url,
 							type: ajaxReq.type,
+							timeout: 12000,
 							data: ajaxReq.data || {},
 							success: function(response) {
 								if (response.success && response.data && response.data.html) {
