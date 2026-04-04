@@ -181,7 +181,28 @@
         "tm_contact_emails": [
           "agnes@agnes.com"
         ],
-        "camera_type": "cinema"
+        "camera_type": "cinema",
+        "demo_birth_date": "1987-03-12",
+        "demo_ethnicity": "Caucasian",
+        "demo_languages": [
+          "English",
+          "Polish"
+        ],
+        "demo_availability": [
+          "Full Time"
+        ],
+        "demo_notice_time": "2 weeks",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "950",
+        "demo_education": "Master of Arts in Film Direction",
+        "experience_level": "advanced",
+        "editing_software": "Adobe Premiere Pro",
+        "specialization": "Documentary",
+        "years_experience": "10",
+        "equipment_ownership": "yes",
+        "lighting_equipment": "yes",
+        "audio_equipment": "yes",
+        "drone_capability": "yes"
       },
       "media": {
         "banner": "media/agnieszka/banner.webp",
@@ -339,7 +360,21 @@
         "talent_chest": "30-32",
         "talent_shoe_size": "5",
         "talent_eye_color": "blue",
-        "talent_hair_color": "blonde"
+        "talent_hair_color": "blonde",
+        "demo_birth_date": "1995-07-22",
+        "demo_ethnicity": "Asian",
+        "demo_languages": [
+          "English",
+          "Japanese"
+        ],
+        "demo_availability": [
+          "Part Time",
+          "Weekends"
+        ],
+        "demo_notice_time": "1 week",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "800",
+        "demo_education": "Bachelor of Arts in Fashion Design"
       },
       "media": {
         "banner": "media/aiko/banner.jpg",
@@ -511,7 +546,28 @@
         "tm_contact_emails": [
           "alessandro@castingagencz.co"
         ],
-        "camera_type": "dslr"
+        "camera_type": "dslr",
+        "demo_birth_date": "1983-11-05",
+        "demo_ethnicity": "Caucasian",
+        "demo_languages": [
+          "English",
+          "Italian"
+        ],
+        "demo_availability": [
+          "Full Time"
+        ],
+        "demo_notice_time": "2 weeks",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "1100",
+        "demo_education": "Bachelor of Arts in Creative Writing",
+        "experience_level": "intermediate",
+        "editing_software": "DaVinci Resolve",
+        "specialization": "Commercial",
+        "years_experience": "7",
+        "equipment_ownership": "yes",
+        "lighting_equipment": "no",
+        "audio_equipment": "yes",
+        "drone_capability": "no"
       },
       "media": {
         "banner": "media/alessandro/banner.webp",
@@ -686,7 +742,21 @@
         "talent_chest": "39-41",
         "talent_shoe_size": "12",
         "talent_eye_color": "blue",
-        "talent_hair_color": "blonde"
+        "talent_hair_color": "blonde",
+        "demo_birth_date": "1993-02-14",
+        "demo_ethnicity": "Hispanic/Latino",
+        "demo_languages": [
+          "English",
+          "Portuguese",
+          "Spanish"
+        ],
+        "demo_availability": [
+          "Full Time"
+        ],
+        "demo_notice_time": "1 week",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "750",
+        "demo_education": "Bachelor of Communications"
       },
       "media": {
         "banner": "media/ana/banner.jpg",
@@ -861,7 +931,21 @@
         "talent_chest": "39-41",
         "talent_shoe_size": "9",
         "talent_eye_color": "blue",
-        "talent_hair_color": "black"
+        "talent_hair_color": "black",
+        "demo_birth_date": "1996-08-30",
+        "demo_ethnicity": "Caucasian",
+        "demo_languages": [
+          "English",
+          "French"
+        ],
+        "demo_availability": [
+          "Full Time",
+          "Weekends"
+        ],
+        "demo_notice_time": "Immediate",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "900",
+        "demo_education": "Bachelor of Business Administration"
       },
       "media": {
         "banner": "media/ava/banner.jpg",
@@ -1015,12 +1099,29 @@
         "talent_chest": "33-35",
         "talent_shoe_size": "9",
         "talent_eye_color": "brown",
-        "talent_hair_color": "black"
+        "talent_hair_color": "black",
+        "demo_birth_date": "1991-05-18",
+        "demo_ethnicity": "African",
+        "demo_languages": [
+          "English",
+          "French",
+          "Twi"
+        ],
+        "demo_availability": [
+          "Full Time"
+        ],
+        "demo_notice_time": "1 week",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "700",
+        "demo_education": "Bachelor of Arts in Performing Arts"
       },
       "media": {
         "banner": "media/efua/banner.jpg",
         "gravatar": "media/efua/gravatar.jpg"
-      }
+      },
+      "store_categories": [
+        "model"
+      ]
     },
     {
       "user_login": "Emily",
@@ -1186,7 +1287,20 @@
         "talent_chest": "30-32",
         "talent_shoe_size": "5",
         "talent_eye_color": "blue",
-        "talent_hair_color": "blonde"
+        "talent_hair_color": "blonde",
+        "demo_birth_date": "1994-12-03",
+        "demo_ethnicity": "Caucasian",
+        "demo_languages": [
+          "English"
+        ],
+        "demo_availability": [
+          "Full Time",
+          "Weekends"
+        ],
+        "demo_notice_time": "2 weeks",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "850",
+        "demo_education": "Associate Degree in Fashion and Modeling"
       },
       "media": {
         "banner": "media/emily/banner.webp",
@@ -1339,12 +1453,28 @@
         "tm_contact_phone_main": "+1234500789",
         "tm_contact_phones": [
           "+1234500789"
-        ]
+        ],
+        "demo_birth_date": "1988-09-25",
+        "demo_ethnicity": "Caucasian",
+        "demo_languages": [
+          "English",
+          "Spanish"
+        ],
+        "demo_availability": [
+          "Full Time"
+        ],
+        "demo_notice_time": "2 weeks",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "1000",
+        "demo_education": "Bachelor of Fine Arts in Acting"
       },
       "media": {
         "banner": "media/ethan/banner.webp",
         "gravatar": "media/ethan/gravatar.webp"
-      }
+      },
+      "store_categories": [
+        "actor"
+      ]
     },
     {
       "user_login": "Eva",
@@ -1523,7 +1653,21 @@
         "talent_chest": "30-32",
         "talent_shoe_size": "5",
         "talent_eye_color": "blue",
-        "talent_hair_color": "blonde"
+        "talent_hair_color": "blonde",
+        "demo_birth_date": "1992-04-07",
+        "demo_ethnicity": "Caucasian",
+        "demo_languages": [
+          "English",
+          "German",
+          "French"
+        ],
+        "demo_availability": [
+          "Full Time"
+        ],
+        "demo_notice_time": "1 week",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "950",
+        "demo_education": "Master of Fine Arts in Acting"
       },
       "media": {
         "banner": "media/eva/banner.webp",
@@ -1703,7 +1847,21 @@
         "_dokan_enable_manual_order": "no",
         "tm_l1_complete": "1",
         "tm_l2_complete": "0",
-        "tm_contact_email_main": "talent.seed+22@example.test"
+        "tm_contact_email_main": "talent.seed+22@example.test",
+        "demo_birth_date": "1985-01-20",
+        "demo_ethnicity": "Asian",
+        "demo_languages": [
+          "English",
+          "Japanese"
+        ],
+        "demo_availability": [
+          "Part Time",
+          "Weekends"
+        ],
+        "demo_notice_time": "2 weeks",
+        "demo_can_travel": "no",
+        "demo_daily_rate": "1200",
+        "demo_education": "Bachelor of Arts in Film Studies"
       },
       "media": {
         "banner": "media/hiroshi/banner.jpg",
@@ -1878,7 +2036,21 @@
         "talent_chest": "30-32",
         "talent_shoe_size": "5",
         "talent_eye_color": "blue",
-        "talent_hair_color": "blonde"
+        "talent_hair_color": "blonde",
+        "demo_birth_date": "1997-06-11",
+        "demo_ethnicity": "Hispanic/Latino",
+        "demo_languages": [
+          "English",
+          "Spanish",
+          "Italian"
+        ],
+        "demo_availability": [
+          "Full Time"
+        ],
+        "demo_notice_time": "Immediate",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "800",
+        "demo_education": "Bachelor of Arts in Media Studies"
       },
       "media": {
         "banner": "media/isabella/banner.jpg",
@@ -2053,7 +2225,20 @@
         "talent_chest": "42-44",
         "talent_shoe_size": "13",
         "talent_eye_color": "brown",
-        "talent_hair_color": "black"
+        "talent_hair_color": "black",
+        "demo_birth_date": "1990-10-15",
+        "demo_ethnicity": "African American",
+        "demo_languages": [
+          "English"
+        ],
+        "demo_availability": [
+          "Full Time",
+          "Weekends"
+        ],
+        "demo_notice_time": "1 week",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "900",
+        "demo_education": "Bachelor of Arts in Theater"
       },
       "media": {
         "banner": "media/michael/banner.jpg",
@@ -2209,7 +2394,21 @@
         "tm_contact_email_main": "natalia@natalia.com",
         "tm_contact_emails": [
           "natalia@natalia.com"
-        ]
+        ],
+        "demo_birth_date": "1986-03-28",
+        "demo_ethnicity": "Caucasian",
+        "demo_languages": [
+          "English",
+          "Russian",
+          "Polish"
+        ],
+        "demo_availability": [
+          "Part Time"
+        ],
+        "demo_notice_time": "3 weeks",
+        "demo_can_travel": "no",
+        "demo_daily_rate": "1500",
+        "demo_education": "Master of Fine Arts in Sculpture"
       },
       "media": {
         "banner": "media/natalia/banner.webp",
@@ -2401,7 +2600,20 @@
         "talent_chest": "30-32",
         "talent_shoe_size": "5",
         "talent_eye_color": "blue",
-        "talent_hair_color": "blonde"
+        "talent_hair_color": "blonde",
+        "demo_birth_date": "1984-07-09",
+        "demo_ethnicity": "Caucasian",
+        "demo_languages": [
+          "English",
+          "German"
+        ],
+        "demo_availability": [
+          "Full Time"
+        ],
+        "demo_notice_time": "2 weeks",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "1400",
+        "demo_education": "Bachelor of Arts in English Literature"
       },
       "media": {
         "banner": "media/oliver/banner.jpg",
@@ -2582,7 +2794,29 @@
         "tm_contact_emails": [
           "rahul@gmail.com"
         ],
-        "camera_type": "dslr"
+        "camera_type": "dslr",
+        "demo_birth_date": "1989-11-02",
+        "demo_ethnicity": "South Asian",
+        "demo_languages": [
+          "English",
+          "Hindi",
+          "Punjabi"
+        ],
+        "demo_availability": [
+          "Full Time"
+        ],
+        "demo_notice_time": "1 week",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "850",
+        "demo_education": "Bachelor of Journalism and Mass Communication",
+        "experience_level": "expert",
+        "editing_software": "Final Cut Pro",
+        "specialization": "Journalism",
+        "years_experience": "12",
+        "equipment_ownership": "yes",
+        "lighting_equipment": "yes",
+        "audio_equipment": "yes",
+        "drone_capability": "yes"
       },
       "media": {
         "banner": "media/rahul-verma/banner.webp",
@@ -2749,7 +2983,21 @@
         "tm_contact_emails": [
           "salma@damas.com"
         ],
-        "camera_type": "action"
+        "camera_type": "action",
+        "demo_birth_date": "1987-08-16",
+        "demo_ethnicity": "Middle Eastern",
+        "demo_languages": [
+          "English",
+          "Arabic",
+          "French"
+        ],
+        "demo_availability": [
+          "Full Time"
+        ],
+        "demo_notice_time": "2 weeks",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "1300",
+        "demo_education": "Master of Arts in Broadcast Journalism"
       },
       "media": {
         "banner": "media/salma/banner.webp",
@@ -2938,12 +3186,31 @@
         "tm_social_youtube_url": "https://www.youtube.com/@Alena_Khmil",
         "tm_social_facebook_url": "https://facebook.com/people/Alena-Khmil/100003056663989",
         "tm_social_instagram_url": "https://www.instagram.com/alenakhmil77777",
-        "tm_social_linkedin_url": "https://www.linkedin.com/in/olena-khmil-b44a1a93"
+        "tm_social_linkedin_url": "https://www.linkedin.com/in/olena-khmil-b44a1a93",
+        "demo_birth_date": "1993-01-30",
+        "demo_ethnicity": "Middle Eastern",
+        "demo_languages": [
+          "English",
+          "Arabic",
+          "French"
+        ],
+        "demo_availability": [
+          "Full Time",
+          "Weekends"
+        ],
+        "demo_notice_time": "1 week",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "900",
+        "demo_education": "Bachelor of Arts in Visual Arts"
       },
       "media": {
         "banner": "media/samira/banner.webp",
         "gravatar": "media/samira/gravatar.jpg"
-      }
+      },
+      "store_categories": [
+        "model",
+        "artist"
+      ]
     },
     {
       "user_login": "Soo-Min",
@@ -3113,7 +3380,21 @@
         "talent_chest": "33-35",
         "talent_shoe_size": "10",
         "talent_eye_color": "black",
-        "talent_hair_color": "black"
+        "talent_hair_color": "black",
+        "demo_birth_date": "1998-04-22",
+        "demo_ethnicity": "Asian",
+        "demo_languages": [
+          "English",
+          "Korean"
+        ],
+        "demo_availability": [
+          "Part Time",
+          "Weekends"
+        ],
+        "demo_notice_time": "1 week",
+        "demo_can_travel": "yes",
+        "demo_daily_rate": "700",
+        "demo_education": "Bachelor of Arts in Media and Communication"
       },
       "media": {
         "banner": "media/soo-min/banner.jpg",
