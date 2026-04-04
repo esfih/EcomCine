@@ -233,14 +233,9 @@ class EcomCine_Demo_Importer {
 			update_user_meta( $user_id, $key, $value );
 		}
 
-		// Build dokan_profile_settings, merging with existing on update.
-		$dps = isset( $meta['dokan_profile_settings'] ) ? (array) $meta['dokan_profile_settings'] : array();
-		if ( $is_update ) {
-			$existing_dps = get_user_meta( $user_id, 'dokan_profile_settings', true );
-			if ( is_array( $existing_dps ) ) {
-				$dps = array_merge( $existing_dps, $dps );
-			}
-		}
+		$profile_seed = isset( $meta['dokan_profile_settings'] ) ? (array) $meta['dokan_profile_settings'] : array();
+		$banner_id    = 0;
+		$avatar_id    = 0;
 
 		// Sideload banner + gravatar.
 		$media_refs = (array) ( $v['media'] ?? array() );
@@ -255,14 +250,38 @@ class EcomCine_Demo_Importer {
 			}
 			$aid = self::sideload_media( $src, "{$slug}-{$label}", $user_id );
 			if ( $aid > 0 ) {
-				$dps[ $field ] = $aid;
+				if ( 'banner' === $field ) {
+					$banner_id = $aid;
+				} elseif ( 'gravatar' === $field ) {
+					$avatar_id = $aid;
+				}
 			} else {
 				$result['log'][] = "Failed to sideload media for {$login}/{$label}.";
 			}
 		}
 
 		// Sideload videos.
-		$video_paths = (array) ( $media_refs['videos'] ?? array() );
+		$video_paths = self::resolve_vendor_video_paths( $media_refs, $media_dir, $slug );
+		$existing_bio = (string) ( $profile_seed['vendor_biography'] ?? get_user_meta( $user_id, 'ecomcine_bio', true ) );
+		$shortcode_pattern = get_shortcode_regex( array( 'playlist' ) );
+		if ( $shortcode_pattern && '' !== $existing_bio ) {
+			$existing_bio = preg_replace_callback(
+				'/' . $shortcode_pattern . '/s',
+				static function( $match ) {
+					$tag      = isset( $match[2] ) ? (string) $match[2] : '';
+					$atts_raw = isset( $match[3] ) ? (string) $match[3] : '';
+					if ( 'playlist' !== $tag ) {
+						return $match[0];
+					}
+					$atts = shortcode_parse_atts( $atts_raw );
+					$type = isset( $atts['type'] ) ? strtolower( (string) $atts['type'] ) : 'audio';
+
+					return 'video' === $type ? '' : $match[0];
+				},
+				$existing_bio
+			);
+		}
+		$existing_bio = trim( $existing_bio );
 		if ( ! empty( $video_paths ) ) {
 			$video_ids = array();
 			foreach ( $video_paths as $i => $vid_rel ) {
@@ -277,23 +296,21 @@ class EcomCine_Demo_Importer {
 				}
 			}
 			if ( ! empty( $video_ids ) ) {
-				$dps['vendor_biography'] = '[playlist type="video" ids="' . implode( ',', $video_ids ) . '"]';
+				$video_shortcode = '[playlist type="video" ids="' . implode( ',', $video_ids ) . '"]';
+				$existing_bio = '' === $existing_bio ? $video_shortcode : $existing_bio . "\n\n" . $video_shortcode;
 			}
 		}
-
-		if ( ! empty( $dps ) ) {
-			update_user_meta( $user_id, 'dokan_profile_settings', $dps );
-		}
+		$existing_bio = trim( $existing_bio );
 
 		// Write EcomCine canonical meta.
 		$ecomcine_info = array(
-			'ecomcine_store_name' => sanitize_text_field( $dps['store_name'] ?? '' ),
-			'ecomcine_bio'        => wp_kses_post( $dps['vendor_biography'] ?? '' ),
-			'ecomcine_phone'      => sanitize_text_field( $dps['phone'] ?? '' ),
-			'ecomcine_banner_id'  => (int) ( $dps['banner'] ?? 0 ),
-			'ecomcine_avatar_id'  => (int) ( $dps['gravatar'] ?? 0 ),
-			'ecomcine_address'    => is_array( $dps['address'] ?? null ) ? $dps['address'] : array(),
-			'ecomcine_social'     => is_array( $dps['social'] ?? null ) ? $dps['social'] : array(),
+			'ecomcine_store_name' => sanitize_text_field( (string) ( $profile_seed['store_name'] ?? '' ) ),
+			'ecomcine_bio'        => wp_kses_post( $existing_bio ),
+			'ecomcine_phone'      => sanitize_text_field( (string) ( $profile_seed['phone'] ?? '' ) ),
+			'ecomcine_banner_id'  => $banner_id,
+			'ecomcine_avatar_id'  => $avatar_id,
+			'ecomcine_address'    => is_array( $profile_seed['address'] ?? null ) ? $profile_seed['address'] : array(),
+			'ecomcine_social'     => is_array( $profile_seed['social'] ?? null ) ? $profile_seed['social'] : array(),
 			'ecomcine_enabled'    => '1',
 		);
 		foreach ( $ecomcine_info as $meta_key => $meta_value ) {
@@ -302,9 +319,9 @@ class EcomCine_Demo_Importer {
 
 		// Write canonical geo keys so the vendors-map shortcode meta_query finds them.
 		// Resolve lat/lng: prefer explicit geolocation object, fall back to parsing dps['location'] as "lat,lng".
-		$geo_data = isset( $dps['geolocation'] ) && is_array( $dps['geolocation'] ) ? $dps['geolocation'] : array();
+		$geo_data = isset( $profile_seed['geolocation'] ) && is_array( $profile_seed['geolocation'] ) ? $profile_seed['geolocation'] : array();
 		if ( ( empty( $geo_data['latitude'] ) || empty( $geo_data['longitude'] ) ) ) {
-			$loc_raw = (string) ( $dps['location'] ?? '' );
+			$loc_raw = (string) ( $profile_seed['location'] ?? '' );
 			if ( preg_match( '/^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*$/', $loc_raw, $coord_m ) ) {
 				$geo_data['latitude']  = $coord_m[1];
 				$geo_data['longitude'] = $coord_m[2];
@@ -314,9 +331,9 @@ class EcomCine_Demo_Importer {
 			update_user_meta( $user_id, 'ecomcine_geo_lat', (string) $geo_data['latitude'] );
 			update_user_meta( $user_id, 'ecomcine_geo_lng', (string) $geo_data['longitude'] );
 			// Human-readable address: prefer find_address, then non-coordinate location string.
-			$geo_address = sanitize_text_field( (string) ( $dps['find_address'] ?? '' ) );
+			$geo_address = sanitize_text_field( (string) ( $profile_seed['find_address'] ?? '' ) );
 			if ( '' === $geo_address ) {
-				$loc_candidate = sanitize_text_field( (string) ( $dps['location'] ?? '' ) );
+				$loc_candidate = sanitize_text_field( (string) ( $profile_seed['location'] ?? '' ) );
 				if ( ! preg_match( '/^\s*-?\d+\.?\d*\s*,\s*-?\d+\.?\d*\s*$/', $loc_candidate ) ) {
 					$geo_address = $loc_candidate;
 				}
@@ -340,7 +357,7 @@ class EcomCine_Demo_Importer {
 			}
 		}
 		if ( empty( $category_slugs ) ) {
-			$cat_objects = isset( $dps['categories'] ) ? (array) $dps['categories'] : array();
+			$cat_objects = isset( $profile_seed['categories'] ) ? (array) $profile_seed['categories'] : array();
 			foreach ( $cat_objects as $cat ) {
 				$s = isset( $cat['slug'] ) ? sanitize_title( $cat['slug'] ) : '';
 				if ( '' !== $s && 'uncategorized' !== $s ) {
@@ -369,8 +386,8 @@ class EcomCine_Demo_Importer {
 		// returns true and the vendor appears on the Talents listing page.
 		if ( class_exists( 'TMP_WP_Vendor_CPT', false ) ) {
 			$cpt_data = array(
-				'biography'    => wp_kses_post( $dps['vendor_biography'] ?? '' ),
-				'banner_image' => (int) ( $dps['banner'] ?? 0 ),
+				'biography'    => wp_kses_post( $existing_bio ),
+				'banner_image' => $banner_id,
 			);
 			$cpt_result = TMP_WP_Vendor_CPT::upsert_vendor( $user_id, $cpt_data );
 			if ( is_wp_error( $cpt_result ) ) {
@@ -380,8 +397,60 @@ class EcomCine_Demo_Importer {
 			}
 		}
 
+		if ( class_exists( 'EcomCine_Dokan_Data_Migration', false ) && EcomCine_Dokan_Data_Migration::cleanup_legacy_profile_surface( $user_id, false ) ) {
+			$result['log'][] = "Removed Dokan legacy profile surface for {$login}";
+		}
+
 		$result['log'][] = $is_update ? "Updated vendor: {$login} (ID {$user_id})" : "Created vendor: {$login} (ID {$user_id})";
 		return $is_update ? 'updated' : 'imported';
+	}
+
+	/**
+	 * Resolve vendor video paths from explicit metadata or legacy demo-pack layout.
+	 *
+	 * Older demo packs include files like media/<slug>/video1.mp4 without a
+	 * corresponding media.videos manifest entry. Keep supporting that layout so
+	 * imports do not silently strip playable media.
+	 *
+	 * @param array  $media_refs Media block from vendor-data.json.
+	 * @param string $media_dir  Absolute path to the pack root.
+	 * @param string $slug      Sanitized vendor slug.
+	 * @return array<int,string>
+	 */
+	private static function resolve_vendor_video_paths( array $media_refs, string $media_dir, string $slug ): array {
+		$video_paths = array();
+
+		if ( ! empty( $media_refs['videos'] ) && is_array( $media_refs['videos'] ) ) {
+			foreach ( $media_refs['videos'] as $video_path ) {
+				$video_path = trim( (string) $video_path );
+				if ( '' !== $video_path ) {
+					$video_paths[] = $video_path;
+				}
+			}
+		}
+
+		if ( ! empty( $video_paths ) ) {
+			return array_values( array_unique( $video_paths ) );
+		}
+
+		$vendor_media_dir = trailingslashit( $media_dir ) . 'media/' . $slug;
+		if ( ! is_dir( $vendor_media_dir ) ) {
+			return array();
+		}
+
+		$video_files = glob( $vendor_media_dir . '/video*.*' );
+		if ( ! is_array( $video_files ) || empty( $video_files ) ) {
+			return array();
+		}
+
+		natsort( $video_files );
+		foreach ( $video_files as $video_file ) {
+			if ( is_file( $video_file ) ) {
+				$video_paths[] = 'media/' . $slug . '/' . basename( $video_file );
+			}
+		}
+
+		return array_values( array_unique( $video_paths ) );
 	}
 
 	/**

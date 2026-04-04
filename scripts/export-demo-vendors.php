@@ -13,6 +13,48 @@
 
 defined( 'ABSPATH' ) || exit;
 
+if ( ! function_exists( 'ec_demo_extract_video_attachment_ids' ) ) {
+	/**
+	 * Extract ordered video attachment IDs from a vendor biography playlist shortcode.
+	 *
+	 * @param string $biography Raw vendor biography.
+	 * @return array<int,int>
+	 */
+	function ec_demo_extract_video_attachment_ids( string $biography ): array {
+		$ids = [];
+		if ( '' === $biography ) {
+			return $ids;
+		}
+
+		$pattern = get_shortcode_regex( [ 'playlist' ] );
+		if ( ! $pattern || ! preg_match_all( '/' . $pattern . '/s', $biography, $matches, PREG_SET_ORDER ) ) {
+			return $ids;
+		}
+
+		foreach ( $matches as $match ) {
+			$tag = isset( $match[2] ) ? (string) $match[2] : '';
+			if ( 'playlist' !== $tag ) {
+				continue;
+			}
+
+			$atts = shortcode_parse_atts( isset( $match[3] ) ? (string) $match[3] : '' );
+			$type = isset( $atts['type'] ) ? strtolower( (string) $atts['type'] ) : 'audio';
+			if ( 'video' !== $type || empty( $atts['ids'] ) ) {
+				continue;
+			}
+
+			foreach ( array_map( 'trim', explode( ',', (string) $atts['ids'] ) ) as $id_raw ) {
+				$id = absint( $id_raw );
+				if ( $id > 0 ) {
+					$ids[] = $id;
+				}
+			}
+		}
+
+		return array_values( array_unique( $ids ) );
+	}
+}
+
 // ── Demo vendor user IDs ──────────────────────────────────────────────────────
 $DEMO_IDS = [ 7, 27, 15, 32, 16, 17, 8, 18, 41, 42, 40, 13, 28, 22, 19, 23, 14, 10, 24, 30, 25, 29, 31, 4, 5, 33, 9, 20, 26, 12, 21, 11 ];
 
@@ -125,6 +167,34 @@ foreach ( $DEMO_IDS as $uid ) {
 	// Write back the cleaned dokan_profile_settings.
 	if ( isset( $vendor['meta']['dokan_profile_settings'] ) ) {
 		$vendor['meta']['dokan_profile_settings'] = $dps;
+	}
+
+	$biography = (string) ( $dps['vendor_biography'] ?? '' );
+	$video_ids = ec_demo_extract_video_attachment_ids( $biography );
+	if ( ! empty( $video_ids ) ) {
+		$vendor['media']['videos'] = [];
+		foreach ( $video_ids as $index => $attachment_id ) {
+			$file_path = get_attached_file( $attachment_id );
+			if ( ! $file_path || ! file_exists( $file_path ) ) {
+				echo "[demo-export] WARN: video attachment {$attachment_id} for {$slug} not found on disk.\n";
+				continue;
+			}
+
+			$ext      = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
+			$basename = 'video' . ( $index + 1 ) . '.' . $ext;
+			$dest     = $vendor_media_dir . '/' . $basename;
+
+			if ( copy( $file_path, $dest ) ) {
+				$vendor['media']['videos'][] = 'media/' . $slug . '/' . $basename;
+				$media_count++;
+			} else {
+				echo "[demo-export] WARN: failed to copy {$file_path} for {$slug}/{$basename}.\n";
+			}
+		}
+
+		if ( empty( $vendor['media']['videos'] ) ) {
+			unset( $vendor['media']['videos'] );
+		}
 	}
 
 	$vendors[] = $vendor;

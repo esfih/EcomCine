@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.41
+ * Version: 0.1.48
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.41' );
+define( 'ECOMCINE_VERSION', '0.1.48' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -265,15 +265,17 @@ add_action( 'init', function() {
 		}
 	}
 
-	// v0.1.26 — Migrate Dokan-era vendor meta to EcomCine canonical keys and
-	//            recalculate L1 completeness from actual profile data.
+	// v0.1.48 — Migrate Dokan-era vendor meta to EcomCine canonical keys,
+	//            recalculate L1 completeness, and scrub legacy Dokan profile
+	//            ownership fields once canonical data exists.
 	//
 	// Covers three gaps on legacy installs:
 	//   (a) dokan_geo_latitude/longitude → ecomcine_geo_lat/lng (then delete legacy)
 	//   (b) dokan_enable_selling='yes'   → ecomcine_enabled='1' (when not already set)
 	//   (c) tm_l1_complete recalculated via tm_vendor_completeness() using
 	//       the now-canonical meta, correcting the v0.1.13 blind back-fill.
-	if ( version_compare( $stored, '0.1.26', '<' ) && class_exists( 'EcomCine_Dokan_Data_Migration', false ) ) {
+	//   (d) profile/media/address/social/geo remnants removed from Dokan legacy meta.
+	if ( version_compare( $stored, '0.1.48', '<' ) && class_exists( 'EcomCine_Dokan_Data_Migration', false ) ) {
 		EcomCine_Dokan_Data_Migration::run();
 	}
 
