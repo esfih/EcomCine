@@ -433,6 +433,7 @@ if ( ! function_exists( 'render_editable_attribute' ) ) {
 		$help_text = $args['help_text'] ?? ''; // Help tooltip text
 		$value = array_key_exists( 'value', $args ) ? $args['value'] : get_user_meta( $user_id, $field_name, true );
 		$raw_value = $args['raw_value'] ?? $value; // For date fields, store raw date separate from display
+		$option_key = is_scalar( $value ) ? (string) $value : null;
 
 		$display_text = '';
 		if ( $is_multi && is_array( $value ) ) {
@@ -445,10 +446,14 @@ if ( ! function_exists( 'render_editable_attribute' ) ) {
 				}
 			}
 			$display_text = implode( ', ', $labels );
-		} elseif ( ! empty( $value ) && isset( $options[ $value ] ) ) {
-			$display_text = $options[ $value ];
-		} elseif ( ! empty( $value ) ) {
-			$display_text = $value;
+		} elseif ( null !== $option_key && '' !== $option_key && isset( $options[ $option_key ] ) ) {
+			$display_text = $options[ $option_key ];
+		} elseif ( is_array( $value ) ) {
+			$display_text = implode( ', ', array_filter( array_map( function( $item ) {
+				return is_scalar( $item ) ? (string) $item : '';
+			}, $value ), 'strlen' ) );
+		} elseif ( is_scalar( $value ) && '' !== (string) $value ) {
+			$display_text = (string) $value;
 		}
 
 		if ( empty( $display_text ) && ! $is_owner ) {
