@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DIST_DIR="$REPO_ROOT/dist"
 PLUGIN_TREE="HEAD:ecomcine"
 
-if ! git -C "$REPO_ROOT" rev-parse --verify "${PLUGIN_TREE}^{tree}" >/dev/null 2>&1; then
+if ! git -C "$REPO_ROOT" cat-file -e "$PLUGIN_TREE" 2>/dev/null; then
   echo "ERROR: missing plugin tree at ${PLUGIN_TREE}" >&2
   exit 1
 fi
