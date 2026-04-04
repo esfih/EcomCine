@@ -361,8 +361,11 @@ class EcomCine_Debug_Page {
 			</p>
 
 			<p>
-				<button id="ecomcine-copy-report" class="button button-primary" style="margin-right:10px;">
+				<button id="ecomcine-copy-report" class="button button-primary" style="margin-right:8px;">
 					&#128203; <?php esc_html_e( 'Copy Report (JSON)', 'ecomcine' ); ?>
+				</button>
+				<button id="ecomcine-download-report" class="button button-primary" style="margin-right:8px;">
+					&#11015; <?php esc_html_e( 'Download Report', 'ecomcine' ); ?>
 				</button>
 				<button id="ecomcine-refresh-report" class="button">
 					&#8635; <?php esc_html_e( 'Refresh', 'ecomcine' ); ?>
@@ -593,6 +596,23 @@ class EcomCine_Debug_Page {
 						document.execCommand('copy');
 						if (copyStatus) { copyStatus.style.display='inline'; setTimeout(function(){ copyStatus.style.display='none'; }, 2500); }
 					}
+				});
+			}
+
+			var downloadBtn = document.getElementById('ecomcine-download-report');
+			if (downloadBtn && rawTA) {
+				downloadBtn.addEventListener('click', function() {
+					var text = rawTA.value;
+					var blob = new Blob([text], {type: 'application/json'});
+					var url  = URL.createObjectURL(blob);
+					var a    = document.createElement('a');
+					var ts   = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+					a.href     = url;
+					a.download = 'ecomcine-debug-' + ts + '.json';
+					document.body.appendChild(a);
+					a.click();
+					document.body.removeChild(a);
+					URL.revokeObjectURL(url);
 				});
 			}
 
