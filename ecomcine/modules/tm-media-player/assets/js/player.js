@@ -1546,6 +1546,38 @@ jQuery(document).ready(function($) {
 		userHasMadeRealGesture = true;
 	}
 
+	function ensureShowcaseKeyboardNavigation() {
+		if (!isShowcaseMode()) return;
+		if ($('.keyboard-nav-container').length) return;
+
+		var $target = $('.profile-frame').first();
+		if (!$target.length) return;
+
+		$target.append(
+			'<div class="keyboard-nav-container" aria-label="Navigation controls">'
+				+ '<div class="keyboard-nav-row keyboard-nav-top">'
+					+ '<button class="keyboard-nav-btn keyboard-nav-up" type="button" aria-label="Previous media" title="Previous media (↑)">'
+						+ '<span class="keyboard-nav-icon">▲</span>'
+					+ '</button>'
+				+ '</div>'
+				+ '<div class="keyboard-nav-row keyboard-nav-bottom">'
+					+ '<button class="keyboard-nav-btn keyboard-nav-left" type="button" aria-label="Previous talent" title="Previous talent (←)">'
+						+ '<span class="keyboard-nav-icon">▲</span>'
+					+ '</button>'
+					+ '<button class="keyboard-nav-btn keyboard-nav-down" type="button" aria-label="Next media" title="Next media (↓)">'
+						+ '<span class="keyboard-nav-icon">▼</span>'
+					+ '</button>'
+					+ '<button class="keyboard-nav-btn keyboard-nav-right" type="button" aria-label="Next talent" title="Next talent (→)">'
+						+ '<span class="keyboard-nav-icon">▲</span>'
+					+ '</button>'
+					+ '<button class="keyboard-nav-btn keyboard-nav-loop" type="button" aria-label="Toggle talent loop" aria-pressed="false" title="Talent loop off (advance to next talent)">'
+						+ '<span class="keyboard-nav-icon">↻</span>'
+					+ '</button>'
+				+ '</div>'
+			+ '</div>'
+		);
+	}
+
 	function unmuteForUserAction() {
 		state.muted = false;
 		hideUnmuteStrip();
@@ -2729,6 +2761,7 @@ jQuery(document).ready(function($) {
 		// Treat reloads as a first load so we skip the attempt and go straight to the overlay.
 		var isPageReload = !!(window.performance && window.performance.navigation && window.performance.navigation.type === 1);
 		restoreShowcaseInteractionState(isPageReload);
+		ensureShowcaseKeyboardNavigation();
 		if (showcaseMode) {
 			// Showcase: always reset loop/swap flags so talent rotation is ready from the start.
 			// On the very first page load the session hasn't started yet — pause and show the
