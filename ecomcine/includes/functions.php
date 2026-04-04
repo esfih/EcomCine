@@ -476,6 +476,14 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 			return false;
 		}
 
+		// When the tm_vendor CPT is not registered (e.g. media-player module is
+		// disabled or not yet initialised), there is no profile-artifact system
+		// active on this site.  Treat every enabled person as having a public
+		// profile — the listing layer already gates on ecomcine_enabled + tm_l1_complete.
+		if ( ! post_type_exists( 'tm_vendor' ) ) {
+			return true;
+		}
+
 		if ( class_exists( 'TMP_WP_Vendor_CPT', false ) && method_exists( 'TMP_WP_Vendor_CPT', 'get_post_id_for_vendor' ) ) {
 			$post_id = (int) TMP_WP_Vendor_CPT::get_post_id_for_vendor( $user_id );
 			if ( $post_id > 0 ) {
