@@ -62,6 +62,23 @@ case "$COMMAND_ID" in
     ./scripts/wp.sh php "$1"
     ;;
 
+  wp.remote.app.inspect)
+    if [[ $# -lt 1 ]]; then
+      echo "ERROR: wp.remote.app.inspect requires remote WP-CLI args" >&2
+      exit 2
+    fi
+    REMOTE_KEY_PATH="$HOME/.ssh/ecomcine-dev"
+    if [[ ! -f "$REMOTE_KEY_PATH" ]]; then
+      REMOTE_KEY_PATH="$HOME/.ssh/ecomcine_n0c"
+    fi
+    REMOTE_USER="efttsqrtff" \
+    REMOTE_HOST="209.16.158.249" \
+    REMOTE_PORT="5022" \
+    REMOTE_WPATH="/home/efttsqrtff/app.topdoctorchannel.us" \
+    REMOTE_KEY="$REMOTE_KEY_PATH" \
+    ./scripts/wp-remote.sh "$@"
+    ;;
+
   db.seed.import.core)
     ./scripts/wp.sh wp db import db/seed.sql
     ;;
@@ -122,6 +139,26 @@ case "$COMMAND_ID" in
     ./scripts/licensing/export-fluentcart-control-plane-seed.sh "$@"
     ;;
 
+  data.vendors.import.demo)
+    if [[ $# -gt 0 ]]; then
+      ./scripts/wp.sh wp eval "EcomCine_Demo_Importer::run_remote_cli('$1');"
+    else
+      ./scripts/wp.sh wp eval 'EcomCine_Demo_Importer::run_remote_cli();'
+    fi
+    ;;
+
+  wp.data.migration.dokan)
+    ./scripts/wp.sh wp eval 'if(class_exists("EcomCine_Dokan_Data_Migration",false)){$r=EcomCine_Dokan_Data_Migration::run();echo json_encode($r);}'
+    ;;
+
+  demos.release)
+    if [[ $# -lt 1 ]]; then
+      echo "ERROR: demos.release requires <version> [--push]" >&2
+      exit 2
+    fi
+    ./scripts/build-demos-release.sh "$@"
+    ;;
+
   db.query)
     if [[ $# -lt 1 ]]; then
       echo "ERROR: db.query requires <sql_query>" >&2
@@ -136,6 +173,10 @@ case "$COMMAND_ID" in
 
   release.build.ecomcine)
     ./scripts/build-ecomcine-release.sh
+    ;;
+
+  release.build.ecomcine.clean-head)
+    bash ./scripts/build-ecomcine-release-from-head.sh
     ;;
 
   release.upload.ecomcine.canonical)

@@ -116,6 +116,15 @@ Each command contract defines:
 - failure_class: `tooling`
 - remediation_type: `source-fix`
 
+`id`: `wp.remote.app.inspect`
+- goal: Inspect the remote app.topdoctorchannel.us WordPress runtime via SSH-backed WP-CLI using the approved host, port, key, and install path
+- command: `./scripts/wp-remote.sh <wp_cli_args...>`
+- args: one or more remote WP-CLI arguments required, for example `plugin list`, `theme list`, `option get home`, or `eval '<php_code>'`
+- success: exit `0`
+- failure: non-zero; resolve SSH key/path/connectivity or remote WP bootstrap issues before proceeding
+- failure_class: `auth`
+- remediation_type: `source-fix`
+
 ### Database and Seed Contracts
 
 `id`: `db.seed.import.core`
@@ -176,7 +185,7 @@ Each command contract defines:
 > If vendor data is missing EcomCine canonical meta, run this migration.
 
 `id`: `wp.data.migration.dokan`
-- goal: Migrate all Dokan-era vendor meta to EcomCine canonical keys (geo, enabled, L1 completeness)
+- goal: Migrate Dokan-era vendor meta to EcomCine canonical keys, then remove legacy Dokan profile ownership fields
 - command: `./scripts/wp.sh wp eval 'if(class_exists("EcomCine_Dokan_Data_Migration",false)){$r=EcomCine_Dokan_Data_Migration::run();echo json_encode($r);}'`
 - args: none
 - success: exit `0`; JSON output with `migrated`, `skipped`, `errors` keys; `errors` array empty
@@ -273,6 +282,15 @@ Each command contract defines:
 - args: none
 - success: exit `0`
 - failure: non-zero; stop and resolve build script/runtime issue
+- failure_class: `tooling`
+- remediation_type: `source-fix`
+
+`id`: `release.build.ecomcine.clean-head`
+- goal: Build public plugin artifact and manifest from committed `HEAD` only, excluding unrelated dirty worktree changes
+- command: `./scripts/build-ecomcine-release-from-head.sh`
+- args: none
+- success: exit `0`
+- failure: non-zero; stop and resolve git archive/build script/runtime issue
 - failure_class: `tooling`
 - remediation_type: `source-fix`
 
