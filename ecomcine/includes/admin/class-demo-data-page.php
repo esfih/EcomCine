@@ -14,17 +14,10 @@ defined( 'ABSPATH' ) || exit;
 class EcomCine_Demo_Data_Page {
 
 	public static function init() {
-		// Debug: Log that init is being called - write to WordPress uploads directory
-		$log_file = ABSPATH . 'wp-content/uploads/ecomcine_init_debug.log';
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - EcomCine_Demo_Data_Page::init called\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
 		add_action( 'admin_menu', array( __CLASS__, 'register_submenu' ), 20 );
 		
 		add_action( 'wp_ajax_ecomcine_import_demo_remote', array( __CLASS__, 'ajax_import_demo_remote' ) );
-		add_action( 'wp_ajax_nopriv_ecomcine_import_demo_remote', array( __CLASS__, 'ajax_import_demo_remote' ) );
 		add_action( 'wp_ajax_ecomcine_clear_demo_cache', array( __CLASS__, 'ajax_clear_demo_cache' ) );
-		add_action( 'wp_ajax_nopriv_ecomcine_clear_demo_cache', array( __CLASS__, 'ajax_clear_demo_cache' ) );
 		add_action( 'wp_ajax_ecomcine_talent_debug', array( __CLASS__, 'ajax_talent_debug' ) );
 	}
 
@@ -95,6 +88,8 @@ class EcomCine_Demo_Data_Page {
 						$pack_name     = sanitize_text_field( $pack['name'] ?? '' );
 						$pack_desc     = sanitize_text_field( $pack['description'] ?? '' );
 						$pack_url      = esc_url_raw( $pack['zip_url'] ?? '' );
+						$pack_version  = sanitize_text_field( $pack['version'] ?? '' );
+						$pack_release  = sanitize_text_field( $pack['release_tag'] ?? '' );
 						$pack_count    = (int) ( $pack['vendor_count'] ?? 0 );
 						$pack_size_mb  = (int) ( $pack['disk_size_mb'] ?? 0 );
 						$pack_id       = sanitize_key( $pack['id'] ?? sanitize_title( $pack_name ) );
@@ -102,6 +97,16 @@ class EcomCine_Demo_Data_Page {
 					?>
 					<div class="ecomcine-demo-pack-card" style="border:1px solid #ccd0d4;border-radius:4px;padding:16px;max-width:280px;background:#fff;">
 						<strong><?php echo esc_html( $pack_name ); ?></strong>
+						<?php if ( $pack_version || $pack_release ) : ?>
+							<div style="margin:8px 0 10px;padding:8px 10px;border-radius:4px;background:#f6f7f7;font-size:12px;color:#50575e;line-height:1.5;">
+								<?php if ( $pack_version ) : ?>
+									<div><strong><?php esc_html_e( 'Demo Pack Version:', 'ecomcine' ); ?></strong> <?php echo esc_html( $pack_version ); ?></div>
+								<?php endif; ?>
+								<?php if ( $pack_release ) : ?>
+									<div><strong><?php esc_html_e( 'Release Tag:', 'ecomcine' ); ?></strong> <?php echo esc_html( $pack_release ); ?></div>
+								<?php endif; ?>
+							</div>
+						<?php endif; ?>
 						<?php if ( $pack_desc ) : ?>
 							<p style="margin:6px 0 10px;color:#555;font-size:13px;"><?php echo esc_html( $pack_desc ); ?></p>
 						<?php endif; ?>
@@ -140,6 +145,30 @@ class EcomCine_Demo_Data_Page {
 		<script>
 		(function () {
 			var ajaxUrl = <?php echo json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+
+			function escapeHtml(value) {
+				return String(value || '').replace(/[&<>"']/g, function (char) {
+					return {
+						'&': '&amp;',
+						'<': '&lt;',
+						'>': '&gt;',
+						'"': '&quot;',
+						"'": '&#039;'
+					}[char];
+				});
+			}
+
+			function renderErrorNotice(message, detail) {
+				var html = '<div class="notice notice-error inline"><p>' + escapeHtml(message || '<?php esc_html_e( 'Import failed.', 'ecomcine' ); ?>') + '</p>';
+				if (detail) {
+					html += '<div style="margin-top:8px;padding:10px 12px;background:#f6f7f7;border-left:4px solid #d63638;border-radius:2px;">'
+						+ '<strong><?php esc_html_e( 'Error Details', 'ecomcine' ); ?></strong>'
+						+ '<pre style="margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5;">' + escapeHtml(detail) + '</pre>'
+						+ '</div>';
+				}
+				html += '</div>';
+				return html;
+			}
 
 			// ── Check for updates ────────────────────────────────────────────
 			var checkUpdatesBtn = document.getElementById('ecomcine-check-updates-btn');
@@ -260,16 +289,24 @@ class EcomCine_Demo_Data_Page {
 							html += '</div>';
 							resultEl.innerHTML = html;
 						} else {
+							var errorMessage = '<?php esc_html_e( 'Import failed.', 'ecomcine' ); ?>';
+							var errorDetail = '';
+							if (typeof data.data === 'string') {
+								errorMessage = data.data;
+								errorDetail = data.data;
+							} else if (data.data && typeof data.data === 'object') {
+								errorMessage = data.data.message || errorMessage;
+								errorDetail = data.data.detail || data.data.message || '';
+							}
 							if (status) status.textContent = '✗ <?php esc_html_e( 'Failed', 'ecomcine' ); ?>';
-							resultEl.innerHTML = '<div class="notice notice-error inline"><p>'
-								+ (data.data || '<?php esc_html_e( 'Import failed.', 'ecomcine' ); ?>') + '</p></div>';
+							resultEl.innerHTML = renderErrorNotice(errorMessage, errorDetail);
 						}
 					})
 					.catch(function (err) {
 						console.error('Demo import error:', err);
 						btn.disabled = false;
 						if (status) status.textContent = '✗';
-						resultEl.innerHTML = '<div class="notice notice-error inline"><p>' + err.message + '</p></div>';
+						resultEl.innerHTML = renderErrorNotice(err.message, err.stack || err.message);
 					});
 				});
 			});
@@ -281,88 +318,109 @@ class EcomCine_Demo_Data_Page {
 
 	/** AJAX: remote zip import. */
 	public static function ajax_import_demo_remote() {
-		// ALWAYS send a response, even if something goes wrong
-		// Ensure no output before JSON
+		$response_sent = false;
+		register_shutdown_function(
+			static function () use ( &$response_sent ) {
+				if ( $response_sent ) {
+					return;
+				}
+
+				$error = error_get_last();
+				if ( ! is_array( $error ) || empty( $error['type'] ) ) {
+					return;
+				}
+
+				$fatal_types = array( E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR );
+				if ( ! in_array( (int) $error['type'], $fatal_types, true ) ) {
+					return;
+				}
+
+				$message = sprintf(
+					'Import failed before completing: %s in %s:%d',
+					(string) ( $error['message'] ?? 'Unknown fatal error.' ),
+					basename( (string) ( $error['file'] ?? 'unknown' ) ),
+					(int) ( $error['line'] ?? 0 )
+				);
+
+				if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					error_log( '[EcomCine demo import fatal] ' . $message );
+				}
+
+				while ( ob_get_level() > 0 ) {
+					ob_end_clean();
+				}
+
+				if ( ! headers_sent() ) {
+					status_header( 500 );
+					nocache_headers();
+					header( 'Content-Type: application/json; charset=' . get_option( 'blog_charset' ) );
+				}
+
+				echo wp_json_encode(
+					array(
+						'success' => false,
+						'data'    => $message,
+					)
+				);
+			}
+		);
+
 		while ( ob_get_level() > 0 ) {
 			ob_end_clean();
 		}
-		
-		// Disable error output to JSON
-		@ini_set( 'display_errors', '0' );
-		
-		// Debug: Write to file for easy checking - use WordPress uploads directory
-		$log_file = ABSPATH . 'wp-content/uploads/ecomcine_ajax_debug.log';
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - ajax_import_demo_remote called\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
-		// Check nonce - use false to prevent automatic wp_die()
+
+		if ( function_exists( 'wp_raise_memory_limit' ) ) {
+			wp_raise_memory_limit( 'admin' );
+		}
+		if ( function_exists( 'set_time_limit' ) ) {
+			@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		}
+
 		$nonce_valid = check_ajax_referer( 'ecomcine_demo_import', 'nonce', false );
-		
+
 		if ( ! $nonce_valid ) {
-			$debug_msg = date( 'Y-m-d H:i:s' ) . " - Nonce check failed\n";
-			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+			$response_sent = true;
 			wp_send_json_error( 'Invalid security token.' );
 			return;
 		}
 		
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Nonce check passed\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
-		// Debug: Log that we're proceeding
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Proceeding with import\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
-		// Debug: Log the zip_url being used
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Zip URL: " . $zip_url . "\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
 		if ( ! current_user_can( 'manage_options' ) ) {
+			$response_sent = true;
 			wp_send_json_error( 'Insufficient permissions.' );
 			return;
 		}
 		
 		if ( ! class_exists( 'EcomCine_Demo_Importer', false ) ) {
+			$response_sent = true;
 			wp_send_json_error( 'Demo importer class not loaded.' );
 			return;
 		}
 		
 		$zip_url = isset( $_POST['zip_url'] ) ? esc_url_raw( wp_unslash( $_POST['zip_url'] ) ) : '';
 		if ( empty( $zip_url ) ) {
+			$response_sent = true;
 			wp_send_json_error( 'Missing zip_url parameter.' );
 			return;
 		}
 		
-		// Debug: Log the request
-		error_log( 'Demo import request: zip_url=' . $zip_url );
-		
-		// Ensure error reporting is disabled to prevent output corruption
-		$old_error_reporting = error_reporting( 0 );
-		
 		try {
 			$result = EcomCine_Demo_Importer::run_remote( $zip_url );
-			
-			// Debug: Log the result
-			error_log( 'Demo import result: ' . print_r( $result, true ) );
-			
-			// Restore error reporting
-			error_reporting( $old_error_reporting );
-			
+
 			// If there are errors, send them properly
 			if ( ! empty( $result['errors'] ) ) {
+				$response_sent = true;
 				wp_send_json_error( implode( '\n', $result['errors'] ) );
 				return;
 			}
 			
+			$response_sent = true;
 			wp_send_json_success( $result );
 			
-		} catch ( Exception $e ) {
-			// Restore error reporting
-			error_reporting( $old_error_reporting );
-			
-			// Log the exception
-			error_log( 'Demo import exception: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine() );
-			
-			// Send error response
+		} catch ( Throwable $e ) {
+			if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				error_log( '[EcomCine demo import exception] ' . $e->getMessage() );
+			}
+			$response_sent = true;
 			wp_send_json_error( 'Import failed: ' . $e->getMessage() );
 		}
 	}
