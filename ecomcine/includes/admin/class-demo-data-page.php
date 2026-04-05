@@ -290,8 +290,8 @@ class EcomCine_Demo_Data_Page {
 		// Disable error output to JSON
 		@ini_set( 'display_errors', '0' );
 		
-		// Debug: Write to file for easy checking
-		$log_file = '/tmp/ecomcine_debug.log';
+		// Debug: Write to file for easy checking - use WordPress uploads directory
+		$log_file = ABSPATH . 'wp-content/uploads/ecomcine_ajax_debug.log';
 		$debug_msg = date( 'Y-m-d H:i:s' ) . " - ajax_import_demo_remote called\n";
 		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 		
