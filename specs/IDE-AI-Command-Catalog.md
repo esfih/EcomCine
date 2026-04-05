@@ -116,12 +116,26 @@ Each command contract defines:
 - failure_class: `tooling`
 - remediation_type: `source-fix`
 
+`id`: `ssh.remote.app.connect`
+- goal: Open a raw SSH session or run a single shell command on app.topdoctorchannel.us (for filesystem, ownership, log, and non-WP-CLI operations)
+- command: `ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 [optional shell command]`
+- args: optional shell command string; omit for interactive session
+- success: exit `0`; connection established and command (if any) completes without error
+- failure: non-zero; verify key exists at `~/.ssh/ecomcine_n0c`, host reachable, port 5022 open; see `SSH Connection Reference` in `specs/GITHUB-AUTH-REFERENCE.md`
+- failure_class: `auth`
+- remediation_type: `source-fix`
+- examples:
+  - Test connection: `ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 "echo connected"`
+  - Fix plugin ownership: `ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 "chown -R $(stat -c '%U' /home/efttsqrtff/app.topdoctorchannel.us/wp-content) /home/efttsqrtff/app.topdoctorchannel.us/wp-content/plugins/ecomcine"`
+  - Read PHP/WP debug log: `ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 "tail -n 50 /home/efttsqrtff/app.topdoctorchannel.us/wp-content/debug.log"`
+  - Stream logs live: `ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 "tail -f /home/efttsqrtff/app.topdoctorchannel.us/wp-content/debug.log"`
+
 `id`: `wp.remote.app.inspect`
 - goal: Inspect the remote app.topdoctorchannel.us WordPress runtime via SSH-backed WP-CLI using the approved host, port, key, and install path
 - command: `./scripts/wp-remote.sh <wp_cli_args...>`
 - args: one or more remote WP-CLI arguments required, for example `plugin list`, `theme list`, `option get home`, or `eval '<php_code>'`
 - success: exit `0`
-- failure: non-zero; resolve SSH key/path/connectivity or remote WP bootstrap issues before proceeding
+- failure: non-zero; resolve SSH key/path/connectivity or remote WP bootstrap issues before proceeding; see `SSH Connection Reference` in `specs/GITHUB-AUTH-REFERENCE.md`
 - failure_class: `auth`
 - remediation_type: `source-fix`
 

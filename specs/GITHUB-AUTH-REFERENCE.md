@@ -167,6 +167,81 @@ On mutualized hosts without SSH, contact the host to correct ownership, or use a
 
 **Prevention**: When deploying via SSH or SFTP for the first time, always set ownership to the PHP user immediately after upload. Auto-update relies on it for all future upgrades.
 
+## SSH Connection Reference — app.topdoctorchannel.us (N0C Hosting)
+
+All remote production operations for `app.topdoctorchannel.us` use this single SSH identity.
+
+| Parameter | Value |
+|---|---|
+| Host | `209.16.158.249` |
+| Port | `5022` |
+| User | `efttsqrtff` |
+| SSH key | `~/.ssh/ecomcine_n0c` (ed25519, on WSL dev machine) |
+| WP root | `/home/efttsqrtff/app.topdoctorchannel.us` |
+| wp-content | `/home/efttsqrtff/app.topdoctorchannel.us/wp-content` |
+| Plugins dir | `/home/efttsqrtff/app.topdoctorchannel.us/wp-content/plugins` |
+
+> The private key `~/.ssh/ecomcine_n0c` was generated on the dev machine and its public key
+> was authorized on the hosting panel. On a new machine, recreate it via the hosting control
+> panel or copy both key files from the old machine. See `New-Migrate-WP-Local-Setup.md` →
+> "SSH Key — app.topdoctorchannel.us".
+
+### Test connection
+```bash
+ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 "echo connected"
+```
+
+### WP-CLI on the remote site (preferred — use the wrapper)
+```bash
+# All WP-CLI operations on the remote site go through the wrapper:
+./scripts/wp-remote.sh <wp_cli_args...>
+
+# Examples:
+./scripts/wp-remote.sh plugin list
+./scripts/wp-remote.sh plugin get ecomcine --fields=name,version,status
+./scripts/wp-remote.sh option get siteurl
+./scripts/wp-remote.sh eval 'echo phpversion();'
+```
+
+### Raw SSH one-liners (for filesystem, ownership, logs)
+```bash
+# Read the WordPress debug log (last 50 lines):
+ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 \
+  "tail -n 50 /home/efttsqrtff/app.topdoctorchannel.us/wp-content/debug.log"
+
+# Stream debug log live:
+ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 \
+  "tail -f /home/efttsqrtff/app.topdoctorchannel.us/wp-content/debug.log"
+
+# Check who owns the ecomcine plugin directory (auto-update ownership diagnostic):
+ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 \
+  "stat /home/efttsqrtff/app.topdoctorchannel.us/wp-content/plugins/ecomcine"
+
+# Fix plugin ownership so WordPress auto-update can delete/replace it.
+# First identify the PHP process user, then apply:
+ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 \
+  "chown -R efttsqrtff /home/efttsqrtff/app.topdoctorchannel.us/wp-content/plugins/ecomcine"
+# On N0C mutualized hosting the PHP user is typically the account user (efttsqrtff),
+# NOT www-data — confirm with: ps aux | grep php | head -3
+
+# List plugin directory contents:
+ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 \
+  "ls -la /home/efttsqrtff/app.topdoctorchannel.us/wp-content/plugins/"
+```
+
+### Copy a file to the server (SCP)
+```bash
+scp -i ~/.ssh/ecomcine_n0c -P 5022 \
+  <local_file> \
+  efttsqrtff@209.16.158.249:/home/efttsqrtff/app.topdoctorchannel.us/wp-content/plugins/
+```
+
+### Catalog command IDs for remote ops
+See `specs/IDE-AI-Command-Catalog.md` for the canonical entries:
+- `ssh.remote.app.connect` — raw SSH shell / one-liner
+- `wp.remote.app.inspect` — WP-CLI inspection via `./scripts/wp-remote.sh`
+- `wp.remote.app.deploy.ecomcine` — deploy a released zip to the live site
+
 ## Best Practices
 
 1. **Always verify authentication** before attempting release operations

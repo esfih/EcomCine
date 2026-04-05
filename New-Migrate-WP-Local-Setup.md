@@ -540,6 +540,40 @@ ssh -i ~/.ssh/castingagency_debug -p 5022 efttsqrtff@209.16.158.249 "echo connec
 
 ---
 
+## SSH Key — app.topdoctorchannel.us (N0C Hosting)
+
+The key `~/.ssh/ecomcine_n0c` authorizes access to `app.topdoctorchannel.us` on N0C mutualized hosting.
+It is stored only on the dev machine and is **never committed**.
+
+| Detail | Value |
+|---|---|
+| Key file | `~/.ssh/ecomcine_n0c` (ed25519 private key) |
+| Public key | `~/.ssh/ecomcine_n0c.pub` |
+| Host | `209.16.158.249` |
+| Port | `5022` |
+| User | `efttsqrtff` |
+| WP root | `/home/efttsqrtff/app.topdoctorchannel.us` |
+
+On a new machine, either:
+- Copy `~/.ssh/ecomcine_n0c` and `~/.ssh/ecomcine_n0c.pub` from the old machine (set permissions: `chmod 600 ~/.ssh/ecomcine_n0c`), **or**
+- Generate a new key pair (`ssh-keygen -t ed25519 -f ~/.ssh/ecomcine_n0c -C "ecomcine-dev"`) and add the public key via the N0C hosting panel → SSH access.
+
+Verify connection:
+```bash
+ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 "echo connected"
+```
+
+All WP-CLI remote operations use the wrapper script (which reads this key by default):
+```bash
+./scripts/wp-remote.sh plugin list
+./scripts/wp-remote.sh plugin get ecomcine --fields=name,version,status
+```
+
+For full SSH command reference, diagnostics, and ownership fix commands, see
+`specs/GITHUB-AUTH-REFERENCE.md` → "SSH Connection Reference".
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
