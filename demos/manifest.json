@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "last_updated": "2026-04-05T20:00:00Z",
+  "last_updated": "2026-04-05T22:15:00Z",
   "packs": [
     {
       "id": "topdoctorchannel",
@@ -11,7 +11,7 @@
       "version": "0.1.57",
       "release_tag": "v0.1.57-demo-data",
       "preview_image": "https://raw.githubusercontent.com/esfih/EcomCine/master/demos/topdoctorchannel/preview.jpg",
-      "zip_url": "https://github.com/esfih/EcomCine/releases/download/v0.1.57-demo-data/ecomcine-demo-data-0.1.57.zip"
+      "zip_url": "https://github.com/esfih/EcomCine/releases/download/v0.1.57-demo-data/ecomcine-demo-data-0.1.57-fixed.zip"
     }
   ]
 }
