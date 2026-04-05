@@ -6,11 +6,11 @@
       "name": "TopDoctorChannel",
       "description": "18 sample talent profiles (models, actors, cameramen) with photos and video reels.",
       "vendor_count": 18,
-      "disk_size_mb": 140,
-      "version": "1.0.3",
-      "release_tag": "demos-v1.0.3",
+      "disk_size_mb": 13,
+      "version": "0.1.57",
+      "release_tag": "v0.1.57-demo-data",
       "preview_image": "https://raw.githubusercontent.com/esfih/EcomCine/master/demos/topdoctorchannel/preview.jpg",
-      "zip_url": "https://github.com/esfih/EcomCine/releases/download/demos-v1.0.3/topdoctorchannel-demo-pack.zip"
+      "zip_url": "https://github.com/esfih/EcomCine/releases/download/v0.1.57-demo-data/ecomcine-demo-data-0.1.57.zip"
     }
   ]
 }
