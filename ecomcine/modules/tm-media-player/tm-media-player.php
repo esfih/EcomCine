@@ -239,12 +239,13 @@ function tm_get_vendor_store_content_payload( $vendor_id ) {
 	}
 	try {
 		set_query_var( 'author', $vendor_id );
+		$vendor_context_id = $vendor_id;
 		// Resolve store-header template: plugin copy takes priority, then theme.
 		$_store_header = defined( 'TM_STORE_UI_DIR' )
-			? TM_STORE_UI_DIR . 'templates/dokan/store-header.php'
-			: locate_template( 'dokan/store-header.php' );
+			? TM_STORE_UI_DIR . 'templates/vendor-store/store-header.php'
+			: locate_template( 'vendor-store/store-header.php' );
 		if ( ! $_store_header || ! file_exists( $_store_header ) ) {
-			$_store_header = locate_template( 'dokan/store-header.php' );
+			$_store_header = locate_template( 'vendor-store/store-header.php' );
 		}
 		ob_start();
 		if ( $_store_header ) { include $_store_header; }
@@ -254,6 +255,16 @@ function tm_get_vendor_store_content_payload( $vendor_id ) {
 		// error callback even though success:true is in the body.
 		if ( substr( $html, 0, 3 ) === "\xEF\xBB\xBF" ) {
 			$html = substr( $html, 3 );
+		}
+		if ( '' === trim( (string) $html ) ) {
+			return new WP_Error(
+				'vendor_render_empty',
+				'Failed to render vendor content.',
+				array(
+					'vendor_id' => $vendor_id,
+					'message'   => 'Vendor content rendered empty output.',
+				)
+			);
 		}
 	} catch ( Throwable $e ) {
 		while ( ob_get_level() ) { ob_end_clean(); }

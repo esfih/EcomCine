@@ -1,5 +1,33 @@
 import { expect, test } from '@playwright/test';
 
+async function readVendorEndpointSnapshot(page) {
+	return page.evaluate(async () => {
+		const restUrl = (window as any).tmVendorStoreRestUrl || ((window as any).vendorStoreData && (window as any).vendorStoreData.vendorStoreRestUrl) || '';
+		const showcaseIds = Array.isArray((window as any).tmShowcaseIds) ? (window as any).tmShowcaseIds : [];
+		if (!restUrl || showcaseIds.length < 2) {
+			return [];
+		}
+
+		const targetIds = showcaseIds.slice(1, Math.min(showcaseIds.length, 4));
+		const responses = await Promise.all(targetIds.map(async (vendorId) => {
+			const url = new URL(restUrl, window.location.origin);
+			url.searchParams.set('vendor_id', String(vendorId));
+			const response = await fetch(url.toString(), { credentials: 'same-origin' });
+			const json = await response.json();
+			return {
+				vendorId,
+				httpStatus: response.status,
+				success: !!json?.success,
+				hasHtml: typeof json?.data?.html === 'string' && json.data.html.trim().length > 0,
+				hasProfileBox: typeof json?.data?.html === 'string' && json.data.html.includes('profile-info-box'),
+				hasMedia: Array.isArray(json?.data?.vendorMedia?.items) && json.data.vendorMedia.items.length > 0,
+			};
+			}));
+
+		return responses;
+	});
+}
+
 async function readShowcaseSnapshot(page) {
 	return page.evaluate(() => {
 		const overlay = document.querySelector('.tm-showcase-play-overlay');
@@ -48,6 +76,16 @@ async function openShowcasePage(page, baseURL: string) {
 test.describe('Showcase vendor swap regression', () => {
 	test('@interactions first play survives next talent swap', async ({ page, baseURL }) => {
 		await openShowcasePage(page, baseURL || 'http://localhost:8180');
+
+		const endpointSnapshots = await readVendorEndpointSnapshot(page);
+		expect(endpointSnapshots.length).toBeGreaterThan(0);
+		for (const snapshot of endpointSnapshots) {
+			expect(snapshot.httpStatus).toBe(200);
+			expect(snapshot.success).toBeTruthy();
+			expect(snapshot.hasHtml).toBeTruthy();
+			expect(snapshot.hasProfileBox).toBeTruthy();
+			expect(snapshot.hasMedia).toBeTruthy();
+		}
 
 		const overlay = page.locator('.tm-showcase-play-overlay');
 		const nextTalent = page.locator('.keyboard-nav-right').first();

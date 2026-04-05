@@ -1,5 +1,8 @@
 <?php
-$vendor_context_id = absint( get_query_var( 'author' ) );
+$vendor_context_id = isset( $vendor_context_id ) ? absint( $vendor_context_id ) : 0;
+if ( ! $vendor_context_id ) {
+    $vendor_context_id = absint( get_query_var( 'author' ) );
+}
 $store_user        = function_exists( 'tm_store_ui_get_store_user' )
 	? tm_store_ui_get_store_user( $vendor_context_id )
 	: null;
@@ -923,7 +926,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 <?php echo wp_kses_post( dokan_get_readable_seller_rating( $store_user->get_id() ) ); ?>
                             </li>
 
-                            <?php if ( $show_store_open_close === 'on' && $dokan_store_time_enabled === 'yes' ) : ?>
+                            <?php if ( $show_store_open_close === 'on' && $ecomcine_store_time_enabled === 'yes' ) : ?>
                                 <li class="dokan-store-open-close">
                                     <?php echo TM_Icons::svg( 'shopping-cart' ); ?>
                                     <div class="store-open-close-notice">
