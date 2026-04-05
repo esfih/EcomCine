@@ -4,6 +4,9 @@
  * Architecture: Global state + reusable functions + initHeroPlayer for DOM rebinding
  */
 
+// Prevent multiple initializations - only run initHeroPlayer once per page load
+var tmPlayerInitialized = false;
+
 jQuery(document).ready(function($) {
 	
 	// ==========================================
@@ -95,6 +98,10 @@ jQuery(document).ready(function($) {
 	var heroVideoActive = null;   // DOM element: currently visible video slot
 	var videoBufferNext = null;   // DOM element: preloading the next item
 	var videoBufferPrev = null;   // DOM element: preloading the prev item
+	
+	// OPTIMIZATION: Loading indicator for slow connections
+	var loadingIndicator = null;
+	var loadingIndicatorTimer = null;
 	var bufferNextSrc  = "";      // src currently loading/loaded in videoBufferNext
 	var bufferPrevSrc  = "";      // src currently loading/loaded in videoBufferPrev
 	// Smart TV loop-blob cache: when the user enables "Loop this media" on a Smart TV,
@@ -1474,6 +1481,7 @@ jQuery(document).ready(function($) {
 	function markUserInteraction() {
 		userHasInteracted = true;
 		userHasMadeRealGesture = true;
+		console.log('[TM PLAYER DEBUG] markUserInteraction called | userHasInteracted:', userHasInteracted, '| userHasMadeRealGesture:', userHasMadeRealGesture);
 	}
 	function allowMuteFallbackForPlayback() {
 		if (state.muted) return false; // user chose silence — no fallback needed
@@ -1513,27 +1521,36 @@ jQuery(document).ready(function($) {
 		}
 		$heroBox.append($overlay);
 		$overlay.on("click", function() {
+			console.log('[TM PLAYER DEBUG] Overlay clicked | state.isPlaying before:', state.isPlaying);
 			markUserInteraction();
 			state.muted = false;
 			writeStoredBool(STORAGE_KEYS.muted, false);
 			applyMute();
 			syncRemoteMute();
 			state.isPlaying = true;
+			console.log('[TM PLAYER DEBUG] state.isPlaying set to true');
 			playCurrent();
 			$overlay.addClass("is-hidden");
 			try {
 				if (window.sessionStorage) {
 					sessionStorage.setItem("tm_showcase_started", "1");
+					console.log('[TM PLAYER DEBUG] sessionStorage.tm_showcase_started set to "1"');
 				}
-			} catch (e) {}
+			} catch (e) {
+				console.log('[TM PLAYER DEBUG] sessionStorage.setItem ERROR:', e);
+			}
+			console.log('[TM PLAYER DEBUG] Overlay hidden, sessionStorage updated');
 		});
 		return $overlay;
 	}
 
 	function hasShowcaseStarted() {
 		try {
-			return !!(window.sessionStorage && sessionStorage.getItem("tm_showcase_started") === "1");
+			var started = !!(window.sessionStorage && sessionStorage.getItem("tm_showcase_started") === "1");
+			console.log('[TM PLAYER DEBUG] hasShowcaseStarted | sessionStorage.getItem("tm_showcase_started"):', window.sessionStorage ? sessionStorage.getItem("tm_showcase_started") : 'NO sessionStorage', '| result:', started);
+			return started;
 		} catch (e) {
+			console.log('[TM PLAYER DEBUG] hasShowcaseStarted ERROR:', e);
 			return false;
 		}
 	}
@@ -1643,7 +1660,11 @@ jQuery(document).ready(function($) {
 	function loadNext() {
 		// Advance to next playlist item. Wraps at end.
 		// Called only by the armAdvanceTimer callback or the video ended event.
-		if (!state.isPlaying || state.loopMode || isAutoplayBlocked()) return;
+		console.log('[TM PLAYER DEBUG] loadNext called | state.isPlaying:', state.isPlaying, '| state.loopMode:', state.loopMode, '| isAutoplayBlocked():', isAutoplayBlocked());
+		if (!state.isPlaying || state.loopMode || isAutoplayBlocked()) {
+			console.log('[TM PLAYER DEBUG] loadNext aborted - state.isPlaying:', state.isPlaying);
+			return;
+		}
 		var nextIndex = state.index + 1;
 		if (nextIndex >= playlist.length) {
 			console.log('[TM loadNext] END OF PLAYLIST | vendorLoopEnabled:', vendorLoopEnabled, '| isShowcaseMode():', isShowcaseMode(), '| vendorList.length:', vendorList.length, '| currentVendorIndex:', currentVendorIndex);
@@ -1843,11 +1864,14 @@ jQuery(document).ready(function($) {
 		}, blackoutDelay);
 
 		transitionTimers.swap = setTimeout(function() {
+			console.log('[TM PLAYER DEBUG] swap timer fired | state.isPlaying:', state.isPlaying, '| isAutoplayBlocked():', isAutoplayBlocked());
 			if (!state.isPlaying || isAutoplayBlocked()) {
+				console.log('[TM PLAYER DEBUG] swap aborted - state.isPlaying:', state.isPlaying, '| isAutoplayBlocked():', isAutoplayBlocked());
 				clearTransitionTimers();
 				stopBlackout();
 				return;
 			}
+			console.log('[TM PLAYER DEBUG] Starting vendor swap to index:', nextIndex);
 			var preloaded = (vendorPrefetch.index === nextIndex && vendorPrefetch.data)
 				? vendorPrefetch.data
 				: null;
@@ -1883,12 +1907,17 @@ jQuery(document).ready(function($) {
 	}
 
 	function buildPlaylist() {
+		console.log('[TM PLAYER DEBUG] buildPlaylist called | state.isPlaying before:', state.isPlaying, '| window.vendorMedia:', window.vendorMedia);
 		var list = [];
 		var showcaseMode = _playerMode === "showcase";
 		console.log('[TM buildPlaylist] showcaseMode:', showcaseMode);
 		if (window.vendorMedia && Array.isArray(window.vendorMedia.items)) {
+			console.log('[TM PLAYER DEBUG] buildPlaylist | Found', window.vendorMedia.items.length, 'items in vendorMedia');
 			list = window.vendorMedia.items.filter(function(item) { return item && item.src; });
+		} else {
+			console.log('[TM PLAYER DEBUG] buildPlaylist | NO items in vendorMedia');
 		}
+		console.log('[TM PLAYER DEBUG] buildPlaylist | Built playlist with', list.length, 'items');
 
 		// If the vendor has any videos, prefer the first one for initial playback.
 		var firstVideo = null;
@@ -2012,6 +2041,33 @@ jQuery(document).ready(function($) {
 	function showVideo(active) {
 		if (!heroVideoActive) return;
 		$(heroVideoActive).css("display", active ? "block" : "none");
+	}
+
+	// OPTIMIZATION: Loading indicator for slow/unstable connections
+	function showLoadingIndicator(show, percent) {
+		if (!show) {
+			if (loadingIndicator) {
+				loadingIndicator.remove();
+				loadingIndicator = null;
+			}
+			return;
+		}
+		
+		if (!loadingIndicator) {
+			loadingIndicator = $('<div class="tm-loading-indicator"><div class="tm-loading-spinner"></div><div class="tm-loading-text">Loading media...</div></div>');
+			$('.profile-banner-video').first().parent().append(loadingIndicator);
+		}
+		
+		if (typeof percent === 'number') {
+			var $loadingText = loadingIndicator.find('.tm-loading-text');
+			if ($loadingText.length) {
+				$loadingText.text('Loading media... ' + Math.round(percent) + '%');
+			}
+		}
+	}
+	
+	function updateLoadingIndicator(percent) {
+		showLoadingIndicator(true, percent);
 	}
 
 	function showEq(active) {
@@ -2195,23 +2251,23 @@ jQuery(document).ready(function($) {
 		var $overlay = $(".tm-showcase-play-overlay");
 		if (!$overlay.length) return;
 		var showOverlay = !state.isPlaying || isAutoplayBlocked();
+		
+		// UNIFIED BEHAVIOR: Single source of truth for UI visibility
 		if (showOverlay) {
+			// Video PAUSED: Show play overlay, hide hero-remote
 			$overlay.removeClass("is-hidden");
-			// On mobile/tablet, if the pause was explicitly triggered by the user,
-			// keep hero-remote visible alongside the overlay (both shown).
-			// In all other cases (page-load default pause, auto-blocked autoplay)
-			// maintain mutual exclusion and hide the remote.
-			var isMobile = $(document.body).hasClass("tm-mobile-portrait")
-				|| $(document.body).hasClass("tm-mobile-landscape");
-			if (!(isMobile && userPausedMedia)) {
-				$(".hero-remote").removeClass("is-visible"); // mutually exclusive
-			}
+			$(".hero-remote").removeClass("is-visible");
+			console.log('[TM PLAYER DEBUG] syncPlayOverlay | Video PAUSED - Show overlay, hide remote');
 		} else {
+			// Video PLAYING: Hide play overlay, hero-remote will show on hover
 			$overlay.addClass("is-hidden");
+			// Don't auto-show hero-remote - it should only appear on hover
+			console.log('[TM PLAYER DEBUG] syncPlayOverlay | Video PLAYING - Hide overlay, remote on hover only');
 		}
 	}
 
 	function disableBackgroundMedia() {
+		console.log('[TM PLAYER DEBUG] disableBackgroundMedia called - setting state.isPlaying = false');
 		state.isPlaying = false;
 		state.loopMode = false;
 		state.fullDuration = false;
@@ -2251,6 +2307,7 @@ jQuery(document).ready(function($) {
 					// In showcase mode, after the user has clicked Play once, don't pop the
 					// overlay on a transient rejection — the advance timer keeps the loop running.
 					if (isShowcaseMode() && hasShowcaseStarted()) return;
+					console.log('[TM PLAYER DEBUG] attemptPlay failure - setting state.isPlaying = false');
 					state.isPlaying = false;
 					syncRemotePlaying(false); // restore play overlay so user can tap to start
 				});
@@ -2268,10 +2325,12 @@ jQuery(document).ready(function($) {
 	}
 
 	function loadItem(targetIndex) {
+		console.log('[TM PLAYER DEBUG] loadItem called | targetIndex:', targetIndex, '| playlist.length:', playlist.length);
 		var $heroAudio = $(".hero-audio").first();
 		var $heroRemote = $(".hero-remote");
 		
 		if (!playlist.length) {
+			console.log('[TM PLAYER DEBUG] loadItem - NO PLAYLIST, stopping media');
 			stopMedia();
 			return;
 		}
@@ -2351,10 +2410,17 @@ jQuery(document).ready(function($) {
 				// Used on first load, or if the buffer wasn't preloaded in time.
 				showVideo(true);
 				if (heroVideoActive) {
-					// Single-element mode (Smart TV / mobile): use preload="auto" so the browser
-					// buffers the full video — no competing slots means no download contention.
-					// Desktop A/B mode keeps "metadata" since buffer slots already use "auto".
-					$(heroVideoActive).attr("preload", (isSmartTV() || isMobileDevice()) ? "auto" : "metadata");
+					// OPTIMIZATION: For slow connections, use metadata preload to show poster immediately
+					// and allow progressive buffering without blocking initial display
+					var isSlowConnection = navigator.connection ? (navigator.connection.effectiveType === '2g' || navigator.connection.effectiveType === '3g') : false;
+					var preloadValue = isSlowConnection ? 'metadata' : ((isSmartTV() || isMobileDevice()) ? 'auto' : 'metadata');
+					$(heroVideoActive).attr("preload", preloadValue);
+					
+					// Show loading indicator for slow connections
+					if (isSlowConnection) {
+						showLoadingIndicator(true);
+					}
+					
 					heroVideoActive.loop = false;
 					heroVideoActive.removeAttribute("loop");
 					if (item.poster) { $(heroVideoActive).attr("poster", item.poster); }
@@ -2368,6 +2434,26 @@ jQuery(document).ready(function($) {
 						heroVideoActive.src = item.src;
 						heroVideoActive.load();
 					}
+					
+					// OPTIMIZATION: Add buffering event listeners for slow connections
+					if (isSlowConnection) {
+						heroVideoActive.addEventListener('progress', function() {
+							var buffered = heroVideoActive.buffered;
+							if (buffered.length > 0) {
+								var bufferPercent = (buffered.end(0) / heroVideoActive.duration) * 100;
+								updateLoadingIndicator(bufferPercent);
+							}
+						});
+						
+						heroVideoActive.addEventListener('canplay', function() {
+							showLoadingIndicator(false);
+						});
+						
+						heroVideoActive.addEventListener('playing', function() {
+							showLoadingIndicator(false);
+						});
+					}
+					
 					updateMeta(item);
 					applyLoopMode(item);
 					if (canAutoplay()) {
@@ -2683,7 +2769,11 @@ jQuery(document).ready(function($) {
 		bindFullscreenListeners();
 		updateFullscreenButton();
 		updateTheatreButton();
-		initHeroPlayer();
+		// CRITICAL: Only initialize player once - guard against duplicate calls
+		if (!tmPlayerInitialized) {
+			tmPlayerInitialized = true;
+			initHeroPlayer();
+		}
 		updateVendorLoopButton();
 	}
 
@@ -2742,14 +2832,25 @@ jQuery(document).ready(function($) {
 		var $toggleFull = $heroRemote.find(".hero-toggle-full");
 		var $toggleLoop = $heroRemote.find(".hero-toggle-loop");
 
-		// Reset state to defaults
+		// CRITICAL: Preserve state.isPlaying across initHeroPlayer calls in showcase mode
+		console.log('[TM PLAYER DEBUG] initHeroPlayer START | state.isPlaying before reset:', state.isPlaying);
+		var wasPlaying = state.isPlaying;
 		state.isPlaying = true;
+		console.log('[TM PLAYER DEBUG] initHeroPlayer | state.isPlaying after initial reset:', state.isPlaying);
 		state.muted = readStoredBool(STORAGE_KEYS.muted, false);
 		state.index = 0;
 		// state.timer is managed via clearMediaTimer()/scheduleAutoNext(); don't null it without clearing.
 		state.type = null;
 		state.fullDuration = readStoredBool(STORAGE_KEYS.fullDuration, false);
 		state.loopMode = readStoredBool(STORAGE_KEYS.loopMode, false);
+		// Preserve playing state if user has already interacted
+		if (wasPlaying && hasShowcaseStarted()) {
+			console.log('[TM PLAYER DEBUG] initHeroPlayer | Preserving state.isPlaying = true (wasPlaying && hasShowcaseStarted)');
+			state.isPlaying = true;
+		} else {
+			console.log('[TM PLAYER DEBUG] initHeroPlayer | NOT preserving - wasPlaying:', wasPlaying, '| hasShowcaseStarted():', hasShowcaseStarted());
+		}
+		console.log('[TM PLAYER DEBUG] initHeroPlayer END | state.isPlaying:', state.isPlaying);
 		var playerMode = _playerMode;
 		var showcaseMode = playerMode === "showcase";
 		// Detect F5 / Ctrl+R page reloads (performance.navigation.type === 1).
@@ -2774,12 +2875,16 @@ jQuery(document).ready(function($) {
 			// URL params override the forced showcase defaults.
 			// medialoop=on: loop the vendor's media playlist in place (don't advance to next vendor).
 			if (urlConfig.medialoop === true) { state.loopMode = true; }
-			if (!hasShowcaseStarted() || isPageReload) {
-				// First page load or page reload: reset to defaults and wait for user gesture.
+			// CRITICAL: Preserve state.isPlaying across vendor swaps
+			// Only reset to false on actual page reload, not on vendor swap
+			if (isPageReload) {
+				state.isPlaying = false;
+			} else if (!hasShowcaseStarted()) {
+				// First page load: reset to defaults and wait for user gesture
 				state.isPlaying = false;
 			}
-			showcaseInteractionPause = false;
 			// (On a talent swap hasShowcaseStarted() is true — isPlaying stays true from above.)
+			showcaseInteractionPause = false;
 		} else {
 			// Profile / default page: silently force vendor media to loop within the same talent.
 			// This prevents the auto-advance path from ever crossing into the next talent.
@@ -2800,10 +2905,13 @@ jQuery(document).ready(function($) {
 		}
 
 		// Initialize A/B video buffer system (must run before buildPlaylist/loadItem)
+		console.log('[TM PLAYER DEBUG] initHeroPlayer - before initVideoBuffers | state.isPlaying:', state.isPlaying);
 		initVideoBuffers();
 
 		// Rebuild playlist from vendor media data
+		console.log('[TM PLAYER DEBUG] initHeroPlayer - before buildPlaylist | state.isPlaying:', state.isPlaying);
 		playlist = buildPlaylist();
+		console.log('[TM PLAYER DEBUG] initHeroPlayer - after buildPlaylist | state.isPlaying:', state.isPlaying);
 
 		// Apply initial settings
 		if ($toggleFull.length) { $toggleFull.prop("checked", state.fullDuration); }
@@ -2843,10 +2951,11 @@ jQuery(document).ready(function($) {
 			if ($heroRemote.hasClass("is-audio-mode")) return;
 			clearTimeout(remoteHideTimeout);
 			toggleHeroRemote(true);
+			// Auto-hide after 3 seconds of no hover
 			remoteHideTimeout = setTimeout(function() {
 				if ($heroBox.is(":hover") || $heroRemote.is(":hover")) return;
 				toggleHeroRemote(false);
-			}, 800);
+			}, 3000);
 		}
 		updateResumeShowcaseControl();
 
@@ -2908,7 +3017,8 @@ jQuery(document).ready(function($) {
 		$heroBox.off("mouseleave.tmhero").on("mouseleave.tmhero", function() {
 			if (!$heroRemote.length) return;
 			if ($heroRemote.hasClass("is-audio-mode")) return;
-			remoteHideTimeout = setTimeout(function() { toggleHeroRemote(false); }, 120);
+			// Auto-hide after 3 seconds of no hover (consistent with keepHeroRemoteVisible)
+			remoteHideTimeout = setTimeout(function() { toggleHeroRemote(false); }, 3000);
 		});
 	}
 
@@ -3208,6 +3318,15 @@ jQuery(document).ready(function($) {
 			if (!response || !response.data || !response.data.html) {
 				return false;
 			}
+			
+			// CRITICAL: Hide hero-remote immediately on vendor swap start
+			// It should only appear on hover, not automatically
+			console.log('[TM PLAYER DEBUG] finishSwapStart: Hiding hero-remote');
+			var $heroRemote = $(".hero-remote");
+			if ($heroRemote.length) {
+				$heroRemote.removeClass("is-visible");
+			}
+			
 			var nextAvatarSrc = "";
 			try {
 				var $temp = $("<div>").html(response.data.html);
@@ -3224,34 +3343,43 @@ jQuery(document).ready(function($) {
 				return true;
 			}
 
-			// Preserve overlay during vendor swap to prevent flash
-			var $overlay = $(".tm-showcase-play-overlay");
-			if ($overlay.length) {
-				$overlay.addClass("is-hidden");
-			}
-			$(".profile-info-box").replaceWith(response.data.html);
-			if (nextAvatarSrc && options.keepCollapsed) {
-				var $img = $(".profile-img img").first();
-				if ($img.length) {
-					var defaultAvatar = getDefaultVendorAvatarSrc();
-					if (defaultAvatar) {
-						$img.attr("src", defaultAvatar);
-					}
-					preloadImage(nextAvatarSrc, function() {
-						$img.attr("src", nextAvatarSrc);
-					});
-				}
-			}
-
-			if (response.data.vendorMedia) {
-				window.vendorMedia = response.data.vendorMedia;
-			} else {
-				window.vendorMedia = null;
+			console.log('[TM PLAYER DEBUG] navigateToVendor | Replacing profile-info-box with fresh vendor markup');
+			var $newContainer = $("<div>").html(response.data.html);
+			var $newProfileBox = $newContainer.find('.profile-info-box').first();
+			var $currentProfileBox = $('.profile-info-box').first();
+			if (!$newProfileBox.length || !$currentProfileBox.length) {
+				return false;
 			}
 
 			window.currentVendorId = response.data.vendor_id;
 			currentVendorIndex = index;
+			if (window.vendorStoreData) {
+				window.vendorStoreData.userId = response.data.vendor_id;
+			}
+			window.vendorMedia = response.data.vendorMedia || null;
+
+			$currentProfileBox.replaceWith($newProfileBox);
 			updateVendorNavButtons();
+
+			if (options.keepCollapsed) {
+				var $head = $('.profile-info-head').first();
+				if ($head.length) {
+					$head.addClass('is-collapsed');
+					updateTalentPanelOpenState();
+				}
+				if (nextAvatarSrc) {
+					var $img = $('.profile-img img').first();
+					if ($img.length) {
+						var defaultAvatar = getDefaultVendorAvatarSrc();
+						if (defaultAvatar) {
+							$img.attr('src', defaultAvatar);
+						}
+						preloadImage(nextAvatarSrc, function() {
+							$img.attr('src', nextAvatarSrc);
+						});
+					}
+				}
+			}
 
 			if (vendor.url && !isShowcaseMode()) {
 				window.history.pushState(
@@ -3270,8 +3398,7 @@ jQuery(document).ready(function($) {
 			}
 
 			$(".profile-frame").removeClass("tm-vendor-transitioning");
-
-			initStorePageControls();
+			initHeroPlayer();
 			if (options.holdAutoplayMs) {
 				setTransitionHold(options.holdAutoplayMs);
 			}
@@ -3282,6 +3409,18 @@ jQuery(document).ready(function($) {
 				}, 200);
 			}
 
+			if (isShowcaseMode() && state.isPlaying && hasShowcaseStarted()) {
+				playCurrent();
+			}
+			
+			// CRITICAL: Hide hero-remote after swap - it should only appear on hover
+			// The hero-remote should remain hidden until the user hovers over the video area
+			console.log('[TM PLAYER DEBUG] Post-swap: Hiding hero-remote (will show on hover)');
+			var $heroRemote = $(".hero-remote");
+			if ($heroRemote.length) {
+				$heroRemote.removeClass("is-visible");
+			}
+			
 			if (isShowcaseMode() && options.expandDelayMs) {
 				// Showcase: the swap sequence always pre-collapses the panel so
 				// transitionState.wasCollapsed is always true — bypass that guard and
@@ -3372,13 +3511,14 @@ jQuery(document).ready(function($) {
 								abortAndAdvance('AJAX server error');
 							},
 							error: function(xhr2) {
-								console.error('[TM] AJAX also failed for vendor ' + vendor.id + ' (HTTP ' + xhr2.status + '). Response: ' + xhr2.responseText.substring(0, 200));
+								var responseText = xhr2.responseText || 'No response text';
+								console.error('[TM] AJAX also failed for vendor ' + vendor.id + ' (HTTP ' + xhr2.status + '). Response: ' + responseText.substring(0, 200));
 								abortAndAdvance('Both REST and AJAX failed');
 							}
 						});
 						return;
 					}
-					console.error('[TM] AJAX error for vendor ' + vendor.id + ' (HTTP ' + xhr.status + '). Response: ' + xhr.responseText.substring(0, 200));
+					console.error('[TM] AJAX error for vendor ' + vendor.id + ' (HTTP ' + xhr.status + '). Response: ' + getSafeErrorResponse(xhr));
 					abortAndAdvance('AJAX failed');
 				}
 			});
@@ -3387,6 +3527,12 @@ jQuery(document).ready(function($) {
 		setTimeout(function() {
 			requestVendorByIndex(targetIndex);
 		}, 300);
+	}
+
+	// Helper function to safely get error response text
+	function getSafeErrorResponse(xhr) {
+		var responseText = xhr.responseText || 'No response text';
+		return responseText.substring(0, 200);
 	}
 
 	// Keyboard navigation button click handlers
