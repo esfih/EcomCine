@@ -273,11 +273,7 @@ class EcomCine_Demo_Data_Page {
 
 	/** AJAX: remote zip import. */
 	public static function ajax_import_demo_remote() {
-		// Debug: Write to file for easy checking
-		$log_file = '/tmp/ecomcine_debug.log';
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - ajax_import_demo_remote called\n";
-		file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
+		// ALWAYS send a response, even if something goes wrong
 		// Ensure no output before JSON
 		while ( ob_get_level() > 0 ) {
 			ob_end_clean();
@@ -286,16 +282,27 @@ class EcomCine_Demo_Data_Page {
 		// Disable error output to JSON
 		@ini_set( 'display_errors', '0' );
 		
+		// Debug: Write to file for easy checking
+		$log_file = '/tmp/ecomcine_debug.log';
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - ajax_import_demo_remote called\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
 		// Check nonce - use false to prevent automatic wp_die()
-		if ( ! check_ajax_referer( 'ecomcine_demo_import', 'nonce', false ) ) {
+		$nonce_valid = check_ajax_referer( 'ecomcine_demo_import', 'nonce', false );
+		
+		if ( ! $nonce_valid ) {
 			$debug_msg = date( 'Y-m-d H:i:s' ) . " - Nonce check failed\n";
-			file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 			wp_send_json_error( 'Invalid security token.' );
 			return;
 		}
 		
 		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Nonce check passed\n";
-		file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		// Debug: Log that we're proceeding
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Proceeding with import\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 		
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Insufficient permissions.' );
