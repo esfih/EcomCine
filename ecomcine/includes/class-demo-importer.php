@@ -129,6 +129,29 @@ class EcomCine_Demo_Importer {
 		$media_dir = dirname( $json_path );
 		$debug_msg = date( 'Y-m-d H:i:s' ) . " - media_dir: " . $media_dir . "\n";
 		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		// ── Import ────────────────────────────────────────────────────────────────
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Reading vendor-data.json\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		$raw     = file_get_contents( $json_path );
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - JSON content length: " . strlen( $raw ) . "\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		$payload = json_decode( $raw, true );
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - JSON decoded: " . ( is_array( $payload ) ? 'yes' : 'no' ) . "\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		if ( ! is_array( $payload ) || empty( $payload['vendors'] ) ) {
+			$debug_msg = date( 'Y-m-d H:i:s' ) . " - ERROR: No vendors found in JSON\n";
+			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+			$result['errors'][] = 'vendor-data.json inside demo pack is empty or malformed.';
+			self::cleanup_tmp_dir( $tmp_dir );
+			return $result;
+		}
+		
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Found " . count( $payload['vendors'] ) . " vendors\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 
 		// ── Unzip ─────────────────────────────────────────────────────────────
 		// WP_Filesystem must be initialised before unzip_file() is called.
