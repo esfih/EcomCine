@@ -70,7 +70,12 @@ class EcomCine_Demo_Data_Page {
 
 			<?php // ── Remote demo packs ──────────────────────────────────────────────── ?>
 			<?php if ( is_array( $manifest ) && ! empty( $manifest['packs'] ) ) : ?>
-				<h2><?php esc_html_e( 'Available Demo Packs', 'ecomcine' ); ?></h2>
+				<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0;">
+					<h2 style="margin:0;"><?php esc_html_e( 'Available Demo Packs', 'ecomcine' ); ?></h2>
+					<button class="button" id="ecomcine-check-updates-btn" style="margin:0;">
+						<?php esc_html_e( 'Check for Updates', 'ecomcine' ); ?>
+					</button>
+				</div>
 				<div style="display:flex;flex-wrap:wrap;gap:20px;margin-top:12px;">
 					<?php foreach ( $manifest['packs'] as $pack ) :
 						$pack_name     = sanitize_text_field( $pack['name'] ?? '' );
@@ -121,6 +126,20 @@ class EcomCine_Demo_Data_Page {
 		<script>
 		(function () {
 			var ajaxUrl = <?php echo json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+
+			// ── Check for updates ────────────────────────────────────────────
+			var checkUpdatesBtn = document.getElementById('ecomcine-check-updates-btn');
+			if (checkUpdatesBtn) {
+				checkUpdatesBtn.addEventListener('click', function () {
+					var btn = this;
+					var originalText = btn.textContent;
+					btn.disabled = true;
+					btn.textContent = <?php echo json_encode( __( 'Refreshing…', 'ecomcine' ) ); ?>;
+
+					// Reload the page to fetch fresh manifest
+					location.reload();
+				});
+			}
 
 			// ── Remote pack import ────────────────────────────────────────────
 			document.querySelectorAll('.ecomcine-import-remote-btn').forEach(function (btn) {
