@@ -109,6 +109,26 @@ class EcomCine_Demo_Importer {
 		
 		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Unzip successful\n";
 		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		// Resolve vendor-data.json (may be directly in tmp_dir or in a sub-folder).
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Searching for vendor-data.json\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		$json_path = self::find_in_dir( $tmp_dir, 'vendor-data.json' );
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - json_path: " . ( $json_path ?? 'NULL' ) . "\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		if ( null === $json_path ) {
+			$debug_msg = date( 'Y-m-d H:i:s' ) . " - ERROR: vendor-data.json not found\n";
+			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+			$result['errors'][] = 'vendor-data.json not found inside demo pack zip.';
+			self::cleanup_tmp_dir( $tmp_dir );
+			return $result;
+		}
+		
+		$media_dir = dirname( $json_path );
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - media_dir: " . $media_dir . "\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 
 		// ── Unzip ─────────────────────────────────────────────────────────────
 		// WP_Filesystem must be initialised before unzip_file() is called.
