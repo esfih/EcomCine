@@ -6,10 +6,10 @@
  * category-specific vendor attribute fields.
  *
  * Every consumer calls these functions so option lists stay in sync:
- *   • dokan/store-lists/physical-attributes.php  (store listing filter form)
- *   • dokan/store-lists/cameraman-filters.php     (store listing filter form)
+ *   • templates/vendor-store/store-lists/physical-attributes.php  (store listing filter form)
+ *   • templates/vendor-store/store-lists/cameraman-filters.php    (store listing filter form)
  *   • includes/vendor-attributes/vendor-attributes-hooks.php  (profile display + dashboard)
- *   • dokan/settings/store-form.php               (vendor settings template)
+ *   • templates/vendor-store/settings/store-form.php              (vendor settings template)
  *   • includes/.../store-lists-hooks.php          (query-arg filter function)
  *
  * HOW TO ADD A NEW CATEGORY'S ATTRIBUTE SET
@@ -17,7 +17,7 @@
  * 1. Create:  get_<category>_attribute_options() → [ field_key => [ value => label ] ]
  * 2. Register it in get_vendor_attribute_set() below.
  * 3. Add display/save logic in vendor-attributes-hooks.php.
- * 4. Add store-listing filter template in dokan/store-lists/ and wire into
+ * 4. Add store-listing filter template in templates/vendor-store/store-lists/ and wire into
  *    store-lists-hooks.php (filter partials hook + filter_dokan_seller_listing_args).
  *
  * @package Astra Child

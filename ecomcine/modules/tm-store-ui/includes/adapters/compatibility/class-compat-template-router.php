@@ -1,8 +1,9 @@
 <?php
 /**
- * Compatibility adapter: template router using Dokan template overrides.
+ * Compatibility adapter: template router using vendor-store overrides.
  *
- * Uses theme/dokan/ directory shadowing and Dokan context functions.
+ * Keeps Dokan hook contracts, but resolves plugin-owned template files from
+ * the vendor-store namespace instead of the legacy vendor template tree.
  *
  * @package EcomCine_Theme
  */
@@ -15,7 +16,7 @@ class THO_Compat_Template_Router implements THO_Template_Router {
 
 	public function get_store_page_template( array $context ): string {
 		$plugin_tpl = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/page-templates/' : '';
-		$plugin_dokan = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/dokan/' : '';
+		$plugin_vendor = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/vendor-store/' : '';
 
 		if ( ! empty( $context['is_showcase'] ) ) {
 			$tpl = $plugin_tpl . 'template-talent-showcase.php';
@@ -28,7 +29,7 @@ class THO_Compat_Template_Router implements THO_Template_Router {
 		}
 
 		if ( ! empty( $context['is_store'] ) ) {
-			$tpl = $plugin_dokan . 'store.php';
+			$tpl = $plugin_vendor . 'store.php';
 			return file_exists( $tpl ) ? $tpl : '';
 		}
 
@@ -37,14 +38,14 @@ class THO_Compat_Template_Router implements THO_Template_Router {
 
 	public function get_listing_page_template( array $context ): string {
 		$plugin_tpl = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/page-templates/' : '';
-		$plugin_dokan = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/dokan/' : '';
+		$plugin_vendor = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/vendor-store/' : '';
 
 		if ( ! empty( $context['is_platform'] ) ) {
 			$tpl = $plugin_tpl . 'page-platform.php';
 			return file_exists( $tpl ) ? $tpl : '';
 		}
 
-		$tpl = $plugin_dokan . 'store-lists.php';
+		$tpl = $plugin_vendor . 'store-lists.php';
 		return file_exists( $tpl ) ? $tpl : '';
 	}
 }

@@ -23,7 +23,7 @@ $is_verified = isset( $_GET['verified'] ) && $_GET['verified'] === 'yes';
 
 <?php
 // Profile Level dropdown — shown to the right of the Verified toggle.
-$_dir = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/dokan/store-lists/profile-level-filter.php' : get_stylesheet_directory() . '/dokan/store-lists/profile-level-filter.php';
+$_dir = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/vendor-store/store-lists/profile-level-filter.php' : get_stylesheet_directory() . '/vendor-store/store-lists/profile-level-filter.php';
 if ( file_exists( $_dir ) ) {
     include $_dir;
 }

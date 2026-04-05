@@ -239,7 +239,7 @@ if ( ! function_exists( 'tm_store_ui_render_store_header' ) ) {
 		if ( function_exists( 'dokan_get_template_part' ) ) {
 			dokan_get_template_part( 'store-header' );
 		} else {
-			$template = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/dokan/store-header.php' : '';
+			$template = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/vendor-store/store-header.php' : '';
 			if ( $template && file_exists( $template ) ) {
 				include $template;
 			}
@@ -380,7 +380,7 @@ if ( ! function_exists( 'dokan_get_translated_days' ) ) {
 if ( ! function_exists( 'dokan_get_template_part' ) ) {
 	function dokan_get_template_part( $slug, $name = '', $args = array() ) {
 		$filename = $name ? "{$slug}-{$name}.php" : "{$slug}.php";
-		$template = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/dokan/' . $filename : '';
+		$template = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/vendor-store/' . $filename : '';
 		if ( ! $template || ! file_exists( $template ) ) {
 			return;
 		}

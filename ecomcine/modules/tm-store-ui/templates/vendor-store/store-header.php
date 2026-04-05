@@ -9,24 +9,24 @@ if ( ! $store_user ) {
 
 $store_info    = $store_user->get_shop_info();
 $social_info   = $store_user->get_social_profiles();
-$store_tabs    = dokan_get_store_tabs( $store_user->get_id() );
-$social_fields = dokan_get_social_profile_fields();
+$store_tabs    = ecomcine_get_store_tabs( $store_user->get_id() );
+$social_fields = ecomcine_get_social_profile_fields();
 
-$dokan_store_times = ! empty( $store_info['dokan_store_time'] ) ? $store_info['dokan_store_time'] : [];
-$current_time      = dokan_current_datetime();
+$ecomcine_store_times = ! empty( $store_info['store_time'] ) ? $store_info['store_time'] : [];
+$current_time      = ecomcine_current_datetime();
 $today             = strtolower( $current_time->format( 'l' ) );
 
-$dokan_appearance = get_option( 'dokan_appearance' );
-$profile_layout   = empty( $dokan_appearance['store_header_template'] ) ? 'default' : $dokan_appearance['store_header_template'];
-$store_address    = dokan_get_seller_short_address( $store_user->get_id(), false );
+$ecomcine_appearance = get_option( 'ecomcine_appearance' );
+$profile_layout   = empty( $ecomcine_appearance['store_header_template'] ) ? 'default' : $ecomcine_appearance['store_header_template'];
+$store_address    = ecomcine_get_seller_short_address( $store_user->get_id(), false );
 
-$dokan_store_time_enabled = isset( $store_info['dokan_store_time_enabled'] ) ? $store_info['dokan_store_time_enabled'] : '';
-$store_open_notice        = isset( $store_info['dokan_store_open_notice'] ) && ! empty( $store_info['dokan_store_open_notice'] ) ? $store_info['dokan_store_open_notice'] : __( 'Store Open', 'dokan-lite' );
-$store_closed_notice      = isset( $store_info['dokan_store_close_notice'] ) && ! empty( $store_info['dokan_store_close_notice'] ) ? $store_info['dokan_store_close_notice'] : __( 'Store Closed', 'dokan-lite' );
-$show_store_open_close    = dokan_get_option( 'store_open_close', 'dokan_appearance', 'on' );
+$ecomcine_store_time_enabled = isset( $store_info['store_time_enabled'] ) ? $store_info['store_time_enabled'] : '';
+$store_open_notice        = isset( $store_info['store_open_notice'] ) && ! empty( $store_info['store_open_notice'] ) ? $store_info['store_open_notice'] : __( 'Store Open', 'ecomcine' );
+$store_closed_notice      = isset( $store_info['store_close_notice'] ) && ! empty( $store_info['store_close_notice'] ) ? $store_info['store_close_notice'] : __( 'Store Closed', 'ecomcine' );
+$show_store_open_close    = ecomcine_get_option( 'store_open_close', 'ecomcine_appearance', 'on' );
 
-$general_settings = get_option( 'dokan_general', [] );
-$banner_width     = dokan_get_vendor_store_banner_width();
+$general_settings = get_option( 'ecomcine_general', [] );
+$banner_width     = ecomcine_get_vendor_store_banner_width();
 
 if ( ( 'default' === $profile_layout ) || ( 'layout2' === $profile_layout ) ) {
     $profile_img_class = 'profile-img-circle';
@@ -38,7 +38,7 @@ if ( 'layout3' === $profile_layout ) {
     unset( $store_info['banner'] );
 
     $no_banner_class      = ' profile-frame-no-banner';
-    $no_banner_class_tabs = ' dokan-store-tabs-no-banner';
+    $no_banner_class_tabs = ' ecomcine-store-tabs-no-banner';
 } else {
     $no_banner_class      = '';
     $no_banner_class_tabs = '';
@@ -469,7 +469,6 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 <div class="location-wrapper<?php echo $is_owner ? ' editable-field' : ''; ?>" data-field="geo_location" data-help="Start typing to search for your location. Select from the dropdown to autocomplete.">
                                     <div class="field-display">
                                         <div class="dokan-store-address-head">
-                                            <?php echo TM_Icons::svg( 'map-marker-alt' ); ?>
                                             <span class="field-value"><?php echo wp_kses_post( $geo_location_display_text ); ?></span>
                                         </div>
                                         <?php if ( $is_owner ) : ?>
@@ -844,7 +843,6 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 <div class="location-wrapper<?php echo $is_owner ? ' editable-field' : ''; ?>" data-field="geo_location" data-help="Start typing to search for your location. Select from the dropdown to autocomplete.">
                                     <div class="field-display">
                                         <div class="dokan-store-address-head">
-                                            <?php echo TM_Icons::svg( 'map-marker-alt' ); ?>
                                             <span class="field-value"><?php echo wp_kses_post( $geo_location_display_text ); ?></span>
                                         </div>
                                         <?php if ( $is_owner ) : ?>

@@ -9,7 +9,7 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Tell Dokan to look for template overrides in this plugin's templates/dokan/
+ * Tell EcomCine to look for template overrides in this plugin's templates/vendor-store/
  * directory instead of the active theme.
  *
  * Dokan calls locate_template() which checks:
@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  * even when the active theme has no dokan/ folder (e.g. TT25).
  */
 add_filter( 'dokan_template_path', function( $template_path ) {
-	return TM_STORE_UI_DIR . 'templates/dokan/';
+	return TM_STORE_UI_DIR . 'templates/vendor-store/';
 } );
 
 /**
@@ -31,7 +31,7 @@ add_filter( 'dokan_template_path', function( $template_path ) {
  * catch any remaining cases.
  */
 add_filter( 'dokan_locate_template', function( $template, $template_name, $template_path ) {
-	$plugin_file = TM_STORE_UI_DIR . 'templates/dokan/' . ltrim( $template_name, '/' );
+	$plugin_file = TM_STORE_UI_DIR . 'templates/vendor-store/' . ltrim( $template_name, '/' );
 	if ( file_exists( $plugin_file ) ) {
 		return $plugin_file;
 	}
@@ -48,7 +48,7 @@ add_filter( 'dokan_locate_template', function( $template, $template_name, $templ
  */
 add_filter( 'dokan_get_template_part', function( $template, $slug, $name ) {
 	$filename    = $name ? "{$slug}-{$name}.php" : "{$slug}.php";
-	$plugin_file = TM_STORE_UI_DIR . 'templates/dokan/' . $filename;
+	$plugin_file = TM_STORE_UI_DIR . 'templates/vendor-store/' . $filename;
 	if ( file_exists( $plugin_file ) ) {
 		return $plugin_file;
 	}

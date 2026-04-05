@@ -25,7 +25,7 @@
  *
  * ADDING A NEW FILTER GROUP
  * ─────────────────────────────────────────────────────────────────────────────
- * 1. Create:  dokan/store-lists/your-filter.php
+ * 1. Create:  templates/vendor-store/store-lists/your-filter.php
  *    Markup:  <div class="custom-filter-group" data-category="your-slug">…</div>
  *
  * 2. Include it in section 1 (dokan_before_store_lists_filter_apply_button).
@@ -194,7 +194,7 @@ function tm_store_list_sort_args( $tm_order = 'newest' ) {
 // 1. FILTER PARTIALS
 //    Injects custom filter groups into Dokan's store-listing <form>.
 //
-//    Template files (dokan/store-lists/):
+//    Template files (templates/vendor-store/store-lists/):
 //      demographic-filters.php    – age, ethnicity, availability… (all categories)
 //      physical-attributes.php    – height, weight, eye colour… (model / artist)
 //      cameraman-filters.php      – camera type, experience…     (cameraman)
@@ -257,7 +257,7 @@ add_action( 'dokan_after_store_lists_filter_category', function() {
 }, 30 );
 
 add_action( 'dokan_before_store_lists_filter_apply_button', function() {
-	$dir = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/dokan/store-lists/' : get_stylesheet_directory() . '/dokan/store-lists/';
+	$dir = defined( 'TM_STORE_UI_DIR' ) ? TM_STORE_UI_DIR . 'templates/vendor-store/store-lists/' : get_stylesheet_directory() . '/vendor-store/store-lists/';
 
 	// Demographic & Availability – always first, shown for ALL categories.
 	$tmpl = $dir . 'demographic-filters.php';

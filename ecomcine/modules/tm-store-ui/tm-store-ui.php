@@ -40,6 +40,8 @@ function tm_store_ui_bootstrap() {
 	require_once TM_STORE_UI_DIR . 'includes/vendor-attributes/vendor-attribute-sets.php';
 	require_once TM_STORE_UI_DIR . 'includes/vendor-attributes/vendor-attributes-hooks.php';
 	require_once TM_STORE_UI_DIR . 'includes/social-metrics/social-metrics.php';
+	// EcomCine Native Functions (must load before templates)
+	require_once TM_STORE_UI_DIR . 'includes/functions/ecomcine-native-functions.php';
 	// Admin tools
 	require_once TM_STORE_UI_DIR . 'includes/admin/vendor-edit-logs.php';
 	require_once TM_STORE_UI_DIR . 'includes/admin/vendor-completeness-admin.php';
@@ -52,8 +54,8 @@ function tm_store_ui_bootstrap() {
 	require_once TM_STORE_UI_DIR . 'includes/vendors-map/vendors-map-shortcode.php';
 	// Native standalone stores listing shortcode.
 	require_once TM_STORE_UI_DIR . 'includes/shortcodes/ecomcine-stores-shortcode.php';
-	// Store-listing hooks (lives in templates/dokan/store-lists/ since it ships with templates)
-	require_once TM_STORE_UI_DIR . 'templates/dokan/store-lists/store-lists-hooks.php';
+	// Store-listing hooks (lives in templates/vendor-store/store-lists/ since it ships with templates)
+	require_once TM_STORE_UI_DIR . 'templates/vendor-store/store-lists/store-lists-hooks.php';
 	// THO adapter layer
 	require_once TM_STORE_UI_DIR . 'includes/adapters/contracts/interface-template-router.php';
 	require_once TM_STORE_UI_DIR . 'includes/adapters/contracts/interface-asset-policy-provider.php';
