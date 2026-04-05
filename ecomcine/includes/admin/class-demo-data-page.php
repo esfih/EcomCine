@@ -16,7 +16,9 @@ class EcomCine_Demo_Data_Page {
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_submenu' ), 20 );
 		add_action( 'wp_ajax_ecomcine_import_demo_remote', array( __CLASS__, 'ajax_import_demo_remote' ) );
+		add_action( 'wp_ajax_nopriv_ecomcine_import_demo_remote', array( __CLASS__, 'ajax_import_demo_remote' ) );
 		add_action( 'wp_ajax_ecomcine_clear_demo_cache', array( __CLASS__, 'ajax_clear_demo_cache' ) );
+		add_action( 'wp_ajax_nopriv_ecomcine_clear_demo_cache', array( __CLASS__, 'ajax_clear_demo_cache' ) );
 		add_action( 'wp_ajax_ecomcine_talent_debug', array( __CLASS__, 'ajax_talent_debug' ) );
 	}
 
