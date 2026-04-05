@@ -16,6 +16,7 @@ class EcomCine_Demo_Data_Page {
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_submenu' ), 20 );
 		add_action( 'wp_ajax_ecomcine_import_demo_remote', array( __CLASS__, 'ajax_import_demo_remote' ) );
+		add_action( 'wp_ajax_ecomcine_clear_demo_cache', array( __CLASS__, 'ajax_clear_demo_cache' ) );
 		add_action( 'wp_ajax_ecomcine_talent_debug', array( __CLASS__, 'ajax_talent_debug' ) );
 	}
 
@@ -72,9 +73,14 @@ class EcomCine_Demo_Data_Page {
 			<?php if ( is_array( $manifest ) && ! empty( $manifest['packs'] ) ) : ?>
 				<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0;">
 					<h2 style="margin:0;"><?php esc_html_e( 'Available Demo Packs', 'ecomcine' ); ?></h2>
-					<button class="button" id="ecomcine-check-updates-btn" style="margin:0;">
-						<?php esc_html_e( 'Check for Updates', 'ecomcine' ); ?>
-					</button>
+					<div style="display:flex;gap:8px;">
+						<button class="button" id="ecomcine-check-updates-btn" style="margin:0;">
+							<?php esc_html_e( 'Check for Updates', 'ecomcine' ); ?>
+						</button>
+						<button class="button button-secondary" id="ecomcine-clear-cache-btn" style="margin:0;">
+							<?php esc_html_e( 'Clear Cache', 'ecomcine' ); ?>
+						</button>
+					</div>
 				</div>
 				<div style="display:flex;flex-wrap:wrap;gap:20px;margin-top:12px;">
 					<?php foreach ( $manifest['packs'] as $pack ) :
@@ -132,12 +138,46 @@ class EcomCine_Demo_Data_Page {
 			if (checkUpdatesBtn) {
 				checkUpdatesBtn.addEventListener('click', function () {
 					var btn = this;
-					var originalText = btn.textContent;
 					btn.disabled = true;
 					btn.textContent = <?php echo json_encode( __( 'Refreshing…', 'ecomcine' ) ); ?>;
 
-					// Reload the page to fetch fresh manifest
-					location.reload();
+					// Reload the page with cache-busting parameter
+					location.reload(true);
+				});
+			}
+
+			// ── Clear cache ────────────────────────────────────────────
+			var clearCacheBtn = document.getElementById('ecomcine-clear-cache-btn');
+			if (clearCacheBtn) {
+				clearCacheBtn.addEventListener('click', function () {
+					var btn = this;
+					var originalText = btn.textContent;
+					btn.disabled = true;
+					btn.textContent = <?php echo json_encode( __( 'Clearing cache…', 'ecomcine' ) ); ?>;
+
+					// Clear WordPress transients and reload
+					var ajaxUrl = <?php echo json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+					fetch(ajaxUrl, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+						body: 'action=ecomcine_clear_demo_cache&nonce=<?php echo esc_js( wp_create_nonce( 'ecomcine_demo_import' ) ); ?>'
+					})
+					.then(function (r) { return r.json(); })
+					.then(function (data) {
+						if (data.success) {
+							alert(<?php echo json_encode( __( 'Cache cleared! Reloading…', 'ecomcine' ) ); ?>);
+							location.reload();
+						} else {
+							alert(data.data || <?php echo json_encode( __( 'Failed to clear cache.', 'ecomcine' ) ); ?>);
+							btn.disabled = false;
+							btn.textContent = originalText;
+						}
+					})
+					.catch(function (err) {
+						alert(<?php echo json_encode( __( 'Error clearing cache.', 'ecomcine' ) ); ?>);
+						btn.disabled = false;
+						btn.textContent = originalText;
+					});
 				});
 			}
 
@@ -214,6 +254,24 @@ class EcomCine_Demo_Data_Page {
 			wp_send_json_error( 'Missing zip_url parameter.' );
 		}
 		wp_send_json_success( EcomCine_Demo_Importer::run_remote( $zip_url ) );
+	}
+
+	/**
+	 * AJAX handler: clear demo data cache transients.
+	 *
+	 * Deletes cached manifest data to force fresh fetch from GitHub.
+	 */
+	public static function ajax_clear_demo_cache() {
+		check_ajax_referer( 'ecomcine_demo_import', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions.', 403 );
+		}
+
+		// Clear any cached manifest transients
+		delete_transient( 'ecomcine_demo_manifest_cache' );
+		delete_transient( 'ecomcine_demo_manifest_error' );
+
+		wp_send_json_success( array( 'message' => 'Cache cleared' ) );
 	}
 
 	/**
