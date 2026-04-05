@@ -834,9 +834,7 @@ jQuery(document).ready(function($) {
 		var $section = $wrapper.closest('.overlay-section');
 		if ($profileHead.length) {
 			$profileHead.removeClass('head-editing');
-			console.log('ðŸ§¹ Removed head-editing from profile-info-head');
 		} else {
-			console.log('âš ï¸ No profile-info-head found for cleanup');
 		}
 		if ($section.length) {
 			$section.removeClass('section-editing');
@@ -1501,7 +1499,7 @@ jQuery(document).ready(function($) {
 		var $overlay = $heroBox.find(".tm-showcase-play-overlay");
 		if ($overlay.length) return $overlay;
 		$overlay = $(
-			"<button class=\"tm-showcase-play-overlay\" type=\"button\" aria-label=\"Play\">" +
+			"<button class=\"tm-showcase-play-overlay is-hidden\" type=\"button\" aria-label=\"Play\">" +
 			"<span class=\"tm-showcase-play-icon\" aria-hidden=\"true\">" +
 			"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 384 512\" class=\"tm-icon tm-icon-play\" style=\"fill:currentColor\"><path d=\"M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z\"/></svg>" +
 			"</span>" +
@@ -3226,6 +3224,11 @@ jQuery(document).ready(function($) {
 				return true;
 			}
 
+			// Preserve overlay during vendor swap to prevent flash
+			var $overlay = $(".tm-showcase-play-overlay");
+			if ($overlay.length) {
+				$overlay.addClass("is-hidden");
+			}
 			$(".profile-info-box").replaceWith(response.data.html);
 			if (nextAvatarSrc && options.keepCollapsed) {
 				var $img = $(".profile-img img").first();

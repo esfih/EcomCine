@@ -2700,7 +2700,8 @@ body.tm-mobile-portrait .tm-header-menu > li:last-child > a {
 
 .keyboard-nav-up {
 	grid-column: 2 !important;
-	grid-row: 2 !important;
+	grid-row: 1 !important;
+	align-self: end !important;
 }
 
 .keyboard-nav-left {
