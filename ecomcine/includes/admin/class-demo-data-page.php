@@ -15,6 +15,12 @@ class EcomCine_Demo_Data_Page {
 
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_submenu' ), 20 );
+		
+		// Debug: Log that init is being called
+		$log_file = '/tmp/ecomcine_init_debug.log';
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - EcomCine_Demo_Data_Page::init called\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
 		add_action( 'wp_ajax_ecomcine_import_demo_remote', array( __CLASS__, 'ajax_import_demo_remote' ) );
 		add_action( 'wp_ajax_nopriv_ecomcine_import_demo_remote', array( __CLASS__, 'ajax_import_demo_remote' ) );
 		add_action( 'wp_ajax_ecomcine_clear_demo_cache', array( __CLASS__, 'ajax_clear_demo_cache' ) );
