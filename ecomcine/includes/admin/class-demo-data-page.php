@@ -266,37 +266,70 @@ class EcomCine_Demo_Data_Page {
 
 	/** AJAX: remote zip import. */
 	public static function ajax_import_demo_remote() {
-		check_ajax_referer( 'ecomcine_demo_import', 'nonce' );
+		// Ensure no output before JSON
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
+		
+		// Disable error output to JSON
+		@ini_set( 'display_errors', '0' );
+		
+		try {
+			check_ajax_referer( 'ecomcine_demo_import', 'nonce' );
+		} catch ( Exception $e ) {
+			wp_send_json_error( 'Invalid nonce: ' . $e->getMessage() );
+			return;
+		}
+		
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( 'Insufficient permissions.', 403 );
+			wp_send_json_error( 'Insufficient permissions.' );
+			return;
 		}
+		
 		if ( ! class_exists( 'EcomCine_Demo_Importer', false ) ) {
-			wp_send_json_error( 'Demo importer class not loaded.', 500 );
+			wp_send_json_error( 'Demo importer class not loaded.' );
+			return;
 		}
-		$zip_url = esc_url_raw( wp_unslash( $_POST['zip_url'] ?? '' ) );
+		
+		$zip_url = isset( $_POST['zip_url'] ) ? esc_url_raw( wp_unslash( $_POST['zip_url'] ) ) : '';
 		if ( empty( $zip_url ) ) {
 			wp_send_json_error( 'Missing zip_url parameter.' );
+			return;
 		}
 		
 		// Debug: Log the request
 		error_log( 'Demo import request: zip_url=' . $zip_url );
 		
-		// Ensure output is clean JSON
-		while ( ob_get_level() > 0 ) {
-			ob_end_clean();
+		// Ensure error reporting is disabled to prevent output corruption
+		$old_error_reporting = error_reporting( 0 );
+		
+		try {
+			$result = EcomCine_Demo_Importer::run_remote( $zip_url );
+			
+			// Debug: Log the result
+			error_log( 'Demo import result: ' . print_r( $result, true ) );
+			
+			// Restore error reporting
+			error_reporting( $old_error_reporting );
+			
+			// If there are errors, send them properly
+			if ( ! empty( $result['errors'] ) ) {
+				wp_send_json_error( implode( '\n', $result['errors'] ) );
+				return;
+			}
+			
+			wp_send_json_success( $result );
+			
+		} catch ( Exception $e ) {
+			// Restore error reporting
+			error_reporting( $old_error_reporting );
+			
+			// Log the exception
+			error_log( 'Demo import exception: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine() );
+			
+			// Send error response
+			wp_send_json_error( 'Import failed: ' . $e->getMessage() );
 		}
-		
-		$result = EcomCine_Demo_Importer::run_remote( $zip_url );
-		
-		// Debug: Log the result
-		error_log( 'Demo import result: ' . print_r( $result, true ) );
-		
-		// If there are errors, send them properly
-		if ( ! empty( $result['errors'] ) ) {
-			wp_send_json_error( implode( '\n', $result['errors'] ) );
-		}
-		
-		wp_send_json_success( $result );
 	}
 
 	/**
