@@ -266,8 +266,10 @@ class EcomCine_Demo_Data_Page {
 
 	/** AJAX: remote zip import. */
 	public static function ajax_import_demo_remote() {
-		// Debug: Log that we're being called
-		error_log( 'DEBUG: ajax_import_demo_remote called' );
+		// Debug: Write to file for easy checking
+		$log_file = '/tmp/ecomcine_debug.log';
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - ajax_import_demo_remote called\n";
+		file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 		
 		// Ensure no output before JSON
 		while ( ob_get_level() > 0 ) {
@@ -279,12 +281,14 @@ class EcomCine_Demo_Data_Page {
 		
 		// Check nonce - use false to prevent automatic wp_die()
 		if ( ! check_ajax_referer( 'ecomcine_demo_import', 'nonce', false ) ) {
-			error_log( 'DEBUG: Nonce check failed' );
+			$debug_msg = date( 'Y-m-d H:i:s' ) . " - Nonce check failed\n";
+			file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 			wp_send_json_error( 'Invalid security token.' );
 			return;
 		}
 		
-		error_log( 'DEBUG: Nonce check passed' );
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Nonce check passed\n";
+		file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 		
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Insufficient permissions.' );
