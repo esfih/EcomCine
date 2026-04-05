@@ -208,12 +208,24 @@ class EcomCine_Demo_Data_Page {
 						// Debug: Log the raw response
 						console.log('Demo import response status:', r.status);
 						console.log('Demo import response headers:', r.headers);
-						var text = r.text();
-						text.then(function(textData) {
+						
+						// Get text first, then parse
+						return r.text().then(function(textData) {
 							console.log('Demo import response text:', textData);
+							
+							// Debug: Check if text is empty
+							if (!textData || textData.trim() === '') {
+								console.error('Demo import: Empty response from server');
+								throw new Error('Empty response from server');
+							}
+							
+							// Debug: Check for PHP errors in response
+							if (textData.indexOf('Warning:') !== -1 || textData.indexOf('Error:') !== -1) {
+								console.error('Demo import: PHP error in response:', textData);
+							}
+							
 							return JSON.parse(textData);
 						});
-						return r.json(); 
 					})
 					.then(function (data) {
 						console.log('Demo import parsed data:', data);
