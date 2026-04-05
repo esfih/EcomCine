@@ -49,19 +49,36 @@ class EcomCine_Demo_Importer {
 			return $result;
 		}
 
+		// Debug: Log start of run_remote
+		$log_file = ABSPATH . 'wp-content/uploads/ecomcine_importer_debug.log';
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - EcomCine_Demo_Importer::run_remote called with URL: " . $zip_url . "\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
 		// ── Download ──────────────────────────────────────────────────────────
 		$tmp_dir = self::make_tmp_dir( $result );
 		if ( null === $tmp_dir ) {
+			$result['errors'][] = 'Failed to create temp directory';
 			return $result;
 		}
+		
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Temp directory created: " . $tmp_dir . "\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 
 		$zip_path = $tmp_dir . '/demo-pack.zip';
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Downloading from: " . $zip_url . " to: " . $zip_path . "\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
 		$download = self::download_file( $zip_url, $zip_path );
 		if ( is_wp_error( $download ) ) {
+			$debug_msg = date( 'Y-m-d H:i:s' ) . " - Download failed: " . $download->get_error_message() . "\n";
+			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 			$result['errors'][] = 'Download failed: ' . $download->get_error_message();
 			self::cleanup_tmp_dir( $tmp_dir );
 			return $result;
 		}
+		
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Download successful\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 
 		// ── Unzip ─────────────────────────────────────────────────────────────
 		// WP_Filesystem must be initialised before unzip_file() is called.

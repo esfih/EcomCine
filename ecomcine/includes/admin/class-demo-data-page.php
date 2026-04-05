@@ -312,6 +312,10 @@ class EcomCine_Demo_Data_Page {
 		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Proceeding with import\n";
 		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 		
+		// Debug: Log the zip_url being used
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Zip URL: " . $zip_url . "\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Insufficient permissions.' );
 			return;
