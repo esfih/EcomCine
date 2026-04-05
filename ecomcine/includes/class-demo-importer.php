@@ -79,6 +79,36 @@ class EcomCine_Demo_Importer {
 		
 		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Download successful\n";
 		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		// ── Unzip ─────────────────────────────────────────────────────────────
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Attempting to unzip\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		// WP_Filesystem must be initialised before unzip_file() is called.
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Initializing WP_Filesystem\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		WP_Filesystem();
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - WP_Filesystem initialized\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+
+		$unzip = unzip_file( $zip_path, $tmp_dir );
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - unzip_file called\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+		
+		if ( is_wp_error( $unzip ) ) {
+			$debug_msg = date( 'Y-m-d H:i:s' ) . " - Unzip failed: " . $unzip->get_error_message() . "\n";
+			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+			$result['errors'][] = 'Unzip failed: ' . $unzip->get_error_message();
+			self::cleanup_tmp_dir( $tmp_dir );
+			return $result;
+		}
+		
+		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Unzip successful\n";
+		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 
 		// ── Unzip ─────────────────────────────────────────────────────────────
 		// WP_Filesystem must be initialised before unzip_file() is called.
