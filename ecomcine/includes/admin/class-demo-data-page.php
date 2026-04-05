@@ -266,6 +266,9 @@ class EcomCine_Demo_Data_Page {
 
 	/** AJAX: remote zip import. */
 	public static function ajax_import_demo_remote() {
+		// Debug: Log that we're being called
+		error_log( 'DEBUG: ajax_import_demo_remote called' );
+		
 		// Ensure no output before JSON
 		while ( ob_get_level() > 0 ) {
 			ob_end_clean();
@@ -276,9 +279,12 @@ class EcomCine_Demo_Data_Page {
 		
 		// Check nonce - use false to prevent automatic wp_die()
 		if ( ! check_ajax_referer( 'ecomcine_demo_import', 'nonce', false ) ) {
+			error_log( 'DEBUG: Nonce check failed' );
 			wp_send_json_error( 'Invalid security token.' );
 			return;
 		}
+		
+		error_log( 'DEBUG: Nonce check passed' );
 		
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Insufficient permissions.' );
