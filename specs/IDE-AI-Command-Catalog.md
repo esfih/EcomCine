@@ -771,6 +771,45 @@ Guardrail:
 - failure_class: `tooling`
 - remediation_type: `source-fix`
 
+`id`: `demos.media.convert.fast`
+- goal: Convert demo pack MP4 files to WebM while preserving the vendor folder structure under the output root
+- command: `./scripts/convert-videos-fast.sh <input_dir> <output_dir> [quality] [crf]`
+- args:
+  - `<input_dir>` — required; source media tree containing per-vendor `.mp4` files
+  - `<output_dir>` — required; destination root where matching per-vendor `.webm` files will be written
+  - `[quality]` — optional ffmpeg quality preset argument (default `23`)
+  - `[crf]` — optional VP9 CRF value (default `30`)
+- success: exit `0`; output reports converted count and the output tree contains `.webm` files for each vendor path
+- failure: non-zero; verify `ffmpeg` availability and that the input tree contains `.mp4` files
+- failure_class: `tooling`
+- remediation_type: `source-fix`
+
+`id`: `demos.media.rebuild`
+- goal: Rebuild a demo pack's canonical `media/` tree from source MP4 media by converting vendor MP4 files to vendor-relative WebMs and then assembling a release-ready `media/` directory
+- command: `./scripts/rebuild-demo-media.sh <pack-id> [converted_media_dir] [target_media_dir] [quality] [crf]`
+- args:
+  - `<pack-id>` — required; pack folder name under `demos/`, e.g. `topdoctorchannel`
+  - `[converted_media_dir]` — optional; destination root for rebuilt WebM files (default `demos/<pack-id>/media-webm`)
+  - `[target_media_dir]` — optional; release-ready `media/` directory to create (default `demos/<pack-id>/media`)
+  - `[quality]` — optional ffmpeg quality preset argument (default `23`)
+  - `[crf]` — optional VP9 CRF value (default `30`)
+- success: exit `0`; output confirms matching video counts, validates `vendor-data.json` banner/gravatar paths against the rebuilt target tree, and leaves `demos/<pack-id>/media/` ready for `demos.release`
+- failure: non-zero; verify `vendor-data.json` exists, `ffmpeg` is available, and the pack has MP4 inputs under `media-original/` or an archival `media-backup-*` directory
+- failure_class: `tooling`
+- remediation_type: `source-fix`
+
+`id`: `demos.media.prepare`
+- goal: Assemble a canonical demo `media/` tree by combining source images with rebuilt per-vendor WebM files
+- command: `./scripts/prepare-demo-media.sh <source_media_dir> <converted_media_dir> <target_media_dir>`
+- args:
+  - `<source_media_dir>` — required; source tree containing canonical non-video assets and original video files
+  - `<converted_media_dir>` — required; rebuilt WebM tree with the same relative vendor paths
+  - `<target_media_dir>` — required; destination `media/` tree to create from those inputs
+- success: exit `0`; output reports vendor and WebM counts and the target tree is ready for packaging
+- failure: non-zero; verify the source and converted directories exist and are readable
+- failure_class: `tooling`
+- remediation_type: `source-fix`
+
 `id`: `data.vendors.import.demo`
 - goal: Import the first remote demo pack into the current WordPress instance via EcomCine importer (fetches manifest from GitHub, downloads zip, imports vendors)
 - command: `./scripts/wp.sh wp eval 'EcomCine_Demo_Importer::run_remote_cli();'`
@@ -779,6 +818,15 @@ Guardrail:
 - failure: non-zero; check class autoload, plugin activation state, manifest reachability, and zip URL validity
 - failure_class: `data`
 - remediation_type: `source-fix`
+
+Canonical publish path for demo data packages:
+
+1. `./scripts/run-catalog-command.sh demos.media.rebuild <pack-id>`
+2. `./scripts/run-catalog-command.sh demos.release <version> --push`
+3. `./scripts/run-catalog-command.sh data.vendors.import.demo <zip-url>` or import from WP Admin
+4. `./scripts/run-catalog-command.sh qa.playwright.test.debug tests/demo-data-import-response.spec.ts`
+
+Do not flatten vendor video filenames into a shared directory. The release-ready zip must contain `vendor-data.json` plus a canonical `media/` tree whose vendor-relative paths still match the source pack.
 
 ## Missing Command Procedure
 

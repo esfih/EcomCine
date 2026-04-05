@@ -179,6 +179,30 @@ case "$COMMAND_ID" in
     ./scripts/build-demos-release.sh "$@"
     ;;
 
+  demos.media.convert.fast)
+    if [[ $# -lt 2 ]]; then
+      echo "ERROR: demos.media.convert.fast requires <input_dir> <output_dir> [quality] [crf]" >&2
+      exit 2
+    fi
+    ./scripts/convert-videos-fast.sh "$@"
+    ;;
+
+  demos.media.rebuild)
+    if [[ $# -lt 1 ]]; then
+      echo "ERROR: demos.media.rebuild requires <pack-id> [converted_media_dir] [target_media_dir] [quality] [crf]" >&2
+      exit 2
+    fi
+    bash ./scripts/rebuild-demo-media.sh "$@"
+    ;;
+
+  demos.media.prepare)
+    if [[ $# -lt 3 ]]; then
+      echo "ERROR: demos.media.prepare requires <source_media_dir> <converted_media_dir> <target_media_dir>" >&2
+      exit 2
+    fi
+    bash ./scripts/prepare-demo-media.sh "$@"
+    ;;
+
   db.query)
     if [[ $# -lt 1 ]]; then
       echo "ERROR: db.query requires <sql_query>" >&2

@@ -1,9 +1,9 @@
 {
   "meta": {
     "schema_version": "1.0",
-    "last_updated": "2026-03-27",
+    "last_updated": "2026-04-05",
     "description": "Structured inventory of all catalogued features across EcomCine plugin groups. Used for migration planning, adapter progress tracking, and quick overview.",
-    "total_features": 22,
+    "total_features": 24,
     "groups": [
       "dokan-category-attributes",
       "tm-media-player",
@@ -386,20 +386,55 @@
       },
       "parity_oracle_short": "With no-scroll enabled, configured rows/columns and pagination fit viewport with no page scroll while preserving 16:9 cards.",
       "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-006.md"
+    },
+    {
+      "id": "tho-007",
+      "title": "Cinematic header CTA actions cluster",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Preserve the cinematic header CTA rail as a recoverable feature contract for later UI reuse and evolution.",
+      "actors": ["guest", "logged-in-user", "system"],
+      "migration_risk": "low",
+      "migration_phase": 2,
+      "current_deps": ["tm-icons-header-svg", "woocommerce-cart-count", "tm-store-ui-hooks-header-shell"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "deferred"
+      },
+      "parity_oracle_short": "Same icon inventory, CTA rail structure, and cart-count badge contract remain restorable from the preserved feature spec.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-007.md"
+    },
+    {
+      "id": "tho-008",
+      "title": "Demo data package generation and remote import distribution",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Generate and publish demo-data packages from canonical vendor media sources so manifest-driven remote imports stay semantically correct.",
+      "actors": ["admin", "release-engineer", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["demos-vendor-data-json", "demos-media-original", "demos-media", "github-releases", "demos-manifest-json", "demo-importer-cli"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "active"
+      },
+      "parity_oracle_short": "Fresh release zip contains canonical media paths, manifest points to the new tag, and remote import succeeds with distinct vendor video payloads.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-008.md"
     }
   ],
   "migration_summary": {
     "by_phase": {
-      "phase_2_pilot": ["dca-001", "dca-002", "dca-003", "dca-004", "tmp-001", "tmp-002", "tmp-003", "tmp-004", "tap-001", "tap-002", "tho-002", "tho-003", "tho-006"],
+      "phase_2_pilot": ["dca-001", "dca-002", "dca-003", "dca-004", "tmp-001", "tmp-002", "tmp-003", "tmp-004", "tap-001", "tap-002", "tho-002", "tho-003", "tho-006", "tho-007", "tho-008"],
       "phase_3_transactional": ["tap-003", "tap-004", "tvbm-001", "tvbm-002", "tvbm-003", "tvbm-004", "tho-001", "tho-004", "tho-005"]
     },
     "by_risk": {
       "high": ["tmp-001", "tmp-002", "tmp-003", "tmp-004", "tap-004", "tvbm-001", "tvbm-002", "tvbm-003", "tvbm-004", "tho-001"],
-      "medium": ["dca-001", "dca-002", "dca-003", "dca-004", "tap-001", "tap-002", "tap-003", "tho-002", "tho-003", "tho-004", "tho-005", "tho-006"]
+      "medium": ["dca-001", "dca-002", "dca-003", "dca-004", "tap-001", "tap-002", "tap-003", "tho-002", "tho-003", "tho-004", "tho-005", "tho-006", "tho-008"]
     },
     "recommended_pilot_order": [
       "dokan-category-attributes (dca-001 → dca-004)",
       "tm-media-player / tho-002 / tho-003",
+      "demo data packaging + import distribution (tho-008)",
       "tm-account-panel auth (tap-001, tap-002)",
       "tm-account-panel onboarding/dashboard (tap-003, tap-004)",
       "theme-orchestration templates (tho-001, tho-004, tho-005)",

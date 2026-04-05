@@ -43,6 +43,28 @@ WooCommerce, Dokan, and WooCommerce Bookings are legacy compatibility layers for
 | `scripts/` | Dev tooling (wp.sh, setup-deps.sh, etc.) | Yes |
 | `foundation/` | Shared layers pulled via `bootstrap-foundation.sh` | No (subtrees) |
 | `specs/` | Product feature inventory | Yes |
+| `dist/` | **DELETED** — No longer needed. GitHub releases are created directly from `ecomcine/` folder. | No (removed) |
+
+---
+
+## Development & Release Workflow
+
+**`ecomcine/` (Source Folder):**
+- ✅ **EDIT HERE** during development
+- ✅ Changes are **LIVE** in WordPress (Docker mounts this folder)
+- ✅ No WordPress restart needed for most changes
+- ✅ This is your **single source of truth** for plugin code
+- ✅ **Directly used for GitHub releases** — zip this folder
+
+**Workflow:**
+1. Develop in `ecomcine/` → Changes appear live in WordPress
+2. When ready to release: Zip `ecomcine/` directly
+3. Upload zip to GitHub Releases
+
+**Why This Matters:**
+- Single folder for both development and distribution
+- No sync overhead or confusion about which folder to edit
+- Simplified workflow: edit → zip → release
 
 ---
 
@@ -51,7 +73,15 @@ WooCommerce, Dokan, and WooCommerce Bookings are legacy compatibility layers for
 ### Prerequisites
 - Git + Git Bash
 - Docker Desktop (running)
-- GitHub CLI (`gh`) authenticated
+- GitHub CLI (`gh`) authenticated to `esfih` account
+
+### GitHub Authentication Verification
+```bash
+gh auth status  # Should show: ✓ Logged in to github.com account esfih
+```
+
+**Token location**: `/root/.config/gh/hosts.yml`
+**Repository**: `https://github.com/esfih/EcomCine`
 
 ### Steps
 
@@ -120,6 +150,21 @@ Preferred execution path:
 
 If a required task has no catalog entry, stop and create/approve a new catalog command contract first.
 
+### Demo Data Packaging Workflow
+
+Use the canonical runbook: `specs/operational-runbooks/demo-data-release-workflow.md`
+
+Required command path:
+
+```bash
+./scripts/run-catalog-command.sh demos.media.rebuild <pack-id>
+./scripts/run-catalog-command.sh demos.release <version> --push
+./scripts/run-catalog-command.sh data.vendors.import.demo <zip-url>
+./scripts/run-catalog-command.sh qa.playwright.test.debug tests/demo-data-import-response.spec.ts
+```
+
+The release-ready archive must always be built from `demos/<pack-id>/media/`, not directly from `media-original/`, and vendor-relative video paths must be preserved during WebM conversion.
+
 ### IDE Stability Notice (Mandatory)
 
 - Never run interactive package-manager installs (for example `apt install`, `npm install -g`, `pip install --user`) from the IDE AI integrated terminal flow.
@@ -147,6 +192,22 @@ Before asking users for browser console screenshots/HTML exports, IDE AI must ru
 Canonical runbook: `specs/operational-runbooks/ide-ai-playwright-debug-workflow.md`.
 
 Interactions reuse guide (cross-project): `specs/operational-runbooks/playwright-interactions-reuse-guide.md`.
+
+### GitHub Release Workflow
+
+**Repository**: `https://github.com/esfih/EcomCine`
+
+**Authentication**: `gh` CLI authenticated to `esfih` account with scopes: `gist`, `read:org`, `repo`, `workflow`
+
+**Token location**: `/root/.config/gh/hosts.yml`
+
+**Release process**:
+1. Verify auth: `gh auth status`
+2. Create tag: `gh api /repos/esfih/EcomCine/git/refs --method POST -f ref="refs/tags/v<version>" -f sha=<commit-sha>`
+3. Create release: `gh release create v<version> --title "Release v<version>" --notes "<release-notes>"`
+4. Push tag: `git push origin v<version>` (may fail if tag exists remotely)
+
+**Note**: Local `git push origin v<version>` may fail due to repository validation hooks checking old commit hashes. Use GitHub API or `gh` CLI directly as fallback.
 
 ### Root-Cause Remediation Policy
 

@@ -41,6 +41,11 @@ Current theme layer orchestrates asset loading, template overrides, Dokan/Woo ho
 - Core logic candidate: right-edge header action registry and render contract
 - Default WP adapter target: WP-native header action slot registry with reusable button/count badge styling
 
+8. Demo data package generation and remote import distribution
+- Current dependencies: `demos/<pack-id>/vendor-data.json`, canonical `media-original/` and `media/` trees, GitHub Releases, manifest-driven importer
+- Core logic candidate: deterministic demo media rebuild, packaging, manifest update, and semantic import validation contract
+- Default WP adapter target: same deterministic pack pipeline independent from Dokan/Woo runtime details
+
 ## Migration Risk Notes
 
 - High coupling hotspot: many behaviors are implemented as hook-level interventions.
@@ -53,3 +58,4 @@ Current theme layer orchestrates asset loading, template overrides, Dokan/Woo ho
 - Same vendor identity blocks on product and listing surfaces.
 - With No Scroll Grid enabled, configured rows/columns and pagination fit without page scroll on supported desktop viewports.
 - Same cinematic header CTA action styling and icon inventory can be restored from the preserved feature contract.
+- Same demo pack zip structure (`vendor-data.json` + `media/`), manifest pointers, and import outcomes after release publication.

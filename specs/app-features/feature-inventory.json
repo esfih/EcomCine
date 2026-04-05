@@ -38,6 +38,13 @@
       "folder": "ecomcine/bundled-theme",
       "status": "active",
       "description": "Canonical minimal theme shell: document structure, hook points, and base theme supports for standalone EcomCine runtime."
+    },
+    {
+      "id": "demo-data",
+      "name": "Demo Data Packaging & Remote Import",
+      "folder": "demos/",
+      "status": "active",
+      "description": "Canonical demo vendor dataset, media rebuild pipeline, GitHub release packaging, manifest publication, and remote import validation workflow."
     }
   ]
 }
