@@ -274,10 +274,9 @@ class EcomCine_Demo_Data_Page {
 		// Disable error output to JSON
 		@ini_set( 'display_errors', '0' );
 		
-		try {
-			check_ajax_referer( 'ecomcine_demo_import', 'nonce' );
-		} catch ( Exception $e ) {
-			wp_send_json_error( 'Invalid nonce: ' . $e->getMessage() );
+		// Check nonce - use false to prevent automatic wp_die()
+		if ( ! check_ajax_referer( 'ecomcine_demo_import', 'nonce', false ) ) {
+			wp_send_json_error( 'Invalid security token.' );
 			return;
 		}
 		
