@@ -134,11 +134,31 @@ class EcomCine_Demo_Importer {
 		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Reading vendor-data.json\n";
 		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 		
-		$raw     = file_get_contents( $json_path );
+		// Set timeout for file_get_contents
+		$timeout = 30;
+		$context = stream_context_create( array( 'timeout' => $timeout ) );
+		
+		$raw = @file_get_contents( $json_path, false, $context );
+		if ( $raw === false ) {
+			$debug_msg = date( 'Y-m-d H:i:s' ) . " - ERROR: file_get_contents failed\n";
+			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+			$result['errors'][] = 'Failed to read vendor-data.json: ' . error_get_last()['message'];
+			self::cleanup_tmp_dir( $tmp_dir );
+			return $result;
+		}
+		
 		$debug_msg = date( 'Y-m-d H:i:s' ) . " - JSON content length: " . strlen( $raw ) . "\n";
 		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 		
 		$payload = json_decode( $raw, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$debug_msg = date( 'Y-m-d H:i:s' ) . " - JSON decode error: " . json_last_error_msg() . "\n";
+			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
+			$result['errors'][] = 'JSON decode error: ' . json_last_error_msg();
+			self::cleanup_tmp_dir( $tmp_dir );
+			return $result;
+		}
+		
 		$debug_msg = date( 'Y-m-d H:i:s' ) . " - JSON decoded: " . ( is_array( $payload ) ? 'yes' : 'no' ) . "\n";
 		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 		
