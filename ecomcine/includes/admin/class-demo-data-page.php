@@ -253,7 +253,18 @@ class EcomCine_Demo_Data_Page {
 		if ( empty( $zip_url ) ) {
 			wp_send_json_error( 'Missing zip_url parameter.' );
 		}
-		wp_send_json_success( EcomCine_Demo_Importer::run_remote( $zip_url ) );
+		
+		// Ensure output is clean JSON
+		@ob_end_clean();
+		
+		$result = EcomCine_Demo_Importer::run_remote( $zip_url );
+		
+		// If there are errors, send them properly
+		if ( ! empty( $result['errors'] ) ) {
+			wp_send_json_error( implode( '\n', $result['errors'] ) );
+		}
+		
+		wp_send_json_success( $result );
 	}
 
 	/**
