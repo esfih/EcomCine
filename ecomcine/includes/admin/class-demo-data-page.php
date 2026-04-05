@@ -204,8 +204,19 @@ class EcomCine_Demo_Data_Page {
 						headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 						body: body.toString(),
 					})
-					.then(function (r) { return r.json(); })
+					.then(function (r) { 
+						// Debug: Log the raw response
+						console.log('Demo import response status:', r.status);
+						console.log('Demo import response headers:', r.headers);
+						var text = r.text();
+						text.then(function(textData) {
+							console.log('Demo import response text:', textData);
+							return JSON.parse(textData);
+						});
+						return r.json(); 
+					})
 					.then(function (data) {
+						console.log('Demo import parsed data:', data);
 						btn.disabled = false;
 						if (data.success) {
 							var d = data.data;
@@ -228,9 +239,10 @@ class EcomCine_Demo_Data_Page {
 						}
 					})
 					.catch(function (err) {
+						console.error('Demo import error:', err);
 						btn.disabled = false;
 						if (status) status.textContent = '✗';
-						resultEl.innerHTML = '<div class="notice notice-error inline"><p>' + err + '</p></div>';
+						resultEl.innerHTML = '<div class="notice notice-error inline"><p>' + err.message + '</p></div>';
 					});
 				});
 			});
@@ -254,10 +266,18 @@ class EcomCine_Demo_Data_Page {
 			wp_send_json_error( 'Missing zip_url parameter.' );
 		}
 		
+		// Debug: Log the request
+		error_log( 'Demo import request: zip_url=' . $zip_url );
+		
 		// Ensure output is clean JSON
-		@ob_end_clean();
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
 		
 		$result = EcomCine_Demo_Importer::run_remote( $zip_url );
+		
+		// Debug: Log the result
+		error_log( 'Demo import result: ' . print_r( $result, true ) );
 		
 		// If there are errors, send them properly
 		if ( ! empty( $result['errors'] ) ) {
