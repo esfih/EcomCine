@@ -48,158 +48,60 @@ class EcomCine_Demo_Importer {
 			$result['errors'][] = 'Invalid demo pack URL.';
 			return $result;
 		}
-
-		// Debug: Log start of run_remote
-		$log_file = ABSPATH . 'wp-content/uploads/ecomcine_importer_debug.log';
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - EcomCine_Demo_Importer::run_remote called with URL: " . $zip_url . "\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 		
 		// ── Download ──────────────────────────────────────────────────────────
 		$tmp_dir = self::make_tmp_dir( $result );
 		if ( null === $tmp_dir ) {
-			$result['errors'][] = 'Failed to create temp directory';
 			return $result;
 		}
-		
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Temp directory created: " . $tmp_dir . "\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 
 		$zip_path = $tmp_dir . '/demo-pack.zip';
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Downloading from: " . $zip_url . " to: " . $zip_path . "\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
 		$download = self::download_file( $zip_url, $zip_path );
 		if ( is_wp_error( $download ) ) {
-			$debug_msg = date( 'Y-m-d H:i:s' ) . " - Download failed: " . $download->get_error_message() . "\n";
-			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 			$result['errors'][] = 'Download failed: ' . $download->get_error_message();
 			self::cleanup_tmp_dir( $tmp_dir );
 			return $result;
 		}
 		
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Download successful\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
 		// ── Unzip ─────────────────────────────────────────────────────────────
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Attempting to unzip\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
 		// WP_Filesystem must be initialised before unzip_file() is called.
 		if ( ! function_exists( 'WP_Filesystem' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Initializing WP_Filesystem\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
 		WP_Filesystem();
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - WP_Filesystem initialized\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 
 		$unzip = unzip_file( $zip_path, $tmp_dir );
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - unzip_file called\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
 		if ( is_wp_error( $unzip ) ) {
-			$debug_msg = date( 'Y-m-d H:i:s' ) . " - Unzip failed: " . $unzip->get_error_message() . "\n";
-			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 			$result['errors'][] = 'Unzip failed: ' . $unzip->get_error_message();
 			self::cleanup_tmp_dir( $tmp_dir );
 			return $result;
 		}
 		
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Unzip successful\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
 		// Resolve vendor-data.json (may be directly in tmp_dir or in a sub-folder).
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Searching for vendor-data.json\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
 		$json_path = self::find_in_dir( $tmp_dir, 'vendor-data.json' );
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - json_path: " . ( $json_path ?? 'NULL' ) . "\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
 		if ( null === $json_path ) {
-			$debug_msg = date( 'Y-m-d H:i:s' ) . " - ERROR: vendor-data.json not found\n";
-			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 			$result['errors'][] = 'vendor-data.json not found inside demo pack zip.';
 			self::cleanup_tmp_dir( $tmp_dir );
 			return $result;
 		}
-		
 		$media_dir = dirname( $json_path );
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - media_dir: " . $media_dir . "\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 		
-		// ── Import ────────────────────────────────────────────────────────────────
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Reading vendor-data.json\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
-		// Set timeout for file_get_contents
-		$timeout = 30;
-		$context = stream_context_create( array( 'timeout' => $timeout ) );
-		
-		$raw = @file_get_contents( $json_path, false, $context );
+		// ── Import ────────────────────────────────────────────────────────────
+		$raw = file_get_contents( $json_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 		if ( $raw === false ) {
-			$debug_msg = date( 'Y-m-d H:i:s' ) . " - ERROR: file_get_contents failed\n";
-			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-			$result['errors'][] = 'Failed to read vendor-data.json: ' . error_get_last()['message'];
+			$last_error = error_get_last();
+			$message    = is_array( $last_error ) && ! empty( $last_error['message'] ) ? $last_error['message'] : 'Unknown read error.';
+			$result['errors'][] = 'Failed to read vendor-data.json: ' . $message;
 			self::cleanup_tmp_dir( $tmp_dir );
 			return $result;
 		}
-		
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - JSON content length: " . strlen( $raw ) . "\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
+
 		$payload = json_decode( $raw, true );
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			$debug_msg = date( 'Y-m-d H:i:s' ) . " - JSON decode error: " . json_last_error_msg() . "\n";
-			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
 			$result['errors'][] = 'JSON decode error: ' . json_last_error_msg();
 			self::cleanup_tmp_dir( $tmp_dir );
 			return $result;
 		}
-		
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - JSON decoded: " . ( is_array( $payload ) ? 'yes' : 'no' ) . "\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-		
-		if ( ! is_array( $payload ) || empty( $payload['vendors'] ) ) {
-			$debug_msg = date( 'Y-m-d H:i:s' ) . " - ERROR: No vendors found in JSON\n";
-			@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-			$result['errors'][] = 'vendor-data.json inside demo pack is empty or malformed.';
-			self::cleanup_tmp_dir( $tmp_dir );
-			return $result;
-		}
-		
-		$debug_msg = date( 'Y-m-d H:i:s' ) . " - Found " . count( $payload['vendors'] ) . " vendors\n";
-		@file_put_contents( $log_file, $debug_msg, FILE_APPEND );
-
-		// ── Unzip ─────────────────────────────────────────────────────────────
-		// WP_Filesystem must be initialised before unzip_file() is called.
-		if ( ! function_exists( 'WP_Filesystem' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-		}
-		WP_Filesystem();
-
-		$unzip = unzip_file( $zip_path, $tmp_dir );
-		if ( is_wp_error( $unzip ) ) {
-			$result['errors'][] = 'Unzip failed: ' . $unzip->get_error_message();
-			self::cleanup_tmp_dir( $tmp_dir );
-			return $result;
-		}
-
-		// Resolve vendor-data.json (may be directly in tmp_dir or in a sub-folder).
-		$json_path = self::find_in_dir( $tmp_dir, 'vendor-data.json' );
-		if ( null === $json_path ) {
-			$result['errors'][] = 'vendor-data.json not found inside demo pack zip.';
-			self::cleanup_tmp_dir( $tmp_dir );
-			return $result;
-		}
-
-		$media_dir = dirname( $json_path );
-
-		// ── Import ────────────────────────────────────────────────────────────
-		$raw     = file_get_contents( $json_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions
-		$payload = json_decode( $raw, true );
 
 		if ( ! is_array( $payload ) || empty( $payload['vendors'] ) ) {
 			$result['errors'][] = 'vendor-data.json inside demo pack is empty or malformed.';
@@ -507,7 +409,11 @@ class EcomCine_Demo_Importer {
 			}
 		}
 
-		if ( class_exists( 'EcomCine_Dokan_Data_Migration', false ) && EcomCine_Dokan_Data_Migration::cleanup_legacy_profile_surface( $user_id, false ) ) {
+		if (
+			class_exists( 'EcomCine_Dokan_Data_Migration', false )
+			&& method_exists( 'EcomCine_Dokan_Data_Migration', 'cleanup_legacy_profile_surface' )
+			&& EcomCine_Dokan_Data_Migration::cleanup_legacy_profile_surface( $user_id, false )
+		) {
 			$result['log'][] = "Removed Dokan legacy profile surface for {$login}";
 		}
 
