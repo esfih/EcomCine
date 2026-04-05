@@ -607,8 +607,23 @@ class EcomCine_Demo_Importer {
 			return 0;
 		}
 
-		$metadata = wp_generate_attachment_metadata( $attachment_id, $dest );
-		wp_update_attachment_metadata( $attachment_id, $metadata );
+		try {
+			$metadata = wp_generate_attachment_metadata( $attachment_id, $dest );
+			if ( ! is_wp_error( $metadata ) && ! empty( $metadata ) ) {
+				wp_update_attachment_metadata( $attachment_id, $metadata );
+			}
+		} catch ( Throwable $e ) {
+			if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				error_log(
+					sprintf(
+						'[EcomCine demo import media metadata skipped] attachment=%d file=%s error=%s',
+						(int) $attachment_id,
+						$dest,
+						$e->getMessage()
+					)
+				);
+			}
+		}
 
 		return (int) $attachment_id;
 	}
