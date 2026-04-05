@@ -11,8 +11,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( ! empty( $_GET['tm_ids'] ) ) {
 	$_raw_ids   = array_map( 'intval', explode( ',', sanitize_text_field( wp_unslash( $_GET['tm_ids'] ) ) ) );
 	$vendor_ids = array_values( array_filter( $_raw_ids, function( $id ) { return $id > 0; } ) );
+	$has_custom_vendor_filter = ! empty( $vendor_ids );
 } else {
 	$vendor_ids = function_exists( 'tm_get_showcase_vendor_ids' ) ? tm_get_showcase_vendor_ids() : array();
+	$has_custom_vendor_filter = false;
 }
 $vendor_id = ! empty( $vendor_ids ) ? (int) $vendor_ids[0] : 0;
 
@@ -31,10 +33,11 @@ add_filter( 'body_class', function( $classes ) {
 	return $classes;
 } );
 
-// Tell LiteSpeed Cache not to cache the showcase page — it is dynamically composed
-// per-request (vendor rotation) so a stale cache would break it.
-if ( defined( 'LSCWP_V' ) ) {
-	do_action( 'litespeed_control_set_nocache', 'showcase page — per-request vendor selection' );
+// The canonical anonymous showcase shell is safe to cache because vendor rotation
+// and media swaps are loaded dynamically client-side. Bypass cache only for
+// logged-in viewers and custom tm_ids variants that truly vary per request.
+if ( defined( 'LSCWP_V' ) && ( is_user_logged_in() || $has_custom_vendor_filter ) ) {
+	do_action( 'litespeed_control_set_nocache', 'showcase page — custom vendor selection or logged-in viewer' );
 }
 
 $GLOBALS['ecomcine_suppress_site_header'] = true;

@@ -2070,6 +2070,37 @@ jQuery(document).ready(function($) {
 		showLoadingIndicator(true, percent);
 	}
 
+	function unbindSlowLoadingEvents(videoEl) {
+		if (!videoEl || !videoEl.__tmSlowLoadingHandlers) return;
+		videoEl.removeEventListener('progress', videoEl.__tmSlowLoadingHandlers.progress);
+		videoEl.removeEventListener('canplay', videoEl.__tmSlowLoadingHandlers.canplay);
+		videoEl.removeEventListener('playing', videoEl.__tmSlowLoadingHandlers.playing);
+		delete videoEl.__tmSlowLoadingHandlers;
+	}
+
+	function bindSlowLoadingEvents(videoEl) {
+		if (!videoEl) return;
+		unbindSlowLoadingEvents(videoEl);
+		videoEl.__tmSlowLoadingHandlers = {
+			progress: function() {
+				var buffered = videoEl.buffered;
+				if (buffered.length > 0 && videoEl.duration) {
+					var bufferPercent = (buffered.end(0) / videoEl.duration) * 100;
+					updateLoadingIndicator(bufferPercent);
+				}
+			},
+			canplay: function() {
+				showLoadingIndicator(false);
+			},
+			playing: function() {
+				showLoadingIndicator(false);
+			}
+		};
+		videoEl.addEventListener('progress', videoEl.__tmSlowLoadingHandlers.progress);
+		videoEl.addEventListener('canplay', videoEl.__tmSlowLoadingHandlers.canplay);
+		videoEl.addEventListener('playing', videoEl.__tmSlowLoadingHandlers.playing);
+	}
+
 	function showEq(active) {
 		var $heroEq = $(".hero-audio-eq").first();
 		if (!$heroEq.length) return;
@@ -2412,7 +2443,7 @@ jQuery(document).ready(function($) {
 				if (heroVideoActive) {
 					// OPTIMIZATION: For slow connections, use metadata preload to show poster immediately
 					// and allow progressive buffering without blocking initial display
-					var isSlowConnection = navigator.connection ? (navigator.connection.effectiveType === '2g' || navigator.connection.effectiveType === '3g') : false;
+					var isSlowConnection = isSlowNetworkConnection();
 					var preloadValue = isSlowConnection ? 'metadata' : ((isSmartTV() || isMobileDevice()) ? 'auto' : 'metadata');
 					$(heroVideoActive).attr("preload", preloadValue);
 					
@@ -2435,23 +2466,11 @@ jQuery(document).ready(function($) {
 						heroVideoActive.load();
 					}
 					
-					// OPTIMIZATION: Add buffering event listeners for slow connections
 					if (isSlowConnection) {
-						heroVideoActive.addEventListener('progress', function() {
-							var buffered = heroVideoActive.buffered;
-							if (buffered.length > 0) {
-								var bufferPercent = (buffered.end(0) / heroVideoActive.duration) * 100;
-								updateLoadingIndicator(bufferPercent);
-							}
-						});
-						
-						heroVideoActive.addEventListener('canplay', function() {
-							showLoadingIndicator(false);
-						});
-						
-						heroVideoActive.addEventListener('playing', function() {
-							showLoadingIndicator(false);
-						});
+						bindSlowLoadingEvents(heroVideoActive);
+					} else {
+						unbindSlowLoadingEvents(heroVideoActive);
+						showLoadingIndicator(false);
 					}
 					
 					updateMeta(item);
@@ -3036,8 +3055,26 @@ jQuery(document).ready(function($) {
 	var vendorPayloadPreload = {
 		started: false,
 		index: 0,
+		queue: [],
 		timer: null
 	};
+
+	function isSlowNetworkConnection() {
+		var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+		if (!connection) return false;
+		if (connection.saveData) return true;
+		return connection.effectiveType === 'slow-2g'
+			|| connection.effectiveType === '2g'
+			|| connection.effectiveType === '3g';
+	}
+
+	function getVendorPayloadPreloadLimit() {
+		if (!vendorList.length) return 0;
+		if (isSlowNetworkConnection()) {
+			return Math.min(vendorList.length, 2);
+		}
+		return Math.min(vendorList.length, 6);
+	}
 
 	function findVendorIndexById(list, vendorId) {
 		vendorId = parseInt(vendorId, 10);
@@ -3068,7 +3105,7 @@ jQuery(document).ready(function($) {
 	}
 
 	function shouldPreloadVendorPayloads() {
-		return shouldUseVendorContentRest() && vendorList.length > 0;
+		return shouldUseVendorContentRest() && vendorList.length > 0 && !isSlowNetworkConnection();
 	}
 
 	function markVendorPayloadPreloadDone() {
@@ -3093,15 +3130,29 @@ jQuery(document).ready(function($) {
 		if (hasVendorPayloadPreloadRun()) return;
 		vendorPayloadPreload.started = true;
 		vendorPayloadPreload.index = 0;
+		vendorPayloadPreload.queue = [];
+
+		var preloadCount = getVendorPayloadPreloadLimit();
+		var startIndex = currentVendorIndex >= 0 ? currentVendorIndex : findVendorIndexById(vendorList, window.currentVendorId);
+		for (var offset = 1; offset <= preloadCount; offset += 1) {
+			var queueIndex = vendorList.length ? ((startIndex + offset) % vendorList.length) : -1;
+			if (queueIndex < 0 || !vendorList[queueIndex] || !vendorList[queueIndex].id) continue;
+			vendorPayloadPreload.queue.push(vendorList[queueIndex]);
+		}
+		if (!vendorPayloadPreload.queue.length) {
+			vendorPayloadPreload.started = false;
+			markVendorPayloadPreloadDone();
+			return;
+		}
 
 		var runNext = function() {
 			if (!vendorPayloadPreload.started) return;
-			if (vendorPayloadPreload.index >= vendorList.length) {
+			if (vendorPayloadPreload.index >= vendorPayloadPreload.queue.length) {
 				vendorPayloadPreload.started = false;
 				markVendorPayloadPreloadDone();
 				return;
 			}
-			var vendor = vendorList[vendorPayloadPreload.index++];
+			var vendor = vendorPayloadPreload.queue[vendorPayloadPreload.index++];
 			if (!vendor || !vendor.id) {
 				vendorPayloadPreload.timer = setTimeout(runNext, 60);
 				return;
@@ -3112,11 +3163,11 @@ jQuery(document).ready(function($) {
 				type: request.type,
 				data: request.data || {}
 			}).always(function() {
-				vendorPayloadPreload.timer = setTimeout(runNext, 120);
+				vendorPayloadPreload.timer = setTimeout(runNext, 180);
 			});
 		};
 
-		vendorPayloadPreload.timer = setTimeout(runNext, 300);
+		vendorPayloadPreload.timer = setTimeout(runNext, 450);
 	}
 
 	function persistVendorListToCache(list) {
