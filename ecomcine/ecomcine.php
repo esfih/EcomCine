@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.53
+ * Version: 0.1.54
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
