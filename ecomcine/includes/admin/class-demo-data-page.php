@@ -190,6 +190,13 @@ class EcomCine_Demo_Data_Page {
 					var status  = document.querySelector('.ecomcine-pack-status[data-pack-id="' + packId + '"]');
 					var resultEl = document.getElementById('ecomcine-remote-result');
 
+					// Debug: Log what we're sending
+					console.log('Import button clicked');
+					console.log('packId:', packId);
+					console.log('zipUrl:', zipUrl);
+					console.log('nonce:', nonce);
+					console.log('action: ecomcine_import_demo_remote');
+
 					btn.disabled = true;
 					if (status) status.textContent = <?php echo json_encode( __( 'Downloading…', 'ecomcine' ) ); ?>;
 
