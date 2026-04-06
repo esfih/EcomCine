@@ -16,7 +16,15 @@ $is_publicly_available = (bool) get_query_var( 'ecomcine_person_publicly_availab
 $can_edit_profile      = $vendor_id && function_exists( 'tm_can_edit_vendor_profile' )
 	? (bool) tm_can_edit_vendor_profile( $vendor_id )
 	: false;
-$can_view_profile      = $is_publicly_available || $can_edit_profile;
+
+// Allow the claim flow for a recipient who arrives via a valid onboarding link,
+// even when the profile is still inactive (not yet live).
+$_onboard_token_raw = isset( $_GET['tm_onboard'] ) ? sanitize_text_field( wp_unslash( $_GET['tm_onboard'] ) ) : '';
+$has_valid_onboard_token = $vendor_id && '' !== $_onboard_token_raw
+	&& function_exists( 'tm_account_panel_get_onboard_state' )
+	&& ! empty( tm_account_panel_get_onboard_state( $vendor_id, $_onboard_token_raw )['valid'] );
+
+$can_view_profile = $is_publicly_available || $can_edit_profile || $has_valid_onboard_token;
 
 if ( $vendor_id && function_exists( 'tm_enqueue_talent_showcase_assets' ) ) {
 	tm_enqueue_talent_showcase_assets( $vendor_id, 'profile' );

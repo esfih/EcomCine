@@ -69,6 +69,27 @@ if ( ! function_exists( 'tm_vendor_profile_get_person_category_ids' ) ) {
 }
 
 /**
+ * Native vendor/person check — works with and without Dokan.
+ * Returns true if the user has the EcomCine person role OR the legacy Dokan seller role.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+if ( ! function_exists( 'tm_user_is_person' ) ) {
+	function tm_user_is_person( int $user_id ): bool {
+		if ( ! $user_id ) {
+			return false;
+		}
+		// Native EcomCine check (includes legacy 'seller' role fallback internally).
+		if ( function_exists( 'ecomcine_is_person_user' ) ) {
+			return ecomcine_is_person_user( $user_id );
+		}
+		// Dokan fallback for environments where EcomCine core hasn't loaded yet.
+		return function_exists( 'dokan_is_user_seller' ) && dokan_is_user_seller( $user_id );
+	}
+}
+
+/**
  * AJAX Handler: Save vendor attribute inline edit
  */
 add_action( 'wp_ajax_vendor_save_attribute', function() {
@@ -82,8 +103,8 @@ add_action( 'wp_ajax_vendor_save_attribute', function() {
 		tm_ajax_send_json_error( ['message' => 'Unauthorized'], 403 );
 	}
 	
-	if ( ! function_exists( 'dokan_is_user_seller' ) || ! dokan_is_user_seller( $user_id ) ) {
-		tm_ajax_send_json_error( ['message' => 'Not a vendor'], 403 );
+	if ( ! tm_user_is_person( $user_id ) ) {
+		tm_ajax_send_json_error( ['message' => 'Not a person account'], 403 );
 	}
 	
 	$field = isset( $_POST['field'] ) ? sanitize_text_field( $_POST['field'] ) : '';
@@ -295,13 +316,9 @@ add_action( 'wp_ajax_vendor_save_attribute', function() {
 	if ( $field === 'store_categories' ) {
 		$term_ids = array_values( array_unique( array_filter( array_map( 'absint', (array) $value_raw ) ) ) );
 
-		if ( ! taxonomy_exists( 'store_category' ) ) {
-			tm_ajax_send_json_error( [ 'message' => 'Store categories taxonomy missing' ], 500 );
-		}
-
-		$result = wp_set_object_terms( $user_id, $term_ids, 'store_category', false );
-		if ( is_wp_error( $result ) ) {
-			tm_ajax_send_json_error( [ 'message' => $result->get_error_message() ], 500 );
+		// Sync to Dokan's store_category taxonomy when available (compat layer — non-fatal).
+		if ( taxonomy_exists( 'store_category' ) ) {
+			wp_set_object_terms( $user_id, $term_ids, 'store_category', false );
 		}
 
 		if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
@@ -825,6 +842,43 @@ add_action( 'wp_ajax_tm_social_debug_dump', function() {
 } );
 
 /**
+ * Reassign one or more attachment post_author values to $vendor_id.
+ * Called after every successful media-save action so that media assigned to a
+ * talent profile is immediately owned by the talent, not the admin who picked it.
+ * Safe to call for all admin and self-editing flows; no-ops when the uploader is
+ * already the owner.
+ *
+ * @param int   $vendor_id     Target owner (talent user ID).
+ * @param int[] $attachment_ids Attachment post IDs being assigned.
+ */
+function tm_reassign_attachments_to_vendor( int $vendor_id, array $attachment_ids ): void {
+	if ( ! $vendor_id || empty( $attachment_ids ) ) {
+		return;
+	}
+	$current_uid = get_current_user_id();
+	foreach ( array_filter( array_map( 'absint', $attachment_ids ) ) as $att_id ) {
+		if ( ! $att_id ) {
+			continue;
+		}
+		$post = get_post( $att_id );
+		if ( ! $post || 'attachment' !== $post->post_type ) {
+			continue;
+		}
+		// Only re-assign if currently owned by the editing admin (not by someone else).
+		if ( (int) $post->post_author === $vendor_id ) {
+			continue; // already correct
+		}
+		if ( (int) $post->post_author !== $current_uid ) {
+			continue; // owned by a third party – don't silently transfer
+		}
+		wp_update_post( [
+			'ID'          => $att_id,
+			'post_author' => $vendor_id,
+		] );
+	}
+}
+
+/**
  * AJAX Handler: Update Vendor Avatar
  * Uses WordPress media library for upload
  */
@@ -840,8 +894,8 @@ add_action( 'wp_ajax_vendor_update_avatar', function() {
 		tm_ajax_send_json_error( ['message' => 'Unauthorized'], 403 );
 	}
 	
-	if ( ! function_exists( 'dokan_is_user_seller' ) || ! dokan_is_user_seller( $user_id ) ) {
-		tm_ajax_send_json_error( ['message' => 'Not a vendor'], 403 );
+	if ( ! tm_user_is_person( $user_id ) ) {
+		tm_ajax_send_json_error( ['message' => 'Not a person account'], 403 );
 	}
 	
 	// Verify attachment exists and is an image
@@ -850,10 +904,11 @@ add_action( 'wp_ajax_vendor_update_avatar', function() {
 	}
 	
 	update_user_meta( $user_id, 'ecomcine_avatar_id', $avatar_id );
-	
+	tm_reassign_attachments_to_vendor( $user_id, [ $avatar_id ] );
+
 	// Get new avatar URL
 	$avatar_url = wp_get_attachment_image_url( $avatar_id, 'full' );
-	
+
 	tm_ajax_send_json_success( [
 		'avatar_url' => $avatar_url,
 		'message' => 'Avatar updated successfully'
@@ -875,8 +930,8 @@ add_action( 'wp_ajax_vendor_update_banner', function() {
 		tm_ajax_send_json_error( [ 'message' => 'Unauthorized' ], 403 );
 	}
 
-	if ( ! function_exists( 'dokan_is_user_seller' ) || ! dokan_is_user_seller( $user_id ) ) {
-		tm_ajax_send_json_error( [ 'message' => 'Not a vendor' ], 403 );
+	if ( ! tm_user_is_person( $user_id ) ) {
+		tm_ajax_send_json_error( [ 'message' => 'Not a person account' ], 403 );
 	}
 
 	if ( ! $banner_id || ! wp_attachment_is_image( $banner_id ) ) {
@@ -884,6 +939,7 @@ add_action( 'wp_ajax_vendor_update_banner', function() {
 	}
 
 	update_user_meta( $user_id, 'ecomcine_banner_id', $banner_id );
+	tm_reassign_attachments_to_vendor( $user_id, [ $banner_id ] );
 
 	$banner_url = wp_get_attachment_image_url( $banner_id, 'full' );
 
@@ -909,8 +965,8 @@ add_action( 'wp_ajax_vendor_update_media_playlist', function() {
 		tm_ajax_send_json_error( [ 'message' => 'Unauthorized' ], 403 );
 	}
 
-	if ( ! function_exists( 'dokan_is_user_seller' ) || ! dokan_is_user_seller( $user_id ) ) {
-		tm_ajax_send_json_error( [ 'message' => 'Not a vendor' ], 403 );
+	if ( ! tm_user_is_person( $user_id ) ) {
+		tm_ajax_send_json_error( [ 'message' => 'Not a person account' ], 403 );
 	}
 
 	if ( ! in_array( $playlist_type, [ 'image', 'video', 'audio' ], true ) ) {
@@ -998,6 +1054,11 @@ add_action( 'wp_ajax_vendor_update_media_playlist', function() {
 	update_user_meta( $user_id, 'ecomcine_bio', $bio );
 	update_user_meta( $user_id, 'vendor_biography', $bio );
 
+	// Reassign all playlist attachments to the talent on save.
+	if ( ! empty( $ids ) ) {
+		tm_reassign_attachments_to_vendor( $user_id, $ids );
+	}
+
 	tm_ajax_send_json_success( [
 		'vendorMedia' => tm_get_vendor_media_playlist( $user_id ),
 		'message' => $clear ? 'Playlist cleared successfully' : 'Playlist updated successfully',
@@ -1019,8 +1080,8 @@ add_action( 'wp_ajax_vendor_update_store_name', function() {
 		tm_ajax_send_json_error( ['message' => 'Unauthorized'], 403 );
 	}
 	
-	if ( ! function_exists( 'dokan_is_user_seller' ) || ! dokan_is_user_seller( $user_id ) ) {
-		tm_ajax_send_json_error( ['message' => 'Not a vendor'], 403 );
+	if ( ! tm_user_is_person( $user_id ) ) {
+		tm_ajax_send_json_error( ['message' => 'Not a person account'], 403 );
 	}
 	
 	if ( empty( $store_name ) ) {
@@ -1075,8 +1136,8 @@ add_action( 'wp_ajax_vendor_update_contact_info', function() {
 	$old_email_main = get_user_meta( $user_id, 'tm_contact_email_main', true );
 	$old_phone_main = get_user_meta( $user_id, 'tm_contact_phone_main', true );
 
-	if ( ! function_exists( 'dokan_is_user_seller' ) || ! dokan_is_user_seller( $user_id ) ) {
-		tm_ajax_send_json_error( [ 'message' => 'Not a vendor' ], 403 );
+	if ( ! tm_user_is_person( $user_id ) ) {
+		tm_ajax_send_json_error( [ 'message' => 'Not a person account' ], 403 );
 	}
 
 	$contact_emails = [];
@@ -1174,8 +1235,8 @@ add_action( 'wp_ajax_vendor_update_location', function() {
 		tm_ajax_send_json_error( ['message' => 'Unauthorized'], 403 );
 	}
 	
-	if ( ! function_exists( 'dokan_is_user_seller' ) || ! dokan_is_user_seller( $user_id ) ) {
-		tm_ajax_send_json_error( ['message' => 'Not a vendor'], 403 );
+	if ( ! tm_user_is_person( $user_id ) ) {
+		tm_ajax_send_json_error( ['message' => 'Not a person account'], 403 );
 	}
 	
 	if ( empty( $geo_address ) ) {
@@ -1275,14 +1336,22 @@ add_action( 'wp_ajax_vendor_update_location', function() {
 /**
  * Scope media library to vendor-owned attachments for front-end media modal.
  * Includes attachments authored by the vendor and those tagged by Dokan meta.
+ * Admin users keep their full library (standard WP behaviour); media ownership
+ * is transferred at the point of assignment via the save handlers below.
  */
 add_filter( 'ajax_query_attachments_args', function( $args ) {
-	if ( ! is_user_logged_in() || ! function_exists( 'dokan_is_user_seller' ) ) {
+	if ( ! is_user_logged_in() || ! function_exists( 'tm_user_is_person' ) ) {
 		return $args;
 	}
 
 	$user_id = get_current_user_id();
-	if ( ! $user_id || ! dokan_is_user_seller( $user_id ) ) {
+
+	// Admins keep their full library — ownership transfers at save time.
+	if ( current_user_can( 'manage_options' ) ) {
+		return $args;
+	}
+
+	if ( ! $user_id || ! tm_user_is_person( $user_id ) ) {
 		return $args;
 	}
 
@@ -1324,6 +1393,11 @@ add_filter( 'ajax_query_attachments_args', function( $args ) {
 			? array_values( array_unique( array_merge( $args['post__in'], $allowed_ids ) ) )
 			: $allowed_ids;
 		unset( $args['author'] );
+	} else {
+		// No explicitly assigned media yet — restrict to own uploads only.
+		// This prevents a new talent from seeing the full site library.
+		$args['author'] = $user_id;
+		$args['post__in'] = [ 0 ]; // Force empty result if no uploads yet.
 	}
 
 	return $args;

@@ -39,34 +39,74 @@
 		}
 	}
 
-	function createTalentProfile($trigger) {
-		if (!window.tmAccountPanel || !tmAccountPanel.adminNonce) {
+	function openAdminCreateDialog() {
+		var $dialog = $("#tm-admin-create-dialog");
+		if (!$dialog.length) return;
+		$dialog.addClass("is-open").attr("aria-hidden", "false");
+		$dialog.find("#tm-admin-talent-name").val("").trigger("focus");
+		$dialog.find("#tm-admin-talent-email, #tm-admin-talent-phone").val("");
+		$dialog.find(".tm-admin-create-submit").prop("disabled", false).text("Create & Open Profile");
+	}
+
+	function closeAdminCreateDialog() {
+		var $dialog = $("#tm-admin-create-dialog");
+		if (!$dialog.length) return;
+		$dialog.removeClass("is-open").attr("aria-hidden", "true");
+	}
+
+	function submitAdminCreateForm($form) {
+		var fullName = ($form.find("#tm-admin-talent-name").val() || "").trim();
+		if (!fullName) {
+			$form.find("#tm-admin-talent-name").trigger("focus");
 			return;
 		}
-		$trigger = $trigger || $(".tm-account-tab--admin");
-		$trigger.addClass("is-loading");
+		var email = ($form.find("#tm-admin-talent-email").val() || "").trim();
+		var phone = ($form.find("#tm-admin-talent-phone").val() || "").trim();
+		var $submit = $form.find(".tm-admin-create-submit");
+		$submit.prop("disabled", true).text("Creating…");
+
+		if (!window.tmAccountPanel || !tmAccountPanel.adminNonce) {
+			console.warn("[submitAdminCreateForm] tmAccountPanel not available");
+			$submit.prop("disabled", false).text("Create & Open Profile");
+			return;
+		}
+
 		$.ajax({
 			url: tmAccountPanel.ajaxUrl,
 			method: "post",
 			dataType: "json",
 			data: {
 				action: "tm_account_create_talent",
-				nonce: tmAccountPanel.adminNonce
+				nonce: tmAccountPanel.adminNonce,
+				talent_full_name: fullName,
+				talent_email: email,
+				talent_phone: phone
 			}
 		})
 		.done(function(response) {
+			console.log("[createTalentProfile] AJAX done", response);
 			if (response && response.success && response.data && response.data.store_url) {
+				closeAdminCreateDialog();
 				window.location.href = response.data.store_url;
 				return;
 			}
-			alert("Unable to create a new talent profile.");
+			var msg = (response && response.data && response.data.message) ? response.data.message : "unknown";
+			if (msg === "email_exists") {
+				alert("That email address is already registered. Please use a different email or leave it blank.");
+			} else {
+				alert("Unable to create talent profile: " + msg);
+			}
+			$submit.prop("disabled", false).text("Create & Open Profile");
 		})
-		.fail(function() {
+		.fail(function(jqXHR, textStatus, errorThrown) {
+			console.error("[createTalentProfile] AJAX failed", textStatus, errorThrown, jqXHR.status, jqXHR.responseText);
 			alert("Unable to create a new talent profile.");
-		})
-		.always(function() {
-			$trigger.removeClass("is-loading");
+			$submit.prop("disabled", false).text("Create & Open Profile");
 		});
+	}
+
+	function createTalentProfile($trigger) {
+		openAdminCreateDialog();
 	}
 
 	function closeAccountModal() {
@@ -100,7 +140,7 @@
 	}
 
 	function prepareVendorRegistration($modal) {
-		var $form = $modal.find("form#dokan-vendor-register, form.dokan-vendor-register");
+		var $form = $modal.find("form#dokan-vendor-register, form.dokan-vendor-register, form#ecomcine-vendor-register, form.ecomcine-vendor-register");
 		if (!$form.length) return;
 
 		if (!$form.hasClass("tm-account-register-grid")) {
@@ -492,8 +532,21 @@
 		closeAccountModal();
 	});
 
+	$(document).on("click", ".tm-admin-create-backdrop, .tm-admin-create-close", function() {
+		closeAdminCreateDialog();
+	});
+
+	$(document).on("submit", "#tm-admin-create-form", function(e) {
+		e.preventDefault();
+		submitAdminCreateForm($(this));
+	});
+
 	$(document).on("keydown", function(e) {
 		if (e.key !== "Escape") return;
+		if ($("#tm-admin-create-dialog").hasClass("is-open")) {
+			closeAdminCreateDialog();
+			return;
+		}
 		if ($("#tm-account-modal").hasClass("is-open")) {
 			closeAccountModal();
 		}

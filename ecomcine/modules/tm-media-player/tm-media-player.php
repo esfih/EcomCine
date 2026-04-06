@@ -648,6 +648,13 @@ class TM_Media_Player_Assets {
 
 	public static function enqueue_for_showcase( $vendor_id, $mode = 'showcase', $all_vendor_ids = array() ) {
 		if ( is_admin() ) { return; }
+		// 'profile' mode requires owner-aware localization and wp.media for inline editing.
+		// Delegate to enqueue_for_profile() so isOwner/canEdit are resolved correctly and
+		// wp_enqueue_media() is called for the editing owner.
+		if ( 'profile' === $mode ) {
+			self::enqueue_for_profile( $vendor_id );
+			return;
+		}
 		self::enqueue_css();
 		self::enqueue_js( array( 'jquery' ) );
 		self::bootstrap_media( $vendor_id );
@@ -663,12 +670,19 @@ class TM_Media_Player_Assets {
 		if ( $can_edit ) {
 			$deps = self::maybe_enqueue_mapbox( $deps );
 		}
-		self::enqueue_css();
-		self::enqueue_js( $deps );
-		self::bootstrap_media( $vendor_id );
-		self::localize_profile( $vendor_id, $can_edit );
+
 		if ( $can_edit ) {
+			// Edit mode: skip the cinematic player CSS (heavy visuals not needed
+			// during editing) and skip the media bootstrap (prevents autoplay init).
+			// player.js is still required — it owns the avatar/banner/playlist pickers.
+			self::enqueue_js( $deps );
+			self::localize_profile( $vendor_id, $can_edit );
 			self::enqueue_media_library();
+		} else {
+			self::enqueue_css();
+			self::enqueue_js( $deps );
+			self::bootstrap_media( $vendor_id );
+			self::localize_profile( $vendor_id, $can_edit );
 		}
 	}
 
@@ -679,11 +693,10 @@ class TM_Media_Player_Assets {
 	public static function handle_enqueue() {
 		if ( self::is_dashboard() ) { return; }
 
-		// Person profile pages (wp_cpt mode) — enqueue_for_showcase() is called directly
-		// from template-person-profile.php via tm_enqueue_talent_showcase_assets() before
-		// get_header(), so by the time we arrive here player.js is already queued.
-		// We still need to ensure CSS is registered; the early return prevents a second
-		// localize_script call that would overwrite playerMode:'profile' with 'default'.
+		// Person profile pages (wp_cpt mode) — enqueue_for_showcase() with mode='profile' now
+		// delegates to enqueue_for_profile(), so player.js + vendorStoreData + wp.media are
+		// already correctly queued before get_header(). Return early to avoid a second
+		// localize_script call that would overwrite canEdit/isOwner.
 		if ( function_exists( 'ecomcine_is_person_page' ) && ecomcine_is_person_page() ) {
 			self::enqueue_css();
 			return;
@@ -905,17 +918,9 @@ class TM_Media_Player_Assets {
 	}
 
 	private static function enqueue_media_library() {
-		$cap_filter = static function( $allcaps, $caps, $args ) {
-			if ( isset( $args[0] ) && $args[0] === 'upload_files' ) {
-				$allcaps['upload_files'] = true;
-			}
-			return $allcaps;
-		};
-		add_filter( 'user_has_cap', $cap_filter, 10, 3 );
 		wp_enqueue_style( 'media-views' );
 		wp_enqueue_style( 'dashicons' );
 		wp_enqueue_media();
-		remove_filter( 'user_has_cap', $cap_filter, 10 );
 	}
 
 	private static function get_current_vendor_id() {

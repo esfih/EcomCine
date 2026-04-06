@@ -101,22 +101,22 @@
    ======================================== */
 
 /* Cinematic store layout (moved from inline styles) */
-body.dokan-store,
-body.dokan-store #page,
-body.dokan-store .site {
+body.ecomcine-store,
+body.ecomcine-store #page,
+body.ecomcine-store .site {
 	background: #000000 !important;
 	min-height: 100vh !important;
 }
 
 /* Cinematic header placement and scroll-less layout */
-body.dokan-store #page {
+body.ecomcine-store #page {
 	position: relative !important;
 	overflow: visible !important;
 	min-height: 0 !important;
 }
 
-body.dokan-store.ast-theme-transparent-header #masthead,
-body.dokan-store #masthead {
+body.ecomcine-store.ast-theme-transparent-header #masthead,
+body.ecomcine-store #masthead {
 	position: absolute !important;
 	top: 20px !important;
 	left: 50% !important;
@@ -135,30 +135,30 @@ body.dokan-store #masthead {
 	background: transparent !important;
 }
 
-body.dokan-store .site-content {
+body.ecomcine-store .site-content {
 	flex-grow: 0 !important;
 	margin: 0 !important;
 	padding: 0 !important;
 }
 
-body.dokan-store .ast-container {
+body.ecomcine-store .ast-container {
 	margin: 0 !important;
 	padding: 0 !important;
 }
 
-body.dokan-store .dokan-store-wrap,
-body.dokan-store #dokan-primary,
-body.dokan-store #dokan-content {
+body.ecomcine-store .ecomcine-store-wrap,
+body.ecomcine-store #ecomcine-primary,
+body.ecomcine-store #ecomcine-content {
 	margin: 0 !important;
 	padding: 0 !important;
 }
 
-body.dokan-store .dokan-store-products-filter-area {
+body.ecomcine-store .ecomcine-store-products-filter-area {
 	display: none !important;
 }
 
-body.dokan-store .site-footer,
-body.dokan-store #colophon {
+body.ecomcine-store .site-footer,
+body.ecomcine-store #colophon {
 	display: none !important;
 }
 
@@ -1392,6 +1392,13 @@ img.profile-img,
 	justify-content: center !important;
 	position: relative !important;
 	z-index: 1 !important;
+}
+
+/* CRITICAL: Unified hero-remote behavior - hidden by default, shows on hover when video playing */
+.hero-remote {
+	opacity: 0 !important;
+	pointer-events: none !important;
+	transition: opacity 0.3s ease;
 }
 
 .hero-remote.is-visible {
@@ -2897,4 +2904,43 @@ body.tm-mobile-portrait .tm-header-menu > li:last-child > a {
 	}
 
 	/* Social icons: no extra tweaks needed on touch devices */
+}
+
+/* OPTIMIZATION: Loading indicator for slow/unstable connections */
+.tm-loading-indicator {
+position: absolute !important;
+top: 50% !important;
+left: 50% !important;
+transform: translate(-50%, -50%) !important;
+display: flex !important;
+flex-direction: column !important;
+align-items: center !important;
+justify-content: center !important;
+gap: 12px !important;
+z-index: 1000 !important;
+pointer-events: none !important;
+color: #ffffff !important;
+text-align: center !important;
+font-size: 14px !important;
+font-weight: 500 !important;
+text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+}
+
+.tm-loading-spinner {
+width: 48px !important;
+height: 48px !important;
+border: 4px solid rgba(255, 255, 255, 0.3) !important;
+border-top-color: #ffffff !important;
+border-radius: 50% !important;
+animation: tm-spin 1s linear infinite !important;
+}
+
+@keyframes tm-spin {
+to { transform: rotate(360deg); }
+}
+
+.tm-loading-text {
+font-size: 14px !important;
+font-weight: 500 !important;
+opacity: 0.9 !important;
 }

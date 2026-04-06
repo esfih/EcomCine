@@ -368,7 +368,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
 
                     <div class="profile-info-content<?php echo $is_owner ? ' has-contact-card' : ''; ?>">
 
-                        <?php if ( $onboard_error ) : ?>
+                        <?php if ( $onboard_error && ! $is_owner ) : ?>
                             <div class="tm-onboard-notice tm-onboard-error">We could not complete onboarding. Please try again or contact support.</div>
                         <?php endif; ?>
                         <?php if ( 'default' === $profile_layout && ( ! empty( $store_user->get_shop_name() ) || $is_owner || $is_preonboard || $is_admin_editing ) ) { ?>

@@ -117,6 +117,8 @@ add_action( 'wp_ajax_tm_onboard_share_link', 'tm_account_panel_share_link' );
 add_action( 'wp_ajax_tm_account_panel_order_details', 'tm_account_panel_order_details' );
 add_action( 'admin_post_tm_onboard_claim', 'tm_account_panel_handle_claim' );
 add_action( 'admin_post_nopriv_tm_onboard_claim', 'tm_account_panel_handle_claim' );
+add_action( 'admin_post_ecomcine_register_vendor', 'ecomcine_tm_handle_vendor_registration' );
+add_action( 'admin_post_nopriv_ecomcine_register_vendor', 'ecomcine_tm_handle_vendor_registration' );
 
 function tm_account_panel_ping() {
 	if ( ! check_ajax_referer( 'tm_account_login', 'nonce', false ) ) {
@@ -330,7 +332,27 @@ function tm_account_panel_render_modal_markup( $force = false ) {
 				),
 			);
 		}
-		$registration_form = do_shortcode( '[dokan-vendor-registration]' );
+		if ( shortcode_exists( 'dokan-vendor-registration' ) ) {
+			$registration_form = do_shortcode( '[dokan-vendor-registration]' );
+		} else {
+			$reg_nonce         = wp_create_nonce( 'ecomcine_vendor_register' );
+			$registration_form  = '<form id="ecomcine-vendor-register" class="ecomcine-vendor-register" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			$registration_form .= '<input type="hidden" name="action" value="ecomcine_register_vendor" />';
+			$registration_form .= '<input type="hidden" name="_ecomcine_register_nonce" value="' . esc_attr( $reg_nonce ) . '" />';
+			$registration_form .= '<p class="form-row form-group"><label for="first-name">Full Name <span class="required">*</span></label>';
+			$registration_form .= '<input type="text" class="input-text form-control" name="fname" id="first-name" required="required" autocomplete="given-name" /></p>';
+			$registration_form .= '<input type="hidden" name="lname" id="last-name" value="" />';
+			$registration_form .= '<input type="hidden" name="shopname" id="company-name" value="" />';
+			$registration_form .= '<input type="hidden" name="shopurl" id="seller-url" value="" />';
+			$registration_form .= '<p class="form-row form-group"><label for="user_email">Email address <span class="required">*</span></label>';
+			$registration_form .= '<input type="email" class="input-text form-control" name="user_email" id="user_email" required="required" autocomplete="email" /></p>';
+			$registration_form .= '<input type="hidden" name="password" value="" />';
+			$registration_form .= '<input type="hidden" name="role" value="ecomcine_person" />';
+			$registration_form .= '<p class="form-row form-group">';
+			$registration_form .= '<button type="submit" name="register" class="btn dokan-btn dokan-btn-theme">Register</button>';
+			$registration_form .= '</p>';
+			$registration_form .= '</form>';
+		}
 
 		$account_body .= '<div class="tm-account-forms">';
 		$account_body .= '<div class="tm-account-tabs" role="tablist" aria-label="Account">';
@@ -356,6 +378,32 @@ function tm_account_panel_render_modal_markup( $force = false ) {
 		<div class="tm-account-tab tm-account-tab--admin" role="button" tabindex="0" aria-label="Add Talent" title="Add Talent">
 			<span class="tm-account-tab__icon"><?php echo tm_account_panel_svg_icon( 'user' ); ?></span>
 			<span class="tm-account-tab__label">Add Talent</span>
+		</div>
+		<div id="tm-admin-create-dialog" class="tm-admin-create-dialog" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Add New Talent">
+			<div class="tm-admin-create-backdrop"></div>
+			<div class="tm-admin-create-box" role="document">
+				<div class="tm-admin-create-header">
+					<strong><?php esc_html_e( 'Add New Talent', 'ecomcine' ); ?></strong>
+					<button class="tm-admin-create-close" type="button" aria-label="<?php esc_attr_e( 'Close', 'ecomcine' ); ?>">&times;</button>
+				</div>
+				<form class="tm-admin-create-form" id="tm-admin-create-form" novalidate>
+					<p class="form-row">
+						<label for="tm-admin-talent-name"><?php esc_html_e( 'Full Name', 'ecomcine' ); ?> <span class="required">*</span></label>
+						<input type="text" id="tm-admin-talent-name" name="talent_full_name" class="input-text" required autocomplete="off" placeholder="e.g. Jane Smith" />
+					</p>
+					<p class="form-row">
+						<label for="tm-admin-talent-email"><?php esc_html_e( 'Email', 'ecomcine' ); ?> <span class="tm-admin-create-optional">(<?php esc_html_e( 'optional', 'ecomcine' ); ?>)</span></label>
+						<input type="email" id="tm-admin-talent-email" name="talent_email" class="input-text" autocomplete="off" placeholder="talent@example.com" />
+					</p>
+					<p class="form-row">
+						<label for="tm-admin-talent-phone"><?php esc_html_e( 'Phone', 'ecomcine' ); ?> <span class="tm-admin-create-optional">(<?php esc_html_e( 'optional', 'ecomcine' ); ?>)</span></label>
+						<input type="tel" id="tm-admin-talent-phone" name="talent_phone" class="input-text" autocomplete="off" placeholder="+1 555 000 0000" />
+					</p>
+					<div class="tm-admin-create-actions">
+						<button type="submit" class="tm-admin-create-submit"><?php esc_html_e( 'Create &amp; Open Profile', 'ecomcine' ); ?></button>
+					</div>
+				</form>
+			</div>
 		</div>
 	<?php endif; ?>
 	<div class="tm-account-tab" role="button" tabindex="0" aria-controls="tm-account-modal" aria-expanded="false">Account</div>
@@ -547,43 +595,118 @@ function tm_account_panel_create_talent() {
 		wp_send_json_error( [ 'message' => 'forbidden' ], 403 );
 	}
 
-	$unique = wp_generate_password( 8, false, false );
-	$login_base = 'preonboard-' . gmdate( 'Ymd-His' ) . '-' . strtolower( $unique );
+	// Collect optional pre-fill fields submitted from the quick-create dialog.
+	$talent_full_name = isset( $_POST['talent_full_name'] ) ? sanitize_text_field( wp_unslash( $_POST['talent_full_name'] ) ) : '';
+	$talent_email     = isset( $_POST['talent_email'] )     ? sanitize_email( wp_unslash( $_POST['talent_email'] ) )         : '';
+	$talent_phone     = isset( $_POST['talent_phone'] )     ? sanitize_text_field( wp_unslash( $_POST['talent_phone'] ) )    : '';
+
+	// --- Derive a stable username/slug from the full name when provided ---
+	if ( $talent_full_name ) {
+		$name_slug  = sanitize_title( $talent_full_name );
+		$login_base = $name_slug ?: ( 'talent-' . gmdate( 'Ymd-His' ) );
+	} else {
+		$unique     = wp_generate_password( 8, false, false );
+		$login_base = 'preonboard-' . gmdate( 'Ymd-His' ) . '-' . strtolower( $unique );
+	}
+
 	$login = $login_base;
 	$tries = 0;
-	while ( username_exists( $login ) && $tries < 10 ) {
-		$login = $login_base . '-' . wp_generate_password( 4, false, false );
+	while ( username_exists( $login ) && $tries < 20 ) {
+		$login = $login_base . '-' . ( $tries + 2 );
 		$tries++;
 	}
 
-	$placeholder_email = 'preonboard+' . $login . '@example.invalid';
-	$user_id = wp_insert_user(
-		[
-			'user_login' => $login,
-			'user_email' => $placeholder_email,
-			'user_pass'  => wp_generate_password( 20, true, true ),
-			'role'       => 'seller',
-		]
-	);
+	// If a real email is provided and it's already taken, reject with a clear error.
+	if ( $talent_email && email_exists( $talent_email ) ) {
+		wp_send_json_error( [ 'message' => 'email_exists' ], 400 );
+	}
+
+	$use_email         = ( $talent_email && is_email( $talent_email ) ) ? $talent_email : ( 'preonboard+' . $login . '@example.invalid' );
+	$placeholder_email = $use_email;
+
+	$insert_args = [
+		'user_login'   => $login,
+		'user_email'   => $placeholder_email,
+		'user_pass'    => wp_generate_password( 20, true, true ),
+		'role'         => get_role( 'ecomcine_person' ) ? 'ecomcine_person' : 'seller',
+		'display_name' => $talent_full_name ?: $login,
+	];
+
+	if ( $talent_full_name ) {
+		$name_parts = function_exists( 'tm_account_panel_split_full_name' )
+			? tm_account_panel_split_full_name( $talent_full_name )
+			: [ $talent_full_name, '' ];
+		$insert_args['first_name'] = $name_parts[0];
+		$insert_args['last_name']  = $name_parts[1];
+	}
+
+	$user_id = wp_insert_user( $insert_args );
 
 	if ( is_wp_error( $user_id ) ) {
 		wp_send_json_error( [ 'message' => $user_id->get_error_message() ], 400 );
 	}
 
+	// Store name in profile settings so the profile editor + share-link flow find it immediately.
+	if ( $talent_full_name ) {
+		$profile_settings = [
+			'store_name' => $talent_full_name,
+			'store_slug' => $login,
+		];
+		update_user_meta( $user_id, 'dokan_profile_settings', $profile_settings );
+
+		// Set nicename to the name-derived slug now so the URL is correct.
+		$nicename = tm_account_panel_unique_user_nicename( $talent_full_name, $user_id );
+		wp_update_user( [ 'ID' => $user_id, 'user_nicename' => $nicename ] );
+	}
+
 	update_user_meta( $user_id, 'tm_preonboard', 1 );
 	update_user_meta( $user_id, 'tm_preonboard_admin_id', get_current_user_id() );
 	update_user_meta( $user_id, 'tm_preonboard_created_at', time() );
+	// Profile starts inactive; admin/talent must complete LVL1 before going live.
+	update_user_meta( $user_id, 'ecomcine_enabled', '0' );
+	update_user_meta( $user_id, 'dokan_enable_selling', 'no' );
 
-	if ( function_exists( 'dokan_get_store_url' ) ) {
-		$store_url = dokan_get_store_url( $user_id );
-	} else {
-		$store_url = home_url( '/' );
+	if ( $talent_phone ) {
+		update_user_meta( $user_id, 'tm_contact_phone', $talent_phone );
+	}
+	if ( $talent_email && is_email( $talent_email ) ) {
+		update_user_meta( $user_id, 'tm_preonboard_contact_email', $talent_email );
+		update_user_meta( $user_id, 'tm_contact_email_main', $talent_email );
 	}
 
+	// Build the profile URL directly from the rewrite base + nicename, bypassing
+	// the ecomcine_has_public_person_profile() gate (no tm_vendor CPT post exists yet).
+	$store_url = tm_account_panel_build_person_url( $user_id );
+
 	wp_send_json_success( [
-		'user_id' => $user_id,
+		'user_id'   => $user_id,
 		'store_url' => $store_url,
 	] );
+}
+
+/**
+ * Build a person profile URL directly from the EcomCine rewrite base + nicename,
+ * without any visibility gates (enabled/published). Used for preonboard users who
+ * don't yet have a tm_vendor CPT post.
+ */
+function tm_account_panel_build_person_url( int $user_id ): string {
+	$user = get_userdata( $user_id );
+	if ( ! $user ) {
+		return get_author_posts_url( $user_id );
+	}
+
+	$rewrite_base = get_option( 'ecomcine_person_base', 'person' );
+	$nicename     = $user->user_nicename;
+	if ( $nicename ) {
+		return trailingslashit( home_url( '/' . trim( $rewrite_base, '/' ) . '/' . $nicename ) );
+	}
+
+	// Dokan fallback.
+	if ( function_exists( 'dokan_get_store_url' ) ) {
+		return (string) dokan_get_store_url( $user_id );
+	}
+
+	return get_author_posts_url( $user_id );
 }
 
 function tm_account_panel_load_qr_library() {
@@ -685,17 +808,21 @@ function tm_account_panel_get_qr_svg_markup( $url, $context = 'onboard' ) {
 
 function tm_account_panel_prepare_onboarding_link( $vendor_id ) {
 	$vendor_id = (int) $vendor_id;
-	if ( ! $vendor_id || ! function_exists( 'dokan_get_store_url' ) ) {
+	if ( ! $vendor_id ) {
 		return new WP_Error( 'invalid_vendor', 'Invalid vendor.' );
 	}
 
-	$vendor = dokan()->vendor->get( $vendor_id );
-	if ( ! $vendor ) {
+	$user_data = get_userdata( $vendor_id );
+	if ( ! $user_data ) {
 		return new WP_Error( 'invalid_vendor', 'Invalid vendor.' );
 	}
 
-	$store_name = $vendor->get_shop_name();
-	$store_name = is_string( $store_name ) ? trim( $store_name ) : '';
+	// Prefer dokan_profile_settings store_name (written by the profile editor), fall back to display_name.
+	$profile_settings = get_user_meta( $vendor_id, 'dokan_profile_settings', true );
+	$store_name       = is_array( $profile_settings ) && ! empty( $profile_settings['store_name'] ) ? trim( $profile_settings['store_name'] ) : '';
+	if ( '' === $store_name ) {
+		$store_name = trim( (string) $user_data->display_name );
+	}
 	if ( '' === $store_name ) {
 		return new WP_Error( 'missing_name', 'Please enter and save the full name before sharing.' );
 	}
@@ -706,7 +833,9 @@ function tm_account_panel_prepare_onboarding_link( $vendor_id ) {
 		'user_nicename' => $slug,
 	] );
 
-	$store_url = dokan_get_store_url( $vendor_id );
+	// Use direct URL builder (bypasses ecomcine_has_public_person_profile gate
+	// which requires a published tm_vendor CPT post — not yet present for preonboard users).
+	$store_url = tm_account_panel_build_person_url( $vendor_id );
 	$token = wp_generate_password( 24, false, false );
 	$expires_at = time() + DAY_IN_SECONDS;
 	update_user_meta( $vendor_id, 'tm_preonboard_token', $token );
@@ -756,9 +885,12 @@ function tm_account_panel_share_link() {
 	$admin_id = get_current_user_id();
 	$admin_name = tm_account_panel_build_admin_full_name( $admin_id );
 	$talent_name = '';
-	if ( function_exists( 'dokan' ) ) {
-		$vendor = dokan()->vendor->get( $vendor_id );
-		$talent_name = $vendor ? $vendor->get_shop_name() : '';
+	$_talent_profile = get_user_meta( $vendor_id, 'dokan_profile_settings', true );
+	if ( is_array( $_talent_profile ) && ! empty( $_talent_profile['store_name'] ) ) {
+		$talent_name = $_talent_profile['store_name'];
+	} else {
+		$_talent_data = get_userdata( $vendor_id );
+		$talent_name  = $_talent_data ? (string) $_talent_data->display_name : '';
 	}
 	$default_message = "Dear \$TalentName,\n\n\$AdminName is inviting you to join Casting Agency Co and has already pre-filled your profile. Create an account to claim your talent profile, you will then be able to complete/publish it.";
 
@@ -946,7 +1078,10 @@ function tm_account_panel_handle_claim() {
 	wp_set_auth_cookie( $vendor_id, true );
 	wp_set_current_user( $vendor_id );
 
-	$redirect = function_exists( 'dokan_get_store_url' ) ? dokan_get_store_url( $vendor_id ) : home_url( '/' );
+	// Use the gate-bypassing URL builder: the profile is still inactive at this point
+	// (the talent must complete LVL1 before going live), so ecomcine_get_person_url()
+	// would return empty and land on admin-post.php.
+	$redirect = tm_account_panel_build_person_url( $vendor_id );
 	$redirect = add_query_arg( 'tm_onboard_claimed', '1', $redirect );
 	wp_safe_redirect( $redirect );
 	exit;
@@ -961,6 +1096,13 @@ function tm_account_panel_get_store_redirect_url( $user ) {
 
 	if ( function_exists( 'tm_get_vendor_public_profile_url' ) ) {
 		$store_url = tm_get_vendor_public_profile_url( $user_id );
+		if ( $store_url ) {
+			return $store_url;
+		}
+	}
+
+	if ( function_exists( 'ecomcine_get_person_url' ) ) {
+		$store_url = ecomcine_get_person_url( $user_id );
 		if ( $store_url ) {
 			return $store_url;
 		}
@@ -982,6 +1124,10 @@ function tm_account_panel_is_vendor_user( $user ) {
 	}
 
 	$user_id = is_object( $user ) ? $user->ID : (int) $user;
+
+	if ( function_exists( 'ecomcine_is_person_user' ) ) {
+		return ecomcine_is_person_user( $user_id );
+	}
 
 	if ( function_exists( 'dokan_is_user_seller' ) ) {
 		return (bool) dokan_is_user_seller( $user_id );
@@ -1232,3 +1378,88 @@ add_filter( 'logout_redirect', function( $redirect_to, $requested_redirect_to, $
 	$store_url = tm_account_panel_get_store_redirect_url( $user );
 	return $store_url ? $store_url : $redirect_to;
 }, 999, 3 );
+
+/**
+ * Native vendor/person registration handler for the EcomCine registration form.
+ * Handles action=ecomcine_register_vendor posted to admin-post.php.
+ */
+function ecomcine_tm_handle_vendor_registration() {
+	if (
+		! isset( $_POST['_ecomcine_register_nonce'] ) ||
+		! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_ecomcine_register_nonce'] ) ), 'ecomcine_vendor_register' )
+	) {
+		wp_die( esc_html__( 'Security check failed.', 'ecomcine' ), '', [ 'response' => 400 ] );
+	}
+
+	$fname         = isset( $_POST['fname'] ) ? sanitize_text_field( wp_unslash( $_POST['fname'] ) ) : '';
+	$email         = isset( $_POST['user_email'] ) ? sanitize_email( wp_unslash( $_POST['user_email'] ) ) : '';
+	$password      = isset( $_POST['password'] ) ? wp_unslash( $_POST['password'] ) : '';
+	if ( '' === $password ) {
+		$password  = isset( $_POST['tm_reg_password'] ) ? wp_unslash( $_POST['tm_reg_password'] ) : '';
+	}
+	$shopname      = isset( $_POST['shopname'] ) ? sanitize_text_field( wp_unslash( $_POST['shopname'] ) ) : $fname;
+	$shopurl       = isset( $_POST['shopurl'] ) ? sanitize_title( wp_unslash( $_POST['shopurl'] ) ) : '';
+	$role_req      = isset( $_POST['role'] ) ? sanitize_text_field( wp_unslash( $_POST['role'] ) ) : 'ecomcine_person';
+	$redirect_to   = home_url( '/' );
+
+	if ( ! $fname || ! $email || ! is_email( $email ) || strlen( $password ) < 6 ) {
+		wp_safe_redirect( add_query_arg( 'tm_reg_error', 'missing', $redirect_to ) );
+		exit;
+	}
+
+	if ( email_exists( $email ) ) {
+		wp_safe_redirect( add_query_arg( 'tm_reg_error', 'email_exists', $redirect_to ) );
+		exit;
+	}
+
+	// Derive a unique username from the slug or email prefix.
+	$base_username = $shopurl ?: sanitize_user( strtolower( (string) strstr( $email, '@', true ) ), true );
+	$base_username = $base_username ?: 'user';
+	$username      = $base_username;
+	$suffix        = 1;
+	while ( username_exists( $username ) ) {
+		$username = $base_username . '-' . $suffix++;
+	}
+
+	// Determine role: customer/hirer → WP customer; talent/seller → ecomcine_person (or seller fallback).
+	if ( in_array( $role_req, [ 'customer', 'hirer' ], true ) ) {
+		$role = 'customer';
+	} else {
+		$role = get_role( 'ecomcine_person' ) ? 'ecomcine_person' : 'seller';
+	}
+
+	$user_id = wp_create_user( $username, $password, $email );
+	if ( is_wp_error( $user_id ) ) {
+		wp_safe_redirect( add_query_arg( 'tm_reg_error', 'create', $redirect_to ) );
+		exit;
+	}
+
+	$user_obj = new WP_User( $user_id );
+	$user_obj->set_role( $role );
+
+	wp_update_user( [
+		'ID'           => $user_id,
+		'display_name' => $fname,
+		'first_name'   => $fname,
+	] );
+
+	$profile_settings = [
+		'store_name' => $shopname ?: $fname,
+		'store_slug' => sanitize_title( $shopname ?: $fname ),
+	];
+	update_user_meta( $user_id, 'dokan_profile_settings', $profile_settings );
+	update_user_meta( $user_id, 'tm_account_type', ( 'customer' === $role ) ? 'hirer' : 'talent' );
+
+	wp_set_auth_cookie( $user_id, false );
+	wp_set_current_user( $user_id );
+
+	// Redirect talent to their profile page; customers to the homepage.
+	if ( 'customer' !== $role && function_exists( 'ecomcine_get_person_url' ) ) {
+		$profile_url = ecomcine_get_person_url( $user_id );
+	} else {
+		$profile_url = get_author_posts_url( $user_id );
+	}
+
+	wp_safe_redirect( $profile_url ?: home_url( '/' ) );
+	exit;
+}

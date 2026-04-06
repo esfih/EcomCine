@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.64
+ * Version: 0.1.65
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.64' );
+define( 'ECOMCINE_VERSION', '0.1.65' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -360,7 +360,8 @@ ecomcine_load_module( 'modules/tm-store-ui/tm-store-ui.php' );
  * Safe to call multiple times — add_role() is a no-op when the role already exists.
  */
 function ecomcine_register_person_role(): void {
-	if ( ! get_role( 'ecomcine_person' ) ) {
+	$role = get_role( 'ecomcine_person' );
+	if ( ! $role ) {
 		add_role(
 			'ecomcine_person',
 			__( 'EcomCine Person', 'ecomcine' ),
@@ -373,11 +374,43 @@ function ecomcine_register_person_role(): void {
 				'manage_woocommerce'     => false,
 			)
 		);
+	} else {
+		// Ensure upload_files is always present — may be missing on installs where
+		// the role was created before this capability was added (add_role() is a no-op
+		// when the role already exists in the DB).
+		if ( empty( $role->capabilities['upload_files'] ) ) {
+			$role->add_cap( 'upload_files' );
+		}
 	}
 }
 
 // Register role on every init in case it was removed (e.g. by another plugin).
 add_action( 'init', 'ecomcine_register_person_role', 1 );
+
+// Persistently grant upload_files to ecomcine_person users on every request,
+// including async-upload.php and admin-ajax.php. The enqueue_media_library()
+// filter is temporary (removed immediately after wp_enqueue_media()), so the
+// actual plupload HTTP upload would otherwise fail the capability check.
+add_filter( 'user_has_cap', function( array $allcaps, array $caps, array $args, $user ): array {
+	if ( isset( $user->roles ) && in_array( 'ecomcine_person', (array) $user->roles, true ) ) {
+		$allcaps['upload_files'] = true;
+	}
+	return $allcaps;
+}, 10, 4 );
+
+// wp_ajax_upload_attachment() (WP 6.7+) checks current_user_can('edit_post', $post_id)
+// even when post_id=0. map_meta_cap returns ['do_not_allow'] for post_id=0 because no
+// post exists, blocking uploads for non-admin users. Remap edit_post on post_id=0 to
+// upload_files so ecomcine_person users can attach media without needing edit_posts.
+add_filter( 'map_meta_cap', function( array $caps, string $cap, int $user_id, array $args ): array {
+	if ( 'edit_post' === $cap && isset( $args[0] ) && (int) $args[0] === 0 ) {
+		$user = get_userdata( $user_id );
+		if ( $user && in_array( 'ecomcine_person', (array) $user->roles, true ) ) {
+			return [ 'upload_files' ];
+		}
+	}
+	return $caps;
+}, 10, 4 );
 
 // ── Theme-compat layer ────────────────────────────────────────────────────────
 // Load the thin compat file for whichever active theme supports the

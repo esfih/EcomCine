@@ -51,6 +51,121 @@
 	pointer-events: none;
 }
 
+/* ── Admin quick-create dialog ───────────────────────────────────────── */
+.tm-admin-create-dialog {
+	position: fixed;
+	inset: 0;
+	z-index: 2500;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s ease;
+}
+.tm-admin-create-dialog.is-open {
+	opacity: 1;
+	pointer-events: auto;
+}
+.tm-admin-create-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.65);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+}
+.tm-admin-create-box {
+	position: relative;
+	z-index: 1;
+	background: #1a1a1a;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 12px;
+	padding: 28px 32px;
+	width: min(420px, 90vw);
+	color: #e8e8e8;
+	box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
+}
+.tm-admin-create-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 20px;
+}
+.tm-admin-create-header strong {
+	font-size: 16px;
+	color: var(--tm-account-gold, #D4AF37);
+	letter-spacing: 0.5px;
+}
+.tm-admin-create-close {
+	background: none;
+	border: none;
+	color: #aaa;
+	font-size: 22px;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0 4px;
+}
+.tm-admin-create-close:hover { color: #fff; }
+.tm-admin-create-form .form-row {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	margin-bottom: 16px;
+}
+.tm-admin-create-form label {
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.8px;
+	color: #ccc;
+}
+.tm-admin-create-optional {
+	font-weight: 400;
+	text-transform: none;
+	letter-spacing: 0;
+	color: #777;
+	font-size: 11px;
+}
+.tm-admin-create-form .input-text {
+	background: rgba(255, 255, 255, 0.07);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 6px;
+	color: #fff;
+	padding: 9px 12px;
+	font-size: 14px;
+	width: 100%;
+	box-sizing: border-box;
+	transition: border-color 0.15s;
+}
+.tm-admin-create-form .input-text:focus {
+	outline: none;
+	border-color: var(--tm-account-gold, #D4AF37);
+}
+.tm-admin-create-form .input-text::placeholder { color: #555; }
+.tm-admin-create-actions {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 20px;
+}
+.tm-admin-create-submit {
+	background: var(--tm-account-gold, #D4AF37);
+	color: #000;
+	border: none;
+	border-radius: 6px;
+	padding: 10px 22px;
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.5px;
+	cursor: pointer;
+	transition: opacity 0.15s;
+}
+.tm-admin-create-submit:hover { opacity: 0.85; }
+.tm-admin-create-submit:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+/* ───────────────────────────────────────────────────────────────────── */
+
 .tm-account-modal {
 	position: fixed;
 	inset: 0;

@@ -1767,6 +1767,21 @@ body > .help-tooltip.visible,
    Profile Info Inline Editing (Avatar, Name, Location)
    =================================================================== */
 
+/* Positioning anchors — replace rules formerly provided by Dokan's stylesheet.
+   .profile-info-box spans the full cinematic banner height and is the
+   intended anchor for all absolute-positioned edit controls. */
+.profile-info-box {
+	position: relative;
+}
+
+.profile-info-summery-wrapper {
+	position: relative;
+}
+
+.profile-info-summery {
+	position: relative;
+}
+
 /* Avatar Edit Button */
 .profile-img.editable-avatar {
 	position: relative;
@@ -1818,10 +1833,12 @@ body > .help-tooltip.visible,
 	--panel-width: clamp(280px, calc(50vh / 1.618), 360px);
 	width: var(--panel-width) !important;
 	max-width: var(--panel-width) !important;
-	position: absolute !important;
+	/* Fixed positioning mirrors .profile-info-head so the bar always aligns
+	   with the top-left of the sidebar panel regardless of DOM parent height. */
+	position: fixed !important;
 	left: 0 !important;
-	top: 50% !important;
-	transform: translateY(calc(-50% - 50vh / 2 - 10px)) translateX(0) !important;
+	top: calc(50vh - 50vh / 2 - 34px) !important;
+	transform: translateX(0) !important;
 	justify-content: center;
 }
 
