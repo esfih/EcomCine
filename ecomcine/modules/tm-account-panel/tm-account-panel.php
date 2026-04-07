@@ -76,13 +76,13 @@ function tm_account_panel_enqueue_assets( $force = false ) {
 		'tm-account-panel-css',
 		$plugin_url . 'assets/css/account-panel.css',
 		array(),
-		'1.1.17'
+		ECOMCINE_VERSION
 	);
 	wp_enqueue_script(
 		'tm-account-panel-js',
 		$plugin_url . 'assets/js/account-panel.js',
 		array( 'jquery' ),
-		'1.1.17',
+		ECOMCINE_VERSION,
 		true
 	);
 	$privacy_url = get_privacy_policy_url();
