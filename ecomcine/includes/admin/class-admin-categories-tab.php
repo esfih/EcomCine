@@ -959,11 +959,11 @@ class EcomCine_Admin_Categories_Tab {
 	 * @param array  $data File type data.
 	 * @param string $file Full path to file.
 	 * @param string $filename File name.
-	 * @param array  $mimes Allowed MIME list.
+	 * @param array|null $mimes Allowed MIME list.
 	 * @param string|false $real_mime Real MIME when available.
 	 * @return array
 	 */
-	public static function allow_category_icon_svg_filetype( array $data, string $file, string $filename, array $mimes, $real_mime ): array {
+	public static function allow_category_icon_svg_filetype( array $data, string $file, string $filename, ?array $mimes, $real_mime ): array {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
 			return $data;
 		}
