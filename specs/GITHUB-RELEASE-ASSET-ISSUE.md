@@ -27,7 +27,7 @@ cd /root/dev/EcomCine
 
 This script:
 1. Reads version from `ecomcine/ecomcine.php`
-2. Rsyncs plugin files to `dist/ecomcine/`
+2. Stages plugin files in a temporary `ecomcine/` directory outside the repo tree
 3. Creates `dist/ecomcine-<version>.zip` with correct structure
 4. Generates manifest file
 

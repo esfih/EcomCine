@@ -19,6 +19,7 @@ theme/output-files/
 # ── Build & release artifacts ─────────────────────────────────────────────────
 output/releases/
 *.zip
+dist/ecomcine/
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 logs/

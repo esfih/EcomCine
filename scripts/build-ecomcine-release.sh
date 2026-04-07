@@ -5,7 +5,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PLUGIN_DIR="$REPO_ROOT/ecomcine"
 DIST_DIR="$REPO_ROOT/dist"
-STAGE_DIR="$DIST_DIR/ecomcine"
+STAGE_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ecomcine-release.XXXXXX")"
+STAGE_DIR="$STAGE_ROOT/ecomcine"
+
+cleanup() {
+  rm -rf "$STAGE_ROOT"
+}
+
+trap cleanup EXIT
 
 if [[ ! -f "$PLUGIN_DIR/ecomcine.php" ]]; then
   echo "ERROR: missing plugin bootstrap at $PLUGIN_DIR/ecomcine.php" >&2
@@ -13,7 +20,6 @@ if [[ ! -f "$PLUGIN_DIR/ecomcine.php" ]]; then
 fi
 
 mkdir -p "$DIST_DIR"
-rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR"
 
 rsync -a --delete \
@@ -23,7 +29,7 @@ rsync -a --delete \
   --exclude 'dist/' \
   "$PLUGIN_DIR/" "$STAGE_DIR/"
 
-VERSION="$(grep -E '^ \* Version:' "$STAGE_DIR/ecomcine.php" | head -n1 | sed -E 's/^ \* Version:[[:space:]]*//')"
+VERSION="$(grep -E '^ \* Version:' "$PLUGIN_DIR/ecomcine.php" | head -n1 | sed -E 's/^ \* Version:[[:space:]]*//')"
 if [[ -z "$VERSION" ]]; then
   VERSION="unknown"
 fi
@@ -37,35 +43,34 @@ rm -f "$DIST_DIR/${ARCHIVE_BASENAME}.zip" "$DIST_DIR/${ARCHIVE_BASENAME}.tar.gz"
 
 if command -v zip >/dev/null 2>&1; then
   (
-    cd "$DIST_DIR"
-    zip -rq "${ARCHIVE_BASENAME}.zip" ecomcine
+    cd "$STAGE_ROOT"
+    zip -rq "$ARCHIVE_PATH" ecomcine
   )
   ARCHIVE_EXT="zip"
   ARCHIVE_PATH="$DIST_DIR/${ARCHIVE_BASENAME}.zip"
 elif command -v python3 >/dev/null 2>&1; then
-  python3 - "$DIST_DIR" "${ARCHIVE_BASENAME}.zip" <<'PY'
+  python3 - "$STAGE_ROOT" "$ARCHIVE_PATH" <<'PY'
 import os
 import sys
 import zipfile
 
-dist_dir = sys.argv[1]
-zip_name = sys.argv[2]
-plugin_dir = os.path.join(dist_dir, 'ecomcine')
-zip_path = os.path.join(dist_dir, zip_name)
+stage_root = sys.argv[1]
+zip_path = sys.argv[2]
+plugin_dir = os.path.join(stage_root, 'ecomcine')
 
 with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
     for root, _, files in os.walk(plugin_dir):
         for file_name in files:
             file_path = os.path.join(root, file_name)
-            arcname = os.path.relpath(file_path, dist_dir)
+            arcname = os.path.relpath(file_path, stage_root)
             zf.write(file_path, arcname)
 PY
   ARCHIVE_EXT="zip"
   ARCHIVE_PATH="$DIST_DIR/${ARCHIVE_BASENAME}.zip"
 else
   (
-    cd "$DIST_DIR"
-    tar -czf "${ARCHIVE_BASENAME}.tar.gz" ecomcine
+    cd "$STAGE_ROOT"
+    tar -czf "$DIST_DIR/${ARCHIVE_BASENAME}.tar.gz" ecomcine
   )
   ARCHIVE_EXT="tar.gz"
   ARCHIVE_PATH="$DIST_DIR/${ARCHIVE_BASENAME}.tar.gz"
