@@ -574,7 +574,7 @@ jQuery(document).ready(function($) {
 	function bindVideoEvents(videoEl, item) {
 		if (!videoEl) return;
 		var $v = $(videoEl);
-		$v.off("ended.tmhero loadedmetadata.tmhero playing.tmhero canplay.tmhero volumechange.tmhero")
+		$v.off("ended.tmhero loadedmetadata.tmhero playing.tmhero canplay.tmhero volumechange.tmhero error.tmhero")
 			.on("ended.tmhero", function() {
 				if (state.loopMode) {
 					// Smart TV: native loop=true can fire spurious ended events after 2-3 cycles.
@@ -605,6 +605,12 @@ jQuery(document).ready(function($) {
 			})
 			.on("volumechange.tmhero", function() {
 				syncMutedFromElement(videoEl);
+			})
+			.on("error.tmhero", function() {
+				clearAdvanceTimer();
+				showLoadingIndicator(false);
+				state.isPlaying = false;
+				syncRemotePlaying(false);
 			})
 			.on("loadedmetadata.tmhero", function() {
 				if (videoEl.duration) {
@@ -2075,6 +2081,7 @@ jQuery(document).ready(function($) {
 		videoEl.removeEventListener('progress', videoEl.__tmSlowLoadingHandlers.progress);
 		videoEl.removeEventListener('canplay', videoEl.__tmSlowLoadingHandlers.canplay);
 		videoEl.removeEventListener('playing', videoEl.__tmSlowLoadingHandlers.playing);
+		videoEl.removeEventListener('error', videoEl.__tmSlowLoadingHandlers.error);
 		delete videoEl.__tmSlowLoadingHandlers;
 	}
 
@@ -2094,11 +2101,15 @@ jQuery(document).ready(function($) {
 			},
 			playing: function() {
 				showLoadingIndicator(false);
+			},
+			error: function() {
+				showLoadingIndicator(false);
 			}
 		};
 		videoEl.addEventListener('progress', videoEl.__tmSlowLoadingHandlers.progress);
 		videoEl.addEventListener('canplay', videoEl.__tmSlowLoadingHandlers.canplay);
 		videoEl.addEventListener('playing', videoEl.__tmSlowLoadingHandlers.playing);
+		videoEl.addEventListener('error', videoEl.__tmSlowLoadingHandlers.error);
 	}
 
 	function showEq(active) {
