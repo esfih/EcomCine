@@ -1536,7 +1536,6 @@ jQuery(document).ready(function($) {
 			state.isPlaying = true;
 			console.log('[TM PLAYER DEBUG] state.isPlaying set to true');
 			playCurrent();
-			$overlay.addClass("is-hidden");
 			try {
 				if (window.sessionStorage) {
 					sessionStorage.setItem("tm_showcase_started", "1");
@@ -2592,7 +2591,15 @@ jQuery(document).ready(function($) {
 				armAdvanceTimer(item);
 			}
 		}
-		syncRemotePlaying(true);
+		var isActivelyPlaying = false;
+		if (item.type === "video" && heroVideoActive) {
+			isActivelyPlaying = !heroVideoActive.paused && !heroVideoActive.ended && !heroVideoActive.error;
+		} else if (item.type === "audio" && $heroAudio.length) {
+			isActivelyPlaying = !$heroAudio[0].paused && !$heroAudio[0].ended;
+		} else if (item.type === "image") {
+			isActivelyPlaying = true;
+		}
+		syncRemotePlaying(isActivelyPlaying);
 	}
 
 	function pauseCurrent(fromUser) {
