@@ -1,0 +1,54 @@
+{
+  "name": "Generic clickable interaction suite",
+  "pages": [
+    {
+      "name": "Describe the feature flow",
+      "url": "/",
+      "steps": [
+        {
+          "action": "assertVisible",
+          "target": [
+            ".primary-selector",
+            "#fallback-selector"
+          ],
+          "optional": false
+        },
+        {
+          "action": "click",
+          "target": [
+            ".primary-selector",
+            "#fallback-selector"
+          ],
+          "optional": false
+        },
+        {
+          "action": "assertHasClass",
+          "target": ".container",
+          "className": "is-open"
+        },
+        {
+          "action": "click",
+          "shadowHosts": [
+            "app-shell",
+            "feature-widget"
+          ],
+          "shadowTarget": "button.apply",
+          "optional": true
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "/expected-path"
+        },
+        {
+          "action": "assertNotHasClass",
+          "target": ".container",
+          "className": "is-open"
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "reuse": "Copy this file and replace selectors/steps for your feature. Keep fallback selector arrays for portability across layouts.",
+    "shadowDom": "Use shadowHosts + shadowTarget for open shadow roots. For closed shadow roots, add app test hooks or expose host-level actions."
+  }
+}

@@ -30,6 +30,9 @@ fi
 
 export MSYS_NO_PATHCONV=1
 
+echo "==> Checking local dev infrastructure baseline..."
+"$REPO_ROOT/scripts/check-local-dev-infra.sh"
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "Docker CLI not found." >&2
   exit 2
@@ -51,32 +54,52 @@ else
 fi
 
 echo "==> Checking WP-CLI is available..."
-if ! docker exec -i "$WP_SERVICE" wp --info --allow-root >/dev/null 2>&1; then
+if ! docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T "$WP_SERVICE" wp --info --allow-root >/dev/null 2>&1; then
   echo "WARN: WP-CLI not available in container." >&2
 else
   echo "OK: WP-CLI available."
 fi
 
 echo "==> Checking custom plugin activation..."
-ALL_CUSTOM_PLUGINS=(
-  "tm-media-player"
-  "tm-account-panel"
-  "tm-vendor-booking-modal"
-  "dokan-category-attributes"
-)
-for slug in "${ALL_CUSTOM_PLUGINS[@]}"; do
-  if docker exec -i "$WP_SERVICE" wp plugin is-active "$slug" --allow-root >/dev/null 2>&1; then
-    echo "OK: $slug is active."
+if docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T "$WP_SERVICE" wp plugin is-active "ecomcine" --allow-root >/dev/null 2>&1; then
+  echo "OK: ecomcine is active (unified Phase 1 plugin)."
+else
+  echo "WARN: ecomcine is not active; checking legacy TM plugin set..."
+  LEGACY_TM_PLUGINS=(
+    "tm-media-player"
+    "tm-account-panel"
+    "tm-vendor-booking-modal"
+  )
+  for slug in "${LEGACY_TM_PLUGINS[@]}"; do
+    if docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T "$WP_SERVICE" wp plugin is-active "$slug" --allow-root >/dev/null 2>&1; then
+      echo "OK: $slug is active."
+    else
+      echo "WARN: $slug is not active. Run: ./scripts/wp.sh wp plugin activate $slug"
+    fi
+  done
+fi
+
+if docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T "$WP_SERVICE" wp plugin is-active "dokan-category-attributes" --allow-root >/dev/null 2>&1; then
+  echo "OK: dokan-category-attributes is active."
+else
+  echo "WARN: dokan-category-attributes is not active. Run: ./scripts/wp.sh wp plugin activate dokan-category-attributes"
+fi
+
+if docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T "$WP_SERVICE" wp plugin is-installed "ecomcine-control-plane" --allow-root >/dev/null 2>&1; then
+  if docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T "$WP_SERVICE" wp plugin is-active "ecomcine-control-plane" --allow-root >/dev/null 2>&1; then
+    echo "OK: ecomcine-control-plane is active (billing control-plane)."
   else
-    echo "WARN: $slug is not active. Run: ./scripts/wp.sh wp plugin activate $slug"
+    echo "WARN: ecomcine-control-plane is installed but inactive. Run: ./scripts/wp.sh wp plugin activate ecomcine-control-plane"
   fi
-done
+else
+  echo "INFO: ecomcine-control-plane is not installed (expected on non-billing environments)."
+fi
 
 echo "==> Checking theme activation..."
-if docker exec -i "$WP_SERVICE" wp theme is-active astra-child --allow-root >/dev/null 2>&1; then
-  echo "OK: astra-child theme is active."
+if docker compose -f "$REPO_ROOT/docker-compose.yml" exec -T "$WP_SERVICE" wp theme is-active ecomcine-base --allow-root >/dev/null 2>&1; then
+  echo "OK: ecomcine-base theme is active."
 else
-  echo "WARN: astra-child theme is not active. Run: ./scripts/wp.sh wp theme activate astra-child"
+  echo "WARN: ecomcine-base theme is not active. Run: ./scripts/wp.sh wp theme activate ecomcine-base"
 fi
 
 echo ""

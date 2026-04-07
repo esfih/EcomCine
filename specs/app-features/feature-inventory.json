@@ -33,11 +33,18 @@
       "description": "Dynamic category-specific vendor profile attributes with conditional display and filters."
     },
     {
-      "id": "astra-child-theme",
-      "name": "Astra Child Theme (EcomCine Orchestrator)",
-      "folder": "theme",
+      "id": "ecomcine-base-theme",
+      "name": "EcomCine Base Theme",
+      "folder": "ecomcine/bundled-theme",
       "status": "active",
-      "description": "Central controller: asset loading, Dokan/WooCommerce overrides, vendor attributes integration, social metrics."
+      "description": "Canonical minimal theme shell: document structure, hook points, and base theme supports for standalone EcomCine runtime."
+    },
+    {
+      "id": "demo-data",
+      "name": "Demo Data Packaging & Remote Import",
+      "folder": "demos/",
+      "status": "active",
+      "description": "Canonical demo vendor dataset, media rebuild pipeline, GitHub release packaging, manifest publication, and remote import validation workflow."
     }
   ]
 }

@@ -6,8 +6,9 @@ deps/
 
 # ── Database exports — never commit live or unscrubbed dumps ──────────────────
 db/*.sql
-# The scrubbed dev seed is the one exception — un-comment when ready:
-# !db/seed.sql
+# Allowed scrubbed fixtures used for reproducible local bootstrap:
+!db/seed.sql
+!db/fluentcart-control-plane-seed.sql
 
 # ── WordPress core (never committed) ──────────────────────────────────────────
 wp-content/
@@ -18,6 +19,7 @@ theme/output-files/
 # ── Build & release artifacts ─────────────────────────────────────────────────
 output/releases/
 *.zip
+dist/ecomcine/
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 logs/
@@ -25,6 +27,8 @@ logs/
 # ── OS & editor noise ─────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+*:Zone.Identifier
+*Zone.Identifier
 *.swp
 *.swo
 .idea/

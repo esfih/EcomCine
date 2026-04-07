@@ -1,0 +1,93 @@
+{
+  "name": "Vendor store CTA and bottom-tab interactions",
+  "pages": [
+    {
+      "name": "CTA buttons remain clickable",
+      "url": "/",
+      "steps": [
+        {
+          "action": "assertVisible",
+          "target": ".vendor-cta-buttons"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".vendor-cta-qr"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".vendor-cta-qr .qr-code-live"
+        },
+        {
+          "action": "assertHidden",
+          "target": ".vendor-cta-qr .qr-code-fallback"
+        },
+        {
+          "action": "click",
+          "target": ".vendor-cta-btn",
+          "optional": true
+        },
+        {
+          "action": "assertVisible",
+          "target": ".vendor-cta-buttons"
+        }
+      ]
+    },
+    {
+      "name": "Bottom tabs toggle panel states",
+      "url": "/",
+      "steps": [
+        {
+          "action": "assertVisible",
+          "target": ".bottom-tab-item[data-target='demographic-section']"
+        },
+        {
+          "action": "click",
+          "target": ".bottom-tab-item[data-target='demographic-section']"
+        },
+        {
+          "action": "assertHasClass",
+          "target": ".bottom-tab-item[data-target='demographic-section']",
+          "className": "active-panel"
+        },
+        {
+          "action": "assertHasClass",
+          "target": "#demographic-section",
+          "className": "slide-up"
+        },
+        {
+          "action": "click",
+          "target": ".bottom-tab-item[data-target='social-section']"
+        },
+        {
+          "action": "assertHasClass",
+          "target": ".bottom-tab-item[data-target='social-section']",
+          "className": "active-panel"
+        },
+        {
+          "action": "assertNotHasClass",
+          "target": ".bottom-tab-item[data-target='demographic-section']",
+          "className": "active-panel"
+        },
+        {
+          "action": "assertHasClass",
+          "target": "#social-section",
+          "className": "slide-up"
+        },
+        {
+          "action": "click",
+          "target": "body"
+        },
+        {
+          "action": "assertNotHasClass",
+          "target": ".bottom-tab-item[data-target='social-section']",
+          "className": "active-panel"
+        },
+        {
+          "action": "assertNotHasClass",
+          "target": "#social-section",
+          "className": "slide-up"
+        }
+      ]
+    }
+  ]
+}

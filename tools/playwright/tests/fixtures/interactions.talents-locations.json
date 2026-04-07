@@ -1,0 +1,48 @@
+{
+  "name": "Talents locations map page interactions",
+  "pages": [
+    {
+      "name": "Locations map panel renders country dropdown and category buttons",
+      "url": "/talents-locations/",
+      "waitFor": ".tm-vmap-cat-panel",
+      "steps": [
+        {
+          "action": "assertVisible",
+          "target": ".tm-vendors-map-wrap"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-vendors-map-canvas"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-vmap-cat-panel"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-vmap-country-select"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-vmap-cats"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-vmap-cat-btn.is-all"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-vmap-sort-list"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-vmap-showcase-btn"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-vmap-filter-btn"
+        }
+      ]
+    }
+  ]
+}

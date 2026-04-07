@@ -1,0 +1,50 @@
+# Modelfile — kavai/Gemma4-GPT5 31B optimized variant
+#
+# Base:     kavai/Gemma4-GPT5:31b-it-q4_K_M
+# Context:  32768 tokens (32K)
+# Runtime:  Flash Attention + Q8_0 KV cache (set via OLLAMA_FLASH_ATTENTION=1 / OLLAMA_KV_CACHE_TYPE=q8_0 on host)
+# Thinking: /no_think injected via proxy; SYSTEM prompt reinforces nothink behaviour
+#
+# Create command (run from Windows CMD / PowerShell where Ollama is installed):
+#
+#   ollama create kavai/Gemma4-GPT5:31b-32k -f Modelfile-gemma4-gpt5-31b-65k
+#
+# Verify:
+#
+#   ollama list
+#
+# ─────────────────────────────────────────────────────────────────────────
+# Step 1 — Base model
+# ─────────────────────────────────────────────────────────────────────────
+
+FROM kavai/Gemma4-GPT5:31b-it-q4_K_M
+
+# ─────────────────────────────────────────────────────────────────────────
+# Step 2 — Context window
+#
+# 65536 tokens (64K). At Q4_K_M a 31B model on 24 GB VRAM can safely
+# sustain this with Flash Attention + Q8_0 KV cache active on the host.
+# If VRAM is tighter (< 20 GB), drop to 32768.
+# ─────────────────────────────────────────────────────────────────────────
+
+PARAMETER num_ctx 32768
+
+# ─────────────────────────────────────────────────────────────────────────
+# Step 3 — Inference parameters
+#
+# num_predict: cap max output tokens — prevents runaway streaming responses
+# repeat_penalty: light repetition dampening for code tasks
+# ─────────────────────────────────────────────────────────────────────────
+
+PARAMETER num_predict 4096
+PARAMETER repeat_penalty 1.05
+
+# ─────────────────────────────────────────────────────────────────────────
+# Step 4 — No-Think system prompt
+#
+# The nothink proxy already injects think:false at the API layer.
+# This system prompt reinforces the behaviour at the model level so the
+# instruction is baked in even if the proxy mode is switched to passthrough.
+# Keep it short — counts against num_ctx.
+# ─────────────────────────────────────────────────────────────────────────
+

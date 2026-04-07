@@ -1,0 +1,15 @@
+{
+  "name": "server-side-converter",
+  "version": "2026.04.08-ssl-redirect",
+  "platform": "linux-x86_64",
+  "zip": "server-side-converter-linux-x86_64-2026.04.08-ssl-redirect.zip",
+  "bundled_binaries": [
+    "bin/linux-x86_64/ffmpeg",
+    "bin/linux-x86_64/ffprobe"
+  ],
+  "entrypoints": [
+    "start.sh",
+    "start.bat",
+    "server.js"
+  ]
+}

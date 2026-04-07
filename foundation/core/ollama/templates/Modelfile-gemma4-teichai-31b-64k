@@ -1,0 +1,47 @@
+# Modelfile — TeichAI/gemma-4-31B-it-Claude-Opus-Distill 64K optimized variant
+#
+# Base:     hf.co/TeichAI/gemma-4-31B-it-Claude-Opus-Distill-GGUF:Q4_K_M
+# Context:  65536 tokens (64K)
+# Runtime:  Flash Attention + Q8_0 KV cache (OLLAMA_FLASH_ATTENTION=1 / OLLAMA_KV_CACHE_TYPE=q8_0 on host)
+# Proxy:    Gemma passthrough mode (no nothink injection — proxy detects /gemma/ pattern)
+#
+# Create command (run from Windows CMD / PowerShell where Ollama is installed):
+#
+#   ollama create gemma4-teichai:31b-64k -f "\\wsl.localhost\Ubuntu\root\dev\EcomCine\foundation\core\ollama\templates\Modelfile-gemma4-teichai-31b-64k"
+#
+# Verify:
+#
+#   ollama list
+#
+# ─────────────────────────────────────────────────────────────────────────
+# Step 1 — Base model
+# ─────────────────────────────────────────────────────────────────────────
+
+FROM hf.co/TeichAI/gemma-4-31B-it-Claude-Opus-Distill-GGUF:Q4_K_M
+
+# ─────────────────────────────────────────────────────────────────────────
+# Step 2 — Context window
+#
+# 65536 tokens (64K). Requires OLLAMA_FLASH_ATTENTION=1 + OLLAMA_KV_CACHE_TYPE=q8_0
+# on the Windows host to fit in 24 GB VRAM. Drop to 49152 if crashing.
+# ─────────────────────────────────────────────────────────────────────────
+
+PARAMETER num_ctx 65536
+
+# ─────────────────────────────────────────────────────────────────────────
+# Step 3 — Inference parameters
+# ─────────────────────────────────────────────────────────────────────────
+
+PARAMETER num_predict 4096
+PARAMETER repeat_penalty 1.05
+
+# ─────────────────────────────────────────────────────────────────────────
+# Step 4 — System prompt
+#
+# Claude Opus distill — inherits Claude-style instruction following.
+# No /no_think prefix — Gemma ignores it; proxy skips nothink injection.
+# ─────────────────────────────────────────────────────────────────────────
+
+SYSTEM """
+You are a fast, precise coding assistant. Return only the requested code, fix, or explanation. Be concise and direct.
+"""

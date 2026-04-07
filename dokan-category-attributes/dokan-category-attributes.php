@@ -9,7 +9,7 @@
  * Text Domain: dokan-category-attributes
  * Domain Path: /languages
  * Requires at least: 5.8
- * Requires PHP: 7.4
+ * Requires PHP: 8.2
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -82,7 +82,32 @@ final class Dokan_Category_Attributes {
 		require_once DCA_PLUGIN_DIR . 'includes/class-dashboard-fields.php';
 		require_once DCA_PLUGIN_DIR . 'includes/class-store-filters.php';
 		require_once DCA_PLUGIN_DIR . 'includes/class-sample-data.php';
-		
+
+		// Adapter layer — Phase 1 (additive; existing hook behaviour unchanged)
+		// Contracts (interfaces)
+		require_once DCA_PLUGIN_DIR . 'includes/contracts/interface-attribute-repository.php';
+		require_once DCA_PLUGIN_DIR . 'includes/contracts/interface-category-resolver.php';
+		require_once DCA_PLUGIN_DIR . 'includes/contracts/interface-dashboard-renderer.php';
+		require_once DCA_PLUGIN_DIR . 'includes/contracts/interface-profile-projector.php';
+		require_once DCA_PLUGIN_DIR . 'includes/contracts/interface-filter-provider.php';
+		// Compatibility adapters (wrap existing classes)
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-attribute-repository.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-category-resolver.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-dashboard-renderer.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-profile-projector.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/compatibility/class-compat-filter-provider.php';
+		// Default WP adapter — Phase 2 (CPT-based full implementations)
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-cpt-storage.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-attribute-repository.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-category-resolver.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-dashboard-renderer.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-profile-projector.php';
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/default-wp/class-wp-filter-provider.php';
+		// Registry (loaded last — depends on all adapter classes above)
+		require_once DCA_PLUGIN_DIR . 'includes/adapters/class-adapter-registry.php';
+		// Parity check (Phase 2 — development/staging use only)
+		require_once DCA_PLUGIN_DIR . 'includes/parity/class-parity-check.php';
+
 		// Admin classes
 		if ( is_admin() ) {
 			require_once DCA_PLUGIN_DIR . 'includes/class-admin-menu.php';
@@ -97,7 +122,10 @@ final class Dokan_Category_Attributes {
 		// Activation/deactivation hooks
 		register_activation_hook( __FILE__, array( $this, 'activate' ) );
 		register_deactivation_hook( __FILE__, array( $this, 'deactivate' ) );
-		
+
+		// Register Default WP adapter CPTs unconditionally (no Dokan dependency).
+		add_action( 'init', array( 'DCA_WP_CPT_Storage', 'register_post_types' ), 5 );
+
 		// Init plugin
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
 		
@@ -110,8 +138,12 @@ final class Dokan_Category_Attributes {
 	 * Initialize plugin
 	 */
 	public function init() {
-		// Check if Dokan is active
-		if ( ! class_exists( 'WeDevs_Dokan' ) ) {
+		// Check if Dokan is active — use EcomCine capability registry if available.
+		$has_dokan = class_exists( 'EcomCine_Plugin_Capability', false )
+			? EcomCine_Plugin_Capability::has_dokan()
+			: function_exists( 'dokan_get_store_url' );
+
+		if ( ! $has_dokan ) {
 			add_action( 'admin_notices', array( $this, 'dokan_missing_notice' ) );
 			return;
 		}

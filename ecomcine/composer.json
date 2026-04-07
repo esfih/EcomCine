@@ -1,0 +1,12 @@
+{
+    "name": "ecomcine/ecomcine",
+    "description": "EcomCine WordPress plugin",
+    "type": "wordpress-plugin",
+    "require": {
+        "chillerlan/php-qrcode": "^4.3"
+    },
+    "config": {
+        "vendor-dir": "vendor",
+        "optimize-autoloader": true
+    }
+}

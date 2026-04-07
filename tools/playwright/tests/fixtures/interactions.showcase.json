@@ -1,0 +1,47 @@
+{
+  "name": "Showcase interactions",
+  "pages": [
+    {
+      "name": "Showcase interactions pause and resume talent rotation",
+      "url": "/showcase/",
+      "waitFor": [
+        ".keyboard-nav-loop",
+        ".hero-next"
+      ],
+      "steps": [
+        {
+          "action": "click",
+          "target": ".tm-showcase-play-overlay",
+          "optional": true
+        },
+        {
+          "action": "click",
+          "target": ".hero-next"
+        },
+        {
+          "action": "assertHasClass",
+          "target": ".tm-showcase-resume-control",
+          "className": "is-visible"
+        },
+        {
+          "action": "click",
+          "target": ".bottom-tab-item"
+        },
+        {
+          "action": "assertHasClass",
+          "target": ".tm-showcase-resume-control",
+          "className": "is-visible"
+        },
+        {
+          "action": "click",
+          "target": ".tm-showcase-resume-control"
+        },
+        {
+          "action": "assertNotHasClass",
+          "target": ".tm-showcase-resume-control",
+          "className": "is-visible"
+        }
+      ]
+    }
+  ]
+}

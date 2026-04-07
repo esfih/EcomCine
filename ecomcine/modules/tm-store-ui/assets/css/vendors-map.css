@@ -1,0 +1,382 @@
+/* =============================================================================
+   [vendors_map] shortcode — dark-mode Mapbox GL map
+   Scoped under .tm-vendors-map-wrap to avoid collisions with other Mapbox
+   instances on the page (e.g. the vendor edit-location modal).
+   ============================================================================= */
+
+/* ── Full-viewport container ────────────────────────────────────────────────
+   The wrap is pulled out of normal flow and fixed to the entire viewport.
+   The cinematic header sits at z-index 110 (position: absolute) and floats
+   above the map automatically — no padding or offset needed.
+   overflow: visible so Mapbox popups are never clipped by the container edge.
+   ────────────────────────────────────────────────────────────────────────── */
+.tm-vendors-map-wrap {
+	position: fixed !important;
+	inset: 0 !important;                  /* top/right/bottom/left: 0 */
+	width: 100vw !important;
+	height: 100dvh !important;            /* dvh respects mobile browser chrome */
+	border-radius: 0 !important;
+	border: none !important;
+	box-shadow: none !important;
+	overflow: visible !important;         /* don't clip Mapbox popups */
+	z-index: 1;                           /* below cinematic header (z-index 110) */
+}
+
+/* ── Map canvas: fill the fixed wrapper ─────────────────────────────────── */
+.tm-vendors-map-canvas {
+	width: 100% !important;
+	height: 100% !important;
+	min-height: 0 !important;
+}
+
+/* ── Suppress page-level scroll and platform-content padding ────────────── */
+/* body:has() is broadly supported; the map IS the page so no scroll needed  */
+body:has(.tm-vendors-map-wrap) {
+	overflow: hidden !important;
+}
+
+body:has(.tm-vendors-map-wrap) #tm-platform-content {
+	padding-top: 0 !important;
+	min-height: 0 !important;
+	overflow: hidden !important;
+}
+
+/* ── Popup card ─────────────────────────────────────────────────────────────── */
+.tm-vendors-map-wrap .mapboxgl-popup-content {
+	background: #111 !important;
+	border: 1px solid rgba(212, 175, 55, 0.35) !important;
+	border-radius: 10px !important;
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7) !important;
+	padding: 0 !important;
+	min-width: 200px;
+	overflow: hidden;
+}
+
+.tm-vendors-map-wrap .mapboxgl-popup-tip {
+	border-top-color: rgba(212, 175, 55, 0.35) !important;
+}
+
+.tm-vendors-map-wrap .mapboxgl-popup-close-button {
+	color: #D4AF37 !important;
+	font-size: 18px !important;
+	line-height: 1 !important;
+	top: 6px !important;
+	right: 8px !important;
+	background: transparent !important;
+}
+
+/* ── Popup inner layout ─────────────────────────────────────────────────────── */
+.tm-vmap-popup {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 18px 16px 14px;
+	text-align: center;
+	gap: 8px;
+}
+
+.tm-vmap-popup__avatar {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	border: 2px solid #D4AF37;
+	object-fit: cover;
+	flex-shrink: 0;
+}
+
+.tm-vmap-popup__name {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 700;
+	color: #D4AF37;
+	line-height: 1.2;
+}
+
+.tm-vmap-popup__address {
+	margin: 0;
+	font-size: 12px;
+	color: #aaa;
+	line-height: 1.3;
+}
+
+.tm-vmap-popup__btn {
+	display: inline-block;
+	margin-top: 4px;
+	padding: 7px 18px;
+	background: #D4AF37;
+	color: #0a0a0a !important;
+	text-decoration: none !important;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	transition: background 150ms ease;
+}
+
+.tm-vmap-popup__btn:hover {
+	background: #f0cd5a;
+}
+
+/* Vendor dots are rendered as WebGL circle layers (no DOM markers).
+   Hover grow effect is handled by Mapbox feature-state in vendors-map.js. */
+
+/* ── Navigation controls ────────────────────────────────────────────────────── */
+
+/* Move the zoom widget away from the top-right corner (where the header
+   menu/icons overlap it) to the vertical midpoint of the first third of the
+   viewport. calc(100dvh / 6) = 16.67 % from top = midpoint of top-third. */
+.tm-vendors-map-wrap .mapboxgl-ctrl-top-right {
+	top:   calc(100dvh / 6) !important;
+	right: 16px !important;
+	transform: translateY(-50%) !important; /* centre the widget on that point */
+}
+
+.tm-vendors-map-wrap .mapboxgl-ctrl-group {
+	background: rgba(15, 15, 15, 0.85) !important;
+	border: 1px solid rgba(212, 175, 55, 0.2) !important;
+	border-radius: 8px !important;
+	overflow: hidden;
+}
+
+.tm-vendors-map-wrap .mapboxgl-ctrl-group button {
+	background: transparent !important;
+	color: #D4AF37 !important;
+}
+
+.tm-vendors-map-wrap .mapboxgl-ctrl-group button:hover {
+	background: rgba(212, 175, 55, 0.15) !important;
+}
+
+.tm-vendors-map-wrap .mapboxgl-ctrl-group .mapboxgl-ctrl-icon {
+	filter: invert(1) sepia(1) saturate(3) hue-rotate(5deg) !important;
+}
+
+/* ── Attribution bar ────────────────────────────────────────────────────────── */
+.tm-vendors-map-wrap .mapboxgl-ctrl-attrib {
+	background: rgba(10, 10, 10, 0.7) !important;
+}
+
+.tm-vendors-map-wrap .mapboxgl-ctrl-attrib a {
+	color: #888 !important;
+}
+
+/* ---- Category filter panel -----------------------------------------------
+   Left-edge strip overlaid on the map. The map renders full-width behind it;
+   the panel is a semi-transparent dark overlay at z-index 5 (above the map
+   canvas, below the cinematic header at z-index 110).
+   padding-top: var(--tm-header-height, 70px) clears the fixed header.
+   -------------------------------------------------------------------------- */
+.tm-vmap-cat-panel {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 290px;
+	background: none;
+	border-right: none;
+	z-index: 100;
+	overflow-y: auto;
+	padding: 130px 8px 20px 16px;
+	box-sizing: border-box;
+}
+
+/* Custom thin gold scrollbar */
+.tm-vmap-cat-panel::-webkit-scrollbar        { width: 4px; }
+.tm-vmap-cat-panel::-webkit-scrollbar-track  { background: transparent; }
+.tm-vmap-cat-panel::-webkit-scrollbar-thumb  { background: rgba(212, 175, 55, 0.35); border-radius: 2px; }
+
+/* Country dropdown */
+.tm-vmap-country-select {
+	width: 100%;
+	background: rgba(212, 175, 55, 0.07);
+	border: 1px solid rgba(212, 175, 55, 0.30);
+	border-radius: 5px;
+	color: #D4AF37;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	padding: 7px 8px;
+	margin-bottom: 14px;
+	cursor: pointer;
+	outline: none;
+	appearance: none;
+	-webkit-appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23D4AF37'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 8px center;
+	padding-right: 24px;
+	box-sizing: border-box;
+	transition: border-color 0.15s, background 0.15s;
+}
+
+.tm-vmap-country-select:hover,
+.tm-vmap-country-select:focus {
+	border-color: #D4AF37;
+	background-color: rgba(212, 175, 55, 0.13);
+}
+
+.tm-vmap-country-select option {
+	background: #111;
+	color: #D4AF37;
+}
+
+.tm-vmap-cat-panel__title {
+	color: rgba(212, 175, 55, 0.55);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	margin: 0 0 10px;
+	line-height: 1;
+}
+
+/* 3-column grid of category buttons */
+.tm-vmap-cats {
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr;
+	gap: 7px;
+}
+
+.tm-vmap-cat-btn {
+	background: rgba(212, 175, 55, 0.07);
+	border: 1px solid rgba(212, 175, 55, 0.22);
+	border-radius: 5px;
+	color: #aaa;
+	font-size: 9px;
+	font-weight: 600;
+	text-align: center;
+	padding: 6px 2px;
+	cursor: pointer;
+	transition: background 0.15s, border-color 0.15s, color 0.15s;
+	line-height: 1.25;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.tm-vmap-cat-btn:hover {
+	background: rgba(212, 175, 55, 0.16);
+	border-color: rgba(212, 175, 55, 0.55);
+	color: #D4AF37;
+}
+
+.tm-vmap-cat-btn.is-active {
+	background: rgba(212, 175, 55, 0.22);
+	border-color: #D4AF37;
+	color: #D4AF37;
+}
+
+/* "All" button spans full width */
+.tm-vmap-cat-btn.is-all {
+	grid-column: 1 / -1;
+	border-color: rgba(212, 175, 55, 0.4);
+	color: #D4AF37;
+}
+/* ── Sort section ───────────────────────────────────────────────────────────── */
+.tm-vmap-sort-title {
+	margin-top: 20px;
+}
+
+.tm-vmap-sort-list {
+	list-style: none;
+	margin: 0 0 16px;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.tm-vmap-sort-item {
+	padding: 8px 10px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: rgba(212, 175, 55, 0.55);
+	background: rgba(212, 175, 55, 0.05);
+	border: 1px solid rgba(212, 175, 55, 0.15);
+	border-radius: 5px;
+	cursor: pointer;
+	transition: background 0.15s, border-color 0.15s, color 0.15s;
+	line-height: 1.25;
+}
+
+.tm-vmap-sort-item:hover {
+	background: rgba(212, 175, 55, 0.13);
+	border-color: rgba(212, 175, 55, 0.45);
+	color: #D4AF37;
+}
+
+.tm-vmap-sort-item.is-active {
+	background: rgba(212, 175, 55, 0.20);
+	border-color: #D4AF37;
+	color: #D4AF37;
+}
+
+.tm-vmap-sort-item.is-active::before {
+	content: '\2713\00a0'; /* ✓ */
+}
+
+/* ── Showcase button (inside left panel) ────────────────────────────────────── */
+.tm-vmap-showcase-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	padding: 10px 12px;
+	margin-top: 4px;
+	background: transparent;
+	border: 1px solid #D4AF37;
+	border-radius: 5px;
+	color: #D4AF37;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	text-decoration: none;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background 0.2s, color 0.2s;
+	box-sizing: border-box;
+}
+
+.tm-vmap-showcase-btn:hover {
+	background: #D4AF37;
+	color: #000;
+}
+
+/* ── Filter button (sends category + sort to Talents page) ──────────────────── */
+.tm-vmap-filter-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	padding: 10px 12px;
+	margin-top: 8px;
+	background: transparent;
+	border: 1px solid rgba(212, 175, 55, 0.45);
+	border-radius: 5px;
+	color: rgba(212, 175, 55, 0.65);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	text-decoration: none;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background 0.2s, color 0.2s, border-color 0.2s;
+	box-sizing: border-box;
+}
+
+.tm-vmap-filter-btn:hover {
+	background: rgba(212, 175, 55, 0.12);
+	border-color: #D4AF37;
+	color: #D4AF37;
+}
+
+.tm-vmap-sc-count {
+	display: inline-block;
+	margin: 0 3px;
+	font-weight: 700;
+}

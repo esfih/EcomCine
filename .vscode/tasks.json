@@ -1,0 +1,146 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Ollama Proxy Manager On Folder Open",
+      "type": "shell",
+      "command": "mkdir -p logs; NODE_BIN=\"$(command -v node || command -v nodejs || true)\"; if [ -z \"$NODE_BIN\" ]; then echo \"Node runtime not found (node/nodejs).\"; exit 4; fi; if ! ss -ltn | grep -q :11435; then nohup \"$NODE_BIN\" tools/ollama-proxy-manager.js >> logs/ollama-proxy-manager.log 2>&1 & disown; sleep 1; fi",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-lc"]
+        }
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "presentation": {
+        "reveal": "never",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Ollama Proxy Manager",
+      "type": "shell",
+      "command": "mkdir -p logs; NODE_BIN=\"$(command -v node || command -v nodejs || true)\"; if [ -z \"$NODE_BIN\" ]; then echo \"Node runtime not found (node/nodejs).\"; exit 4; fi; nohup \"$NODE_BIN\" tools/ollama-proxy-manager.js >> logs/ollama-proxy-manager.log 2>&1 & disown; sleep 1; echo \"Proxy manager started.\"",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-lc"]
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop Ollama Proxy + Manager",
+      "type": "shell",
+      "command": "pkill -f \"tools/ollama-proxy-manager.js\" || true; pkill -f \"tools/ollama-nothink-proxy.js\" || true",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-lc"]
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Proxy: Status",
+      "type": "shell",
+      "command": "echo \"--- Ollama ---\"; curl -sf http://127.0.0.1:11434/api/version || echo \"down\"; echo; echo \"--- Proxy ---\"; curl -sf http://127.0.0.1:11435/proxy/status || echo \"down\"",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-lc"]
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Proxy: Enable No-Think Mode",
+      "type": "shell",
+      "command": "curl -sf -X POST http://127.0.0.1:11435/proxy/mode -H \"Content-Type: application/json\" -d \"{\\\"mode\\\":\\\"nothink\\\"}\"",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-lc"]
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Proxy: Enable Passthrough Mode",
+      "type": "shell",
+      "command": "curl -sf -X POST http://127.0.0.1:11435/proxy/mode -H \"Content-Type: application/json\" -d \"{\\\"mode\\\":\\\"passthrough\\\"}\"",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-lc"]
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Show Ollama Proxy Manager Log",
+      "type": "shell",
+      "command": "mkdir -p logs; touch logs/ollama-proxy-manager.log; tail -n 100 -f logs/ollama-proxy-manager.log",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-lc"]
+        }
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Show Ollama No-Think Proxy Log",
+      "type": "shell",
+      "command": "mkdir -p logs; touch logs/ollama-nothink-proxy.log; tail -n 100 -f logs/ollama-nothink-proxy.log",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-lc"]
+        }
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

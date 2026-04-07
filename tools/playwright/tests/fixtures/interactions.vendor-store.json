@@ -1,0 +1,113 @@
+{
+  "name": "Vendor store interactions baseline",
+  "pages": [
+    {
+      "name": "Header menu toggle opens and closes",
+      "url": "/",
+      "steps": [
+        {
+          "action": "assertVisible",
+          "target": ".tm-header-toggle",
+          "optional": true
+        },
+        {
+          "action": "click",
+          "target": ".tm-header-toggle",
+          "optional": true
+        },
+        {
+          "action": "assertHasClass",
+          "target": ".tm-cinematic-header",
+          "className": "is-menu-open",
+          "optional": true
+        },
+        {
+          "action": "click",
+          "target": ".tm-header-toggle",
+          "optional": true
+        },
+        {
+          "action": "assertNotHasClass",
+          "target": ".tm-cinematic-header",
+          "className": "is-menu-open",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "Account modal opens and closes from sign-in CTA",
+      "url": "/",
+      "steps": [
+        {
+          "action": "assertVisible",
+          "target": [
+            ".tm-open-signin",
+            ".tm-account-tab"
+          ]
+        },
+        {
+          "action": "click",
+          "target": [
+            ".tm-open-signin",
+            ".tm-account-tab"
+          ]
+        },
+        {
+          "action": "assertHasClass",
+          "target": "#tm-account-modal",
+          "className": "is-open"
+        },
+        {
+          "action": "assertHasClass",
+          "target": "body",
+          "className": "tm-account-open"
+        },
+        {
+          "action": "click",
+          "target": [
+            ".tm-account-close",
+            ".tm-account-backdrop"
+          ]
+        },
+        {
+          "action": "assertNotHasClass",
+          "target": "#tm-account-modal",
+          "className": "is-open"
+        }
+      ]
+    },
+    {
+      "name": "Sign-up CTA switches to register tab",
+      "url": "/",
+      "steps": [
+        {
+          "action": "click",
+          "target": [
+            ".tm-open-signup",
+            ".tm-account-tab"
+          ],
+          "optional": true
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-account-register.is-active",
+          "optional": true
+        },
+        {
+          "action": "click",
+          "target": [
+            ".tm-account-close",
+            ".tm-account-backdrop"
+          ],
+          "optional": true
+        },
+        {
+          "action": "assertNotHasClass",
+          "target": "#tm-account-modal",
+          "className": "is-open",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

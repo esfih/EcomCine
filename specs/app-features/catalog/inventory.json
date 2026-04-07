@@ -1,0 +1,444 @@
+{
+  "meta": {
+    "schema_version": "1.0",
+    "last_updated": "2026-04-05",
+    "description": "Structured inventory of all catalogued features across EcomCine plugin groups. Used for migration planning, adapter progress tracking, and quick overview.",
+    "total_features": 24,
+    "groups": [
+      "dokan-category-attributes",
+      "tm-media-player",
+      "tm-account-panel",
+      "tm-vendor-booking-modal",
+      "theme-orchestration"
+    ]
+  },
+  "features": [
+    {
+      "id": "dca-001",
+      "title": "Attribute schema and storage tables",
+      "group": "dokan-category-attributes",
+      "group_short": "dca",
+      "business_objective": "Category-scoped attribute schema registry with CRUD for attribute sets and fields; vendor attribute value storage.",
+      "actors": ["admin", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["custom-db-tables", "dokan-store_category-taxonomy", "wp-user-meta"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same fields returned per vendor category; same value roundtrip for all field types; same schema after export/import.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/dokan-category-attributes/features/dca-001.md"
+    },
+    {
+      "id": "dca-002",
+      "title": "Vendor dashboard dynamic field rendering",
+      "group": "dokan-category-attributes",
+      "group_short": "dca",
+      "business_objective": "Inject category-appropriate attribute form fields into Dokan vendor dashboard with real-time show/hide per category.",
+      "actors": ["vendor", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["dokan-action-dokan_settings_after_store_phone", "dokan-action-dokan_store_profile_saved", "wp-user-meta", "dokan-store_category-taxonomy"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same field set per category; same validation; same user meta state after save.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/dokan-category-attributes/features/dca-002.md"
+    },
+    {
+      "id": "dca-003",
+      "title": "Storefront vendor profile attribute display",
+      "group": "dokan-category-attributes",
+      "group_short": "dca",
+      "business_objective": "Render vendor attribute values publicly on store profile page filtered by category membership and public visibility flag.",
+      "actors": ["buyer", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["dokan-action-dokan_store_profile_frame_after", "dokan-store_category-taxonomy", "wp-user-meta"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same sets shown per category; empty fields suppressed; values match stored meta.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/dokan-category-attributes/features/dca-003.md"
+    },
+    {
+      "id": "dca-004",
+      "title": "Store listing filters by attributes",
+      "group": "dokan-category-attributes",
+      "group_short": "dca",
+      "business_objective": "Render attribute filter controls on store listing and apply them via meta_query to produce filtered vendor results.",
+      "actors": ["buyer", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["dokan-action-dokan_before_store_lists_filter_search", "dokan-filter-dokan_seller_listing_args"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same filter controls per category; same vendor result set for equivalent filter combinations.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/dokan-category-attributes/features/dca-004.md"
+    },
+    {
+      "id": "tmp-001",
+      "title": "Vendor playlist extraction from biography shortcodes",
+      "group": "tm-media-player",
+      "group_short": "tmp",
+      "business_objective": "Build normalized media playlist payload from vendor biography shortcodes and banner meta for media player UI.",
+      "actors": ["system"],
+      "migration_risk": "high",
+      "migration_phase": 2,
+      "current_deps": ["dokan-get_store_info", "dokan-vendor-model", "wp-attachment-api", "wp-shortcode-api", "dokan-user-meta-dokan_banner_video"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same items (count, types, metadata) for identical biography; same fallback for equivalent banner state.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-media-player/features/tmp-001.md"
+    },
+    {
+      "id": "tmp-002",
+      "title": "Fallback media strategy (banner video / banner image)",
+      "group": "tm-media-player",
+      "group_short": "tmp",
+      "business_objective": "Resolve ordered fallback chain for vendor banner video and image when full playlist is unavailable.",
+      "actors": ["system"],
+      "migration_risk": "high",
+      "migration_phase": 2,
+      "current_deps": ["dokan-vendor-model-get_banner", "dokan-user-meta-dokan_banner_video", "dokan-user-meta-dokan_banner"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same fallbackImage and fallbackVideo URLs for equivalent vendor banner state; '' when not configured.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-media-player/features/tmp-002.md"
+    },
+    {
+      "id": "tmp-003",
+      "title": "REST endpoint for vendor store content payload",
+      "group": "tm-media-player",
+      "group_short": "tmp",
+      "business_objective": "Expose REST endpoint returning complete media player payload for a vendor, enabling AJAX store navigation.",
+      "actors": ["browser-client", "system"],
+      "migration_risk": "high",
+      "migration_phase": 2,
+      "current_deps": ["wp-register_rest_route", "tmp-001-contract", "dokan-store-template-paths"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same playlist payload for valid vendor; 404 for non-existent; 400 for invalid ID.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-media-player/features/tmp-003.md"
+    },
+    {
+      "id": "tmp-004",
+      "title": "AJAX navigation list and store content loaders",
+      "group": "tm-media-player",
+      "group_short": "tmp",
+      "business_objective": "Enable smooth in-page AJAX navigation between vendor store pages without full page reloads.",
+      "actors": ["buyer", "system"],
+      "migration_risk": "high",
+      "migration_phase": 2,
+      "current_deps": ["dokan_is_store_page", "dokan_is_store_listing", "tmp-003-endpoint", "tm-media-player-js-api"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Vendor content loads without full reload; player re-initializes; back button restores prior vendor.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-media-player/features/tmp-004.md"
+    },
+    {
+      "id": "tap-001",
+      "title": "Store-page account panel shell and modal UX",
+      "group": "tm-account-panel",
+      "group_short": "tap",
+      "business_objective": "Render right-side account panel tab with login/register modal on eligible vendor store and listing pages.",
+      "actors": ["guest", "logged-in-user", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["dokan_is_store_page", "dokan_is_store_listing", "tm_is_showcase_page", "wp-enqueue-api"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Panel visible on same page types; modal opens/closes correctly; auth state transitions visible.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-account-panel/features/tap-001.md"
+    },
+    {
+      "id": "tap-002",
+      "title": "AJAX login and session bootstrap",
+      "group": "tm-account-panel",
+      "group_short": "tap",
+      "business_objective": "Authenticate user via AJAX front-end request and establish WP session without page reload.",
+      "actors": ["guest", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["wp-ajax-nopriv-tm_account_login_user", "wp_signon", "wp_set_auth_cookie", "check_ajax_referer"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same login success/failure outcomes; correct cookie; nonce rejection before auth attempt.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-account-panel/features/tap-002.md"
+    },
+    {
+      "id": "tap-003",
+      "title": "Admin-assisted talent onboarding and claim/share flows",
+      "group": "tm-account-panel",
+      "group_short": "tap",
+      "business_objective": "Enable admin to onboard talent users via invitation tokens with lifecycle transitions and role assignment.",
+      "actors": ["admin", "talent-user", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 3,
+      "current_deps": ["wp-ajax-admin-handlers", "wp_generate_password", "wp_update_user", "wp-user-meta-token-storage"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same lifecycle transitions per admin action; same token validation; same role assignment on claim.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-account-panel/features/tap-003.md"
+    },
+    {
+      "id": "tap-004",
+      "title": "Vendor account management panel (orders, bookings, IP)",
+      "group": "tm-account-panel",
+      "group_short": "tap",
+      "business_objective": "Present logged-in vendor with contextualized account dashboard of orders, bookings, and IP assets.",
+      "actors": ["logged-in-vendor", "system"],
+      "migration_risk": "high",
+      "migration_phase": 3,
+      "current_deps": ["woocommerce-wc_get_orders", "woocommerce-bookings-WC_Booking_Data_Store", "dokan-earnings-api", "wp-ajax"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same section data for equivalent WC order/booking state; empty sections handled gracefully.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-account-panel/features/tap-004.md"
+    },
+    {
+      "id": "tvbm-001",
+      "title": "Vendor store booking product discovery (half-day category)",
+      "group": "tm-vendor-booking-modal",
+      "group_short": "tvbm",
+      "business_objective": "Discover vendor's featured WooCommerce Bookings product (half-day category) for modal booking flow.",
+      "actors": ["system"],
+      "migration_risk": "high",
+      "migration_phase": 3,
+      "current_deps": ["woocommerce-product_type-taxonomy", "woocommerce-bookings-booking-term", "woocommerce-product_cat-taxonomy", "wp-query"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Non-zero ID returned for vendors with half-day booking product; 0 for vendors without.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-vendor-booking-modal/features/tvbm-001.md"
+    },
+    {
+      "id": "tvbm-002",
+      "title": "Modal booking form rendering and booking asset loading",
+      "group": "tm-vendor-booking-modal",
+      "group_short": "tvbm",
+      "business_objective": "Load WC Bookings product form inside vendor store modal with date picker and availability.",
+      "actors": ["buyer", "system"],
+      "migration_risk": "high",
+      "migration_phase": 3,
+      "current_deps": ["woocommerce-bookings-WC_Booking_Form", "woocommerce-bookings-scripts", "wc-ajax-nonce"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Form renders with date picker; unavailable dates shown; required fields validated.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-vendor-booking-modal/features/tvbm-002.md"
+    },
+    {
+      "id": "tvbm-003",
+      "title": "Add-to-cart and checkout modal actions",
+      "group": "tm-vendor-booking-modal",
+      "group_short": "tvbm",
+      "business_objective": "Complete frictionless booking checkout in vendor store modal from add-to-cart through order placement.",
+      "actors": ["buyer", "system"],
+      "migration_risk": "high",
+      "migration_phase": 3,
+      "current_deps": ["woocommerce-cart", "woocommerce-bookings-reservation", "woocommerce-checkout", "stripe-gateway", "wc-checkout-nonce"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Booking confirmed with order ID; billing validation enforced; payment captured; modal-origin meta set.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-vendor-booking-modal/features/tvbm-003.md"
+    },
+    {
+      "id": "tvbm-004",
+      "title": "Checkout field, privacy and terms customization filters",
+      "group": "tm-vendor-booking-modal",
+      "group_short": "tvbm",
+      "business_objective": "Simplify WC modal checkout to required fields only; apply domain-specific privacy/terms and modal origin flag.",
+      "actors": ["buyer", "system"],
+      "migration_risk": "high",
+      "migration_phase": 3,
+      "current_deps": ["woocommerce-filter-checkout_fields", "woocommerce-filter-privacy_policy_text", "woocommerce-action-checkout_create_order"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Only required billing fields shown; domain privacy text rendered; modal-origin meta on order.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/tm-vendor-booking-modal/features/tvbm-004.md"
+    },
+    {
+      "id": "tho-001",
+      "title": "Store/listing template override orchestration",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Override Dokan store/listing templates with cinematic theme equivalents controlling layout and section composition.",
+      "actors": ["visitor", "system"],
+      "migration_risk": "high",
+      "migration_phase": 3,
+      "current_deps": ["dokan-template-override-path", "wp-template_include-filter", "dokan_is_store_page", "theme-dokan-dir"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same section composition and layout mode; custom template overrides Dokan default; hooks still fire.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-001.md"
+    },
+    {
+      "id": "tho-002",
+      "title": "Asset governance for vendor pages",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Dequeue unwanted Dokan/WC/third-party assets on vendor pages; enqueue only cinematic theme assets.",
+      "actors": ["system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["dokan_is_store_page", "dokan_is_store_listing", "wp-enqueue-api", "known-dokan-handles", "known-wc-handles"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Dokan CSS absent; no visual regression; WC checkout handles retained for tvbm; no JS errors.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-002.md"
+    },
+    {
+      "id": "tho-003",
+      "title": "Vendor profile meta synchronization and custom fields",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Maintain extended vendor profile meta (headline, social links, skills) and sync between save and render contexts.",
+      "actors": ["vendor", "system", "buyer"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["dokan-action-dokan_store_profile_saved", "wp-user-meta-tm_*-keys", "theme-includes"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same meta values after save; same completeness score; same social links per meta state.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-003.md"
+    },
+    {
+      "id": "tho-004",
+      "title": "Product/store vendor identity presentation hooks",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Inject vendor name, avatar, and store link into WC product cards and Dokan store listing cards.",
+      "actors": ["system", "buyer"],
+      "migration_risk": "medium",
+      "migration_phase": 3,
+      "current_deps": ["dokan-get_store_info", "dokan-get_store_url", "woocommerce-hook-after_shop_loop_item_title"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same identity data (name, avatar, URL) per vendor; block present in product/listing loops.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-004.md"
+    },
+    {
+      "id": "tho-005",
+      "title": "Social metrics, vendor completeness, and map modules",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Standalone include-level modules for social platform links, profile completeness score, and conditional map embed.",
+      "actors": ["system", "vendor", "buyer"],
+      "migration_risk": "medium",
+      "migration_phase": 3,
+      "current_deps": ["theme-includes-social-metrics-php", "theme-includes-completeness-php", "wp-user-meta-tm_social_*", "mapbox-or-google-maps-js"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "Same social links and completeness score per meta state; map shown/hidden per location meta + feature flag.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-005.md"
+    },
+    {
+      "id": "tho-006",
+      "title": "No Scroll Grid auto-fit mode for person listing",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Provide optional no-scroll viewport-fit mode for person listing grid while preserving 16:9 cards and pagination navigation.",
+      "actors": ["admin", "visitor", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["ecomcine-settings-persons_grid", "tm-store-ui-shortcode-ecomcine-stores", "vendor-store-css", "viewport-resize-observer"],
+      "adapter_status": {
+        "compatibility": "not-started",
+        "default_wp": "not-started"
+      },
+      "parity_oracle_short": "With no-scroll enabled, configured rows/columns and pagination fit viewport with no page scroll while preserving 16:9 cards.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-006.md"
+    },
+    {
+      "id": "tho-007",
+      "title": "Cinematic header CTA actions cluster",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Preserve the cinematic header CTA rail as a recoverable feature contract for later UI reuse and evolution.",
+      "actors": ["guest", "logged-in-user", "system"],
+      "migration_risk": "low",
+      "migration_phase": 2,
+      "current_deps": ["tm-icons-header-svg", "woocommerce-cart-count", "tm-store-ui-hooks-header-shell"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "deferred"
+      },
+      "parity_oracle_short": "Same icon inventory, CTA rail structure, and cart-count badge contract remain restorable from the preserved feature spec.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-007.md"
+    },
+    {
+      "id": "tho-008",
+      "title": "Demo data package generation and remote import distribution",
+      "group": "theme-orchestration",
+      "group_short": "tho",
+      "business_objective": "Generate and publish demo-data packages from canonical vendor media sources so manifest-driven remote imports stay semantically correct.",
+      "actors": ["admin", "release-engineer", "system"],
+      "migration_risk": "medium",
+      "migration_phase": 2,
+      "current_deps": ["demos-vendor-data-json", "demos-media-original", "demos-media", "github-releases", "demos-manifest-json", "demo-importer-cli"],
+      "adapter_status": {
+        "compatibility": "active",
+        "default_wp": "active"
+      },
+      "parity_oracle_short": "Fresh release zip contains canonical media paths, manifest points to the new tag, and remote import succeeds with distinct vendor video payloads.",
+      "contract_file": "specs/app-features/catalog/plugin-groups/theme-orchestration/features/tho-008.md"
+    }
+  ],
+  "migration_summary": {
+    "by_phase": {
+      "phase_2_pilot": ["dca-001", "dca-002", "dca-003", "dca-004", "tmp-001", "tmp-002", "tmp-003", "tmp-004", "tap-001", "tap-002", "tho-002", "tho-003", "tho-006", "tho-007", "tho-008"],
+      "phase_3_transactional": ["tap-003", "tap-004", "tvbm-001", "tvbm-002", "tvbm-003", "tvbm-004", "tho-001", "tho-004", "tho-005"]
+    },
+    "by_risk": {
+      "high": ["tmp-001", "tmp-002", "tmp-003", "tmp-004", "tap-004", "tvbm-001", "tvbm-002", "tvbm-003", "tvbm-004", "tho-001"],
+      "medium": ["dca-001", "dca-002", "dca-003", "dca-004", "tap-001", "tap-002", "tap-003", "tho-002", "tho-003", "tho-004", "tho-005", "tho-006", "tho-008"]
+    },
+    "recommended_pilot_order": [
+      "dokan-category-attributes (dca-001 → dca-004)",
+      "tm-media-player / tho-002 / tho-003",
+      "demo data packaging + import distribution (tho-008)",
+      "tm-account-panel auth (tap-001, tap-002)",
+      "tm-account-panel onboarding/dashboard (tap-003, tap-004)",
+      "theme-orchestration templates (tho-001, tho-004, tho-005)",
+      "tm-vendor-booking-modal (tvbm-001 → tvbm-004) — last, highest risk"
+    ]
+  }
+}

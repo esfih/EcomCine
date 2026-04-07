@@ -33,18 +33,20 @@ services:
     volumes:
       # ── PHP config overrides ──────────────────────────────────────────────
       - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
-      # ── Custom theme ──────────────────────────────────────────────────────
-      - ./theme:/var/www/html/wp-content/themes/astra-child
+      # ── Media uploads (persist on WSL project path) ──────────────────────
+      - ./wp-content/uploads:/var/www/html/wp-content/uploads
+      # ── Canonical minimal theme shipped with EcomCine ────────────────────
+      - ./ecomcine/bundled-theme:/var/www/html/wp-content/themes/ecomcine-base
       # ── Custom plugins (committed to this repo) ───────────────────────────
-      - ./tm-media-player:/var/www/html/wp-content/plugins/tm-media-player
-      - ./tm-account-panel:/var/www/html/wp-content/plugins/tm-account-panel
-      - ./tm-vendor-booking-modal:/var/www/html/wp-content/plugins/tm-vendor-booking-modal
+      - ./ecomcine:/var/www/html/wp-content/plugins/ecomcine
+      - ./ecomcine-control-plane:/var/www/html/wp-content/plugins/ecomcine-control-plane
       - ./dokan-category-attributes:/var/www/html/wp-content/plugins/dokan-category-attributes
       # ── Third-party deps (gitignored — must exist locally in deps/) ───────
       - ./deps/dokan-lite:/var/www/html/wp-content/plugins/dokan-lite
       - ./deps/dokan-pro:/var/www/html/wp-content/plugins/dokan-pro
       - ./deps/woocommerce:/var/www/html/wp-content/plugins/woocommerce
       - ./deps/woocommerce-bookings:/var/www/html/wp-content/plugins/woocommerce-bookings
+      - ./deps/greenshift:/var/www/html/wp-content/plugins/greenshift
       # ── Public root assets (SVGs etc.) ────────────────────────────────────
       - ./public/FireTV.svg:/var/www/html/FireTV.svg:ro
       - ./public/FireTV-White-Outline.svg:/var/www/html/FireTV-White-Outline.svg:ro

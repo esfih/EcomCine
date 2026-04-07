@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WebM Converter</title>
+  <link rel="stylesheet" href="converter.css">
+</head>
+<body>
+
+<div id="root">
+
+  <section class="hero">
+    <h1>Convert Video to WebM</h1>
+    <p>100% in your browser — your files never leave your computer.</p>
+  </section>
+
+  <!-- FFmpeg loading banner -->
+  <div id="ffmpeg-loading" hidden>
+    <p id="ffmpeg-status">Loading FFmpeg…</p>
+    <div class="progress-track">
+      <div id="ffmpeg-bar" class="progress-fill" style="width:0%" aria-valuenow="0"></div>
+    </div>
+    <span id="ffmpeg-pct">0%</span>
+  </div>
+
+  <main class="card" id="main-card">
+
+    <!-- ── CONVERT VIEW ─────────────────────────────────── -->
+    <div id="view-convert" class="view">
+
+      <!-- Dropzone -->
+      <div id="dropzone" class="dropzone" tabindex="0" role="button"
+           aria-label="Drop video file here or click to select">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="dropzone-label">Drop video here or <span class="link">browse</span></p>
+        <p class="dropzone-hint">MP4, MOV, AVI, MKV, WebM and more</p>
+        <input id="file-input" type="file" accept="video/*" style="display:none">
+      </div>
+
+      <!-- File info -->
+      <div id="file-info" hidden>
+        <p id="file-name" class="file-name"></p>
+        <p id="file-size" class="file-meta"></p>
+        <button id="file-clear" class="btn-link">✕ Remove</button>
+      </div>
+
+      <!-- Quality presets -->
+      <div class="presets">
+        <label class="preset">
+          <input type="radio" name="quality" value="hq">
+          <span class="preset-label">
+            <strong>HQ Archive</strong>
+            <small>CRF 18 — best quality, larger file</small>
+          </span>
+        </label>
+        <label class="preset">
+          <input type="radio" name="quality" value="balanced" checked>
+          <span class="preset-label">
+            <strong>Balanced</strong>
+            <small>CRF 28 — good quality, reasonable size</small>
+          </span>
+        </label>
+        <label class="preset">
+          <input type="radio" name="quality" value="compressed">
+          <span class="preset-label">
+            <strong>Compressed</strong>
+            <small>CRF 40 — smaller file, lower quality</small>
+          </span>
+        </label>
+      </div>
+
+      <!-- Convert button -->
+      <button id="convert-btn" class="btn-primary" disabled>Convert to WebM</button>
+
+      <!-- Active warning -->
+      <p id="active-notice" class="active-notice" hidden>
+        ⚡ Conversion running — keep this tab active.
+      </p>
+
+      <!-- Progress -->
+      <div id="progress-wrap" hidden>
+        <div class="progress-track">
+          <div id="progress-bar" class="progress-fill" style="width:0%"
+               role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="progress-meta">
+          <span id="progress-stage">Encoding…</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <p id="progress-detail" class="progress-detail"></p>
+      </div>
+
+      <!-- Error -->
+      <div id="error-box" hidden class="error-box"></div>
+    </div>
+
+    <!-- ── RESULT VIEW ──────────────────────────────────── -->
+    <div id="view-result" class="view" hidden>
+      <div class="result-done-icon">✓</div>
+      <h2 class="result-title">Conversion complete</h2>
+
+      <div class="result-rows">
+        <div class="result-row">
+          <span class="result-row-label">WebM video</span>
+          <span id="result-size-webm" class="result-row-size"></span>
+          <a id="download-webm" class="btn-download" download>Download</a>
+        </div>
+        <div id="result-poster-row" class="result-row" hidden>
+          <span class="result-row-label">Thumbnail (JPG)</span>
+          <a id="download-poster" class="btn-download" download>Download</a>
+        </div>
+      </div>
+
+      <p id="result-savings" class="result-savings"></p>
+      <button id="convert-another" class="btn-secondary">Convert another file</button>
+    </div>
+
+  </main>
+
+  <!-- Dev: live log viewer (toggle with L key) -->
+  <div id="log-panel" class="log-panel" hidden>
+    <div class="log-panel-header">
+      <strong>Conversion Log</strong>
+      <button id="log-clear-btn" class="btn-link">Clear</button>
+      <button id="log-close-btn" class="btn-link">✕</button>
+    </div>
+    <pre id="log-output" class="log-output"></pre>
+  </div>
+  <p class="log-hint">Press <kbd>L</kbd> to toggle log panel</p>
+
+</div><!-- /root -->
+
+<script type="module" src="converter.js"></script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EcomCine Server-Side WebM Converter</title>
+  <link rel="stylesheet" href="converter.css">
+</head>
+<body>
+<header class="ecomcine-site-header" role="banner">
+  <div class="ecomcine-site-header-inner">
+    <a class="ecomcine-site-header-logo" href="https://ecomcine.com/" aria-label="EcomCine home">
+      <img src="https://ecomcine.com/wp-content/uploads/2026/03/EcomCine-Logo_PNG-02.png" alt="EcomCine Logo">
+    </a>
+
+    <a class="ecomcine-site-header-cta" href="https://ecomcine.com/">Back to EcomCine</a>
+  </div>
+</header>
+
+<div id="root">
+  <section class="hero">
+    <h1>Optimize Videos for the Web</h1>
+    <p id="hero-subtitle">Convert your videos to our WebM optimized format</p>
+  </section>
+
+  <div id="runtime-banner" class="runtime-banner" hidden></div>
+
+  <main class="card">
+    <div id="view-convert" class="view">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop MP4 file here or click to browse">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="dropzone-label">Drop your MP4 here or <span class="link">browse</span></p>
+        <p class="dropzone-hint">Standalone app mode. Works on a local machine or a dedicated converter domain.</p>
+        <input id="file-input" type="file" accept="video/mp4,video/*" hidden>
+      </div>
+
+      <div id="file-info" class="file-info" hidden>
+        <p id="file-name" class="file-name"></p>
+        <p id="file-size" class="file-meta"></p>
+        <button id="file-clear" class="btn-link" type="button">Remove</button>
+      </div>
+
+      <div class="section">
+        <span class="section-label">Preset</span>
+        <div class="presets" role="radiogroup" aria-label="Quality preset">
+          <label class="preset">
+            <input type="radio" name="quality" value="hq">
+            <span class="preset-label">
+              <strong>HQ Archive</strong>
+              <small>CRF 24, 48-frame GOP, 96k Opus</small>
+            </span>
+          </label>
+          <label class="preset">
+            <input type="radio" name="quality" value="balanced" checked>
+            <span class="preset-label">
+              <strong>Balanced</strong>
+              <small>CRF 32, same web-player tuning as CLI</small>
+            </span>
+          </label>
+          <label class="preset">
+            <input type="radio" name="quality" value="compressed">
+            <span class="preset-label">
+              <strong>Compressed</strong>
+              <small>CRF 40, smaller output, more compression</small>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div id="active-notice" class="active-notice" hidden>
+        Conversion is running. Keep this page open until the WebM is ready.
+      </div>
+
+      <div id="progress-wrap" hidden>
+        <div class="progress-track">
+          <div id="progress-bar" class="progress-fill" style="width:0%" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="progress-meta">
+          <span id="progress-stage">Preparing…</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <p id="progress-detail" class="progress-detail"></p>
+      </div>
+
+      <div class="actions">
+        <button id="convert-btn" class="btn-primary" type="button" disabled>Convert to WebM</button>
+      </div>
+
+      <p class="retention-note">Converted files are kept for up to 24 hours, then automatically deleted from the converter server.</p>
+
+      <div id="error-box" class="error-box" hidden></div>
+    </div>
+
+    <div id="view-result" class="view" hidden>
+      <div class="result-done-icon">✓</div>
+      <h2 class="result-title">Conversion complete</h2>
+
+      <div class="result-rows">
+        <div class="result-row">
+          <span class="result-row-label">WebM video</span>
+          <span id="result-size-webm" class="result-row-size"></span>
+          <a id="download-webm" class="btn-download" download>Download</a>
+        </div>
+        <div id="result-poster-row" class="result-row" hidden>
+          <span class="result-row-label">Poster image</span>
+          <span id="result-size-poster" class="result-row-size"></span>
+          <a id="download-poster" class="btn-download" download>Download</a>
+        </div>
+      </div>
+
+      <p id="result-savings" class="result-savings"></p>
+      <button id="convert-another" class="btn-secondary" type="button">Convert another file</button>
+    </div>
+  </main>
+</div>
+
+<script src="converter.js"></script>
+</body>
+</html>

@@ -60,6 +60,9 @@ Go to [esfih/wp-plugin-dev-template](https://github.com/esfih/wp-plugin-dev-temp
 git clone https://github.com/<your-org>/my-marketplace.git
 cd my-marketplace
 ./scripts/bootstrap-foundation.sh
+
+# Enable repository-local policy hooks
+./scripts/install-git-hooks.sh
 ```
 
 ---
@@ -250,6 +253,24 @@ Also verify in browser:
 
 ---
 
+## Step 9.5 — Import Control-Plane FluentCart Baseline (Recommended)
+
+If the project uses the private control-plane licensing model, import the reusable FluentCart/control-plane baseline fixture in one action:
+
+```bash
+./scripts/licensing/import-fluentcart-control-plane-seed.sh
+```
+
+This imports the committed SQL fixture `db/fluentcart-control-plane-seed.sql` using the active WordPress table prefix.
+
+What it seeds:
+- canonical product/licensing settings
+- demo customer and 4 demo orders
+- generated license keys and subscription graph
+- FluentCart store/modules activation options required by the control-plane flow
+
+---
+
 ## Step 10 — Set Up Specs and Copilot Instructions
 
 ```bash
@@ -319,6 +340,13 @@ Install these on the new machine before anything else:
 - **Docker Desktop** (running, WSL2 backend on Windows)
 - **GitHub CLI** (`gh`) — authenticated to your GitHub account
 
+### Mandatory Workspace Baseline (WSL2-only)
+
+- Use Ubuntu WSL2 as the primary development shell.
+- Keep project folders under `/home/<user>/dev/` (Linux ext4), not `C:\dev` and not `/mnt/c/dev`.
+- Run Docker/Compose commands from the WSL path of the repo.
+- Validate with `./scripts/check-local-dev-infra.sh` before importing DB or running feature work.
+
 ---
 
 ## What to Transfer Manually (not in Git)
@@ -328,9 +356,9 @@ share, or cloud storage) **before** running the setup steps:
 
 | Item | Where to place it | Why it's not in Git |
 |---|---|---|
-| `deps/` folder | `C:\dev\EcomCine\deps\` | Premium plugins — cannot be redistributed |
-| `castingagency-uploads.tar.gz` | `C:\dev\EcomCine\castingagency-uploads.tar.gz` | 198 MB binary, WP media library |
-| `.env` file | `C:\dev\EcomCine\.env` | Contains credentials |
+| `deps/` folder | `/home/<you>/dev/EcomCine/deps/` | Premium plugins — cannot be redistributed |
+| `castingagency-uploads.tar.gz` | `/home/<you>/dev/EcomCine/castingagency-uploads.tar.gz` | 198 MB binary, WP media library |
+| `.env` file | `/home/<you>/dev/EcomCine/.env` | Contains credentials |
 | `repeated-prompt.instructions.md` | `C:\Users\<you>\.copilot\instructions\` | User-level VS Code Copilot file — outside any repo |
 | `~/.ssh/castingagency_debug` | `C:\Users\<you>\.ssh\` | SSH private key for live server |
 
@@ -343,7 +371,8 @@ deps/
 ├── dokan-lite/
 ├── dokan-pro/
 ├── woocommerce/
-└── woocommerce-bookings/
+├── woocommerce-bookings/
+└── greenshift/
 ```
 Each is an extracted plugin folder (not a ZIP), matching the volume mounts in
 `docker-compose.yml`.
@@ -359,6 +388,8 @@ Each is an extracted plugin folder (not a ZIP), matching the volume mounts in
 ### 1. Clone the repo
 
 ```bash
+mkdir -p ~/dev
+cd ~/dev
 git clone https://github.com/esfih/EcomCine
 cd EcomCine
 ```
@@ -367,10 +398,16 @@ cd EcomCine
 
 Confirm these exist before continuing:
 ```
-C:\dev\EcomCine\deps\dokan-pro\        ← must be present
-C:\dev\EcomCine\deps\woocommerce-bookings\  ← must be present
-C:\dev\EcomCine\castingagency-uploads.tar.gz
-C:\dev\EcomCine\.env
+/home/<you>/dev/EcomCine/deps/dokan-pro/        ← must be present
+/home/<you>/dev/EcomCine/deps/woocommerce-bookings/  ← must be present
+/home/<you>/dev/EcomCine/castingagency-uploads.tar.gz
+/home/<you>/dev/EcomCine/.env
+```
+
+Run infrastructure validation before continuing:
+
+```bash
+./scripts/check-local-dev-infra.sh
 ```
 
 ### 3. Start the containers
@@ -398,7 +435,7 @@ scp -i ~/.ssh/castingagency_debug -P 5022 \
 
 **Option B — copy the SQL file from your old machine:**
 
-Place it at `C:\dev\EcomCine\db\castingagency-live.sql`.
+Place it at `/home/<you>/dev/EcomCine/db/castingagency-live.sql`.
 
 **Then import and fix URLs:**
 
@@ -408,6 +445,17 @@ Place it at `C:\dev\EcomCine\db\castingagency-live.sql`.
 ./scripts/wp.sh wp user update 1 --user_pass=admin
 ./scripts/wp.sh wp rewrite structure '/%postname%/' --hard
 ```
+
+### 4.1 Decommission Windows Working Copy (Required)
+
+After confirming the WSL stack is healthy, remove the Windows repo copy to prevent
+accidental fallback to Windows-mounted binds:
+
+```powershell
+Remove-Item -Recurse -Force C:\dev\EcomCine
+```
+
+Do not run active project runtime from `C:\dev\...` after this point.
 
 ### 5. Extract the uploads archive
 
@@ -424,12 +472,13 @@ MSYS_NO_PATHCONV=1 docker exec ecomcine_dev-wordpress-1 sh -c \
 ./scripts/setup-deps.sh
 ```
 
-This activates plugins in the correct dependency order:
-WooCommerce → Dokan Lite → Dokan Pro → WooCommerce Bookings → EcomCine plugins → Astra Child theme.
+This activates plugins in the correct dependency order for legacy parity environments:
+WooCommerce → Dokan Lite → Dokan Pro → WooCommerce Bookings → EcomCine plugins → `ecomcine-base` theme.
 
 ### 7. Verify
 
 ```bash
+./scripts/check-local-dev-infra.sh
 ./scripts/check-local-wp.sh
 ```
 
@@ -491,6 +540,40 @@ ssh -i ~/.ssh/castingagency_debug -p 5022 efttsqrtff@209.16.158.249 "echo connec
 
 ---
 
+## SSH Key — app.topdoctorchannel.us (N0C Hosting)
+
+The key `~/.ssh/ecomcine_n0c` authorizes access to `app.topdoctorchannel.us` on N0C mutualized hosting.
+It is stored only on the dev machine and is **never committed**.
+
+| Detail | Value |
+|---|---|
+| Key file | `~/.ssh/ecomcine_n0c` (ed25519 private key) |
+| Public key | `~/.ssh/ecomcine_n0c.pub` |
+| Host | `209.16.158.249` |
+| Port | `5022` |
+| User | `efttsqrtff` |
+| WP root | `/home/efttsqrtff/app.topdoctorchannel.us` |
+
+On a new machine, either:
+- Copy `~/.ssh/ecomcine_n0c` and `~/.ssh/ecomcine_n0c.pub` from the old machine (set permissions: `chmod 600 ~/.ssh/ecomcine_n0c`), **or**
+- Generate a new key pair (`ssh-keygen -t ed25519 -f ~/.ssh/ecomcine_n0c -C "ecomcine-dev"`) and add the public key via the N0C hosting panel → SSH access.
+
+Verify connection:
+```bash
+ssh -i ~/.ssh/ecomcine_n0c -p 5022 efttsqrtff@209.16.158.249 "echo connected"
+```
+
+All WP-CLI remote operations use the wrapper script (which reads this key by default):
+```bash
+./scripts/wp-remote.sh plugin list
+./scripts/wp-remote.sh plugin get ecomcine --fields=name,version,status
+```
+
+For full SSH command reference, diagnostics, and ownership fix commands, see
+`specs/GITHUB-AUTH-REFERENCE.md` → "SSH Connection Reference".
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
@@ -500,7 +583,8 @@ ssh -i ~/.ssh/castingagency_debug -p 5022 efttsqrtff@209.16.158.249 "echo connec
 | Vendor cards show no images | Uploads not extracted | Repeat step 5 |
 | `deps/` plugin not activating | Folder present but wrong structure | Plugin folder must contain the main `.php` file directly (not nested in a ZIP subfolder) |
 | Port 8180 already in use | Port conflict with another project | Change `WP_PORT` in `.env` and restart containers |
+| Infra check fails with Windows path warning | Repo started from Windows filesystem | Move repo to `/home/<you>/dev`, restart from WSL terminal, rerun checks |
 | Control-plane reuse guide | `foundation/wp/docs/CONTROL-PLANE-REUSE-GUIDE.md` |
 | Implementation rules | `foundation/core/docs/IMPLEMENTATION-RULES.md` |
 | Security protocol | `foundation/core/docs/SECURITY-VALIDATION-PROTOCOL.md` |
-| Terminal rules (Git Bash) | `foundation/core/docs/TERMINAL-RULES.md` |
+| Terminal rules (WSL shell) | `foundation/core/docs/TERMINAL-RULES.md` |

@@ -1,0 +1,99 @@
+{
+  "name": "Talents categories page interactions",
+  "pages": [
+    {
+      "name": "Talents categories grid renders icon-over-title cards",
+      "url": "/talents-categories/",
+      "waitFor": ".ecomcine-category-grid .ecomcine-category-card",
+      "steps": [
+        {
+          "action": "assertHasClass",
+          "target": "body",
+          "className": "tm-platform-page"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".ecomcine-category-grid"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".ecomcine-category-grid .ecomcine-category-card__icon"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".ecomcine-category-grid .ecomcine-category-card__title"
+        },
+        {
+          "action": "assertVisible",
+          "target": "#tm-pager-bar"
+        },
+        {
+          "action": "assertVisible",
+          "target": "#tm-sort-btn"
+        },
+        {
+          "action": "assertVisible",
+          "target": "#tm-showcase-btn"
+        },
+        {
+          "target": "#tm-showcase-btn",
+          "action": "click"
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "tm_ids="
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-card-arrow",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "Talents categories pagination navigates to the next page",
+      "url": "/talents-categories/",
+      "waitFor": ".ecomcine-category-grid .ecomcine-category-card",
+      "steps": [
+        {
+          "action": "click",
+          "target": ".tm-card-arrow[rel='next']",
+          "optional": true
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "ecomcine_category_page=2",
+          "optional": true
+        },
+        {
+          "action": "assertVisible",
+          "target": ".ecomcine-category-grid .ecomcine-category-card"
+        },
+        {
+          "action": "assertVisible",
+          "target": ".tm-card-arrow[rel='prev']",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "Talents categories cards navigate to filtered talents list",
+      "url": "/talents-categories/",
+      "waitFor": ".ecomcine-category-grid .ecomcine-category-card",
+      "steps": [
+        {
+          "action": "click",
+          "target": ".ecomcine-category-grid .ecomcine-category-card"
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "/talents/"
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "ecomcine_person_category="
+        }
+      ]
+    }
+  ]
+}

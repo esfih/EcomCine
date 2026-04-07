@@ -1,0 +1,9 @@
+{
+  "plugin": "ecomcine",
+  "version": "0.1.70",
+  "artifact": "ecomcine-0.1.70.zip",
+  "artifact_type": "zip",
+  "sha256": "ea48e63fae0721b2e64bad1c8aa578c038abbb9311f5e67200b17609d3a9aa5a",
+  "built_at_utc": "2026-04-07T17:01:51Z",
+  "source": "git-head"
+}

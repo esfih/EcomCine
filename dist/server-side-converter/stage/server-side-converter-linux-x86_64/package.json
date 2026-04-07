@@ -1,0 +1,10 @@
+{
+  "name": "server-side-converter",
+  "private": true,
+  "version": "2026.04.08",
+  "description": "Standalone EcomCine native WebM converter",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
