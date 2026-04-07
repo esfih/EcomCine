@@ -52,6 +52,45 @@ if ( ! function_exists( 'tm_vendor_profile_get_person_info' ) ) {
 	}
 }
 
+if ( ! function_exists( 'tm_vendor_profile_persist_biography' ) ) {
+	function tm_vendor_profile_persist_biography( int $user_id, string $bio ): void {
+		update_user_meta( $user_id, 'ecomcine_bio', $bio );
+		update_user_meta( $user_id, 'vendor_biography', $bio );
+
+		if ( ! class_exists( 'TMP_WP_Vendor_CPT' ) ) {
+			return;
+		}
+
+		$post_id = TMP_WP_Vendor_CPT::get_post_id_for_vendor( $user_id );
+		if ( $post_id ) {
+			wp_update_post(
+				array(
+					'ID'           => $post_id,
+					'post_content' => wp_kses_post( $bio ),
+				)
+			);
+			return;
+		}
+
+		$banner_image = (int) get_user_meta( $user_id, 'ecomcine_banner_id', true );
+		$banner_video = get_user_meta( $user_id, 'ecomcine_banner_video', true );
+
+		$cpt_data = array(
+			'biography' => $bio,
+		);
+
+		if ( $banner_image > 0 ) {
+			$cpt_data['banner_image'] = $banner_image;
+		}
+
+		if ( ! empty( $banner_video ) ) {
+			$cpt_data['banner_video'] = $banner_video;
+		}
+
+		TMP_WP_Vendor_CPT::upsert_vendor( $user_id, $cpt_data );
+	}
+}
+
 if ( ! function_exists( 'tm_vendor_profile_get_person_geo' ) ) {
 	function tm_vendor_profile_get_person_geo( int $user_id ): array {
 		return function_exists( 'ecomcine_get_geo' ) ? ecomcine_get_geo( $user_id ) : array();
@@ -1051,8 +1090,7 @@ add_action( 'wp_ajax_vendor_update_media_playlist', function() {
 		$bio = $bio === '' ? $shortcode : $bio . "\n\n" . $shortcode;
 	}
 
-	update_user_meta( $user_id, 'ecomcine_bio', $bio );
-	update_user_meta( $user_id, 'vendor_biography', $bio );
+	tm_vendor_profile_persist_biography( $user_id, $bio );
 
 	// Reassign all playlist attachments to the talent on save.
 	if ( ! empty( $ids ) ) {
