@@ -2599,6 +2599,9 @@ jQuery(document).ready(function($) {
 		} else if (item.type === "image") {
 			isActivelyPlaying = true;
 		}
+		if (!isActivelyPlaying) {
+			state.isPlaying = false;
+		}
 		syncRemotePlaying(isActivelyPlaying);
 	}
 
