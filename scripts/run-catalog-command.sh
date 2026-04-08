@@ -243,6 +243,10 @@ case "$COMMAND_ID" in
     bash ./scripts/build-ecomcine-release-from-head.sh
     ;;
 
+  release.build.ecomcine.control_plane)
+    bash ./scripts/build-ecomcine-control-plane-release.sh
+    ;;
+
   release.upload.ecomcine.canonical)
     if [[ $# -lt 2 ]]; then
       echo "ERROR: release.upload.ecomcine.canonical requires <tag> <version> [slug]" >&2
