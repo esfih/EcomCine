@@ -123,6 +123,56 @@ final class EcomCine_CP_Activation_Repository {
 		$hit = $all[ (string) $activation_id ] ?? array();
 		return is_array( $hit ) ? $hit : array();
 	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	public static function find_by_license_and_fingerprint( $license_key, $fingerprint ) {
+		$license_key = strtoupper( trim( (string) $license_key ) );
+		$fingerprint = strtoupper( trim( (string) $fingerprint ) );
+		if ( '' === $license_key || '' === $fingerprint ) {
+			return array();
+		}
+
+		foreach ( self::all() as $activation ) {
+			if ( ! is_array( $activation ) ) {
+				continue;
+			}
+			if ( $license_key !== strtoupper( trim( (string) ( $activation['license_key'] ?? '' ) ) ) ) {
+				continue;
+			}
+			if ( $fingerprint !== strtoupper( trim( (string) ( $activation['site_fingerprint'] ?? '' ) ) ) ) {
+				continue;
+			}
+
+			return $activation;
+		}
+
+		return array();
+	}
+
+	public static function count_for_license( $license_key ) {
+		$license_key = strtoupper( trim( (string) $license_key ) );
+		if ( '' === $license_key ) {
+			return 0;
+		}
+
+		$count = 0;
+		foreach ( self::all() as $activation ) {
+			if ( ! is_array( $activation ) ) {
+				continue;
+			}
+			if ( $license_key !== strtoupper( trim( (string) ( $activation['license_key'] ?? '' ) ) ) ) {
+				continue;
+			}
+			if ( 'inactive' === sanitize_key( (string) ( $activation['license_status'] ?? 'active' ) ) ) {
+				continue;
+			}
+			++$count;
+		}
+
+		return $count;
+	}
 }
 
 final class EcomCine_CP_Request_Verifier {
@@ -677,6 +727,59 @@ final class EcomCine_CP_REST_Router {
 		}
 
 		$max_act = max( 1, (int) ( $native['max_site_activations'] ?? 1 ) );
+		$existing_activation = EcomCine_CP_Activation_Repository::find_by_license_and_fingerprint( $license_key, $fingerprint );
+		if ( ! empty( $existing_activation ) ) {
+			$existing_activation_id = sanitize_text_field( (string) ( $existing_activation['activation_id'] ?? '' ) );
+			$existing_site_token = sanitize_text_field( (string) ( $existing_activation['site_token'] ?? '' ) );
+			if ( '' !== $existing_activation_id && '' !== $existing_site_token ) {
+				$existing_activation['site_url'] = $site_url;
+				$existing_activation['updated_at'] = gmdate( 'c' );
+				EcomCine_CP_Activation_Repository::save( $existing_activation_id, $existing_activation );
+
+				return new WP_REST_Response(
+					array(
+						'success' => true,
+						'data'    => array(
+							'status'              => 'active',
+							'activation_id'       => $existing_activation_id,
+							'site_token'          => $existing_site_token,
+							'plan'                => (string) ( $existing_activation['plan'] ?? $native['plan'] ?? 'paid' ),
+							'product_id'          => (int) ( $existing_activation['product_id'] ?? $native['product_id'] ?? 0 ),
+							'plugin_version'      => (string) $request->get_param( 'plugin_version' ),
+							'current_activations' => EcomCine_CP_Activation_Repository::count_for_license( $license_key ),
+						),
+						'error' => null,
+					),
+					200
+				);
+			}
+		}
+
+		$current_activations = EcomCine_CP_Activation_Repository::count_for_license( $license_key );
+		if ( $current_activations >= $max_act ) {
+			EcomCine_CP_Request_Verifier::log_ops_error( 'activation_limit_reached', array(
+				'route'               => '/activations',
+				'license_key_ref'     => substr( $license_key, 0, 4 ) . '...' . substr( $license_key, -4 ),
+				'current_activations' => $current_activations,
+				'max_activations'     => $max_act,
+				'fingerprint'         => $fingerprint,
+			) );
+
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'data'    => array(
+						'status'              => 'over_limit',
+						'current_activations' => $current_activations,
+						'max_activations'     => $max_act,
+					),
+					'error'   => 'This license has reached its maximum number of site activations.',
+					'code'    => 'activation_limit_reached',
+				),
+				403
+			);
+		}
+
 		$activation_id = 'act_' . wp_generate_password( 20, false, false );
 		$site_token = 'st_' . wp_generate_password( 32, false, false );
 		$now = gmdate( 'c' );
@@ -707,6 +810,7 @@ final class EcomCine_CP_REST_Router {
 					'plan'           => (string) ( $native['plan'] ?? 'paid' ),
 					'product_id'     => (int) ( $native['product_id'] ?? 0 ),
 					'plugin_version' => (string) $request->get_param( 'plugin_version' ),
+					'current_activations' => $current_activations + 1,
 				),
 				'error' => null,
 			),
@@ -799,7 +903,7 @@ final class EcomCine_CP_REST_Router {
 		}
 
 		$max_act = max( 1, (int) ( $activation['max_site_activations'] ?? 1 ) );
-		$used = 1;
+		$used = max( 1, EcomCine_CP_Activation_Repository::count_for_license( (string) ( $activation['license_key'] ?? '' ) ) );
 		$remaining = max( 0, $max_act - $used );
 		$plan = (string) ( $activation['plan'] ?? 'paid' );
 
@@ -810,7 +914,10 @@ final class EcomCine_CP_REST_Router {
 			'activation_policy' => array(
 				'max_activations'       => $max_act,
 				'used_activations'      => $used,
+				'current_activations'   => $used,
+				'site_activations_used' => $used,
 				'remaining_activations' => $remaining,
+				'site_is_activated'     => true,
 			),
 			'contract_signature' => hash( 'sha256', $plan . ':' . wp_json_encode( $allowances ) ),
 		);

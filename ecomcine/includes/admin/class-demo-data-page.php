@@ -32,12 +32,45 @@ class EcomCine_Demo_Data_Page {
 		);
 	}
 
+	private static function can_access_demo_import() {
+		if ( class_exists( 'EcomCine_Licensing', false ) && method_exists( 'EcomCine_Licensing', 'can_access_feature' ) ) {
+			return EcomCine_Licensing::can_access_feature( 'demo_data_import' );
+		}
+
+		return true;
+	}
+
+	private static function render_premium_gate_notice() {
+		?>
+		<div class="notice notice-warning inline" style="max-width: 720px; margin-top: 20px;">
+			<p><strong><?php esc_html_e( 'Demo Data import is a premium feature.', 'ecomcine' ); ?></strong> <?php esc_html_e( 'Upgrade to enable this feature.', 'ecomcine' ); ?></p>
+			<p>
+				<a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-settings&tab=licensing' ) ); ?>"><?php esc_html_e( 'Open Licensing', 'ecomcine' ); ?></a>
+			</p>
+		</div>
+		<?php
+	}
+
 	public static function render_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'ecomcine' ) );
 		}
 
 		$nonce = wp_create_nonce( 'ecomcine_demo_import' );
+		$can_import_demo = self::can_access_demo_import();
+
+		if ( ! $can_import_demo ) {
+			?>
+			<div class="wrap">
+				<h1><?php esc_html_e( 'EcomCine — Demo Data', 'ecomcine' ); ?></h1>
+				<p class="description">
+					<?php esc_html_e( 'Import a demo content pack to populate your site with sample talent profiles, media and categories.', 'ecomcine' ); ?>
+				</p>
+				<?php self::render_premium_gate_notice(); ?>
+			</div>
+			<?php
+			return;
+		}
 
 		// ── Remote manifest ────────────────────────────────────────────────────
 		$manifest      = null;
@@ -387,6 +420,12 @@ class EcomCine_Demo_Data_Page {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			$response_sent = true;
 			wp_send_json_error( 'Insufficient permissions.' );
+			return;
+		}
+
+		if ( ! self::can_access_demo_import() ) {
+			$response_sent = true;
+			wp_send_json_error( 'Demo Data import is a premium feature. Upgrade to enable this feature.', 403 );
 			return;
 		}
 		

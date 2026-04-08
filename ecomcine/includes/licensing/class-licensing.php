@@ -80,7 +80,7 @@ class EcomCine_Licensing {
 	 */
 	public static function get_status() {
 		$settings = self::get_settings();
-		$entitlement = self::get_cached_entitlement();
+		$entitlement = self::get_effective_entitlement();
 		$plan = isset( $entitlement['plan_slug'] ) ? sanitize_key( (string) $entitlement['plan_slug'] ) : '';
 		$offer = '' !== $plan ? ( EcomCine_Offer_Catalog::get_catalog()[ $plan ] ?? array() ) : array();
 		$active = isset( $entitlement['status'] ) && 'active' === (string) $entitlement['status'];
@@ -91,7 +91,7 @@ class EcomCine_Licensing {
 
 		$status = array(
 			'active'          => $active,
-			'source'          => $active ? 'control-plane' : 'local-default',
+			'source'          => isset( $entitlement['source'] ) ? sanitize_text_field( (string) $entitlement['source'] ) : ( $active ? 'control-plane' : 'local-default' ),
 			'enforcement'     => $settings['enforcement_mode'],
 			'control_plane'   => self::get_control_plane_base_url(),
 			'offer_slug'      => isset( $offer['plan'] ) ? (string) $offer['plan'] : $plan,
@@ -123,6 +123,106 @@ class EcomCine_Licensing {
 		}
 
 		return $status;
+	}
+
+	public static function get_offer_label( $offer_slug ) {
+		$offer_slug = sanitize_key( (string) $offer_slug );
+		$labels = array(
+			'freemium' => 'Freemium',
+			'solo'     => 'Solo',
+			'maestro'  => 'Maestro',
+			'agency'   => 'Agency',
+		);
+
+		if ( isset( $labels[ $offer_slug ] ) ) {
+			return $labels[ $offer_slug ];
+		}
+
+		if ( '' === $offer_slug ) {
+			return 'Unknown';
+		}
+
+		return ucwords( str_replace( array( '-', '_' ), ' ', $offer_slug ) );
+	}
+
+	public static function get_source_label( $source ) {
+		$source = sanitize_key( (string) $source );
+		$labels = array(
+			'control-plane'                    => 'Paid entitlement from control plane',
+			'local-freemium-default'           => 'Freemium default',
+			'local-freemium-activation-fallback' => 'Freemium fallback after activation failure',
+			'local-freemium-sync-fallback'     => 'Freemium fallback after sync failure',
+			'local-default'                    => 'Local default',
+		);
+
+		if ( isset( $labels[ $source ] ) ) {
+			return $labels[ $source ];
+		}
+
+		if ( '' === $source ) {
+			return 'Unknown';
+		}
+
+		return ucwords( str_replace( array( '-', '_' ), ' ', $source ) );
+	}
+
+	/**
+	 * @param array<string,mixed>|null $status
+	 */
+	public static function is_freemium_status( $status = null ) {
+		if ( ! is_array( $status ) ) {
+			$status = self::get_status();
+		}
+
+		return ! empty( $status['active'] ) && 'freemium' === sanitize_key( (string) ( $status['offer_slug'] ?? '' ) );
+	}
+
+	/**
+	 * @param array<string,mixed>|null $status
+	 */
+	public static function has_paid_entitlement( $status = null ) {
+		if ( ! is_array( $status ) ) {
+			$status = self::get_status();
+		}
+
+		$offer_slug = sanitize_key( (string) ( $status['offer_slug'] ?? '' ) );
+		return ! empty( $status['active'] ) && '' !== $offer_slug && 'freemium' !== $offer_slug;
+	}
+
+	/**
+	 * @param array<string,mixed>|null $status
+	 */
+	public static function get_mode_label( $status = null ) {
+		if ( ! is_array( $status ) ) {
+			$status = self::get_status();
+		}
+
+		if ( self::has_paid_entitlement( $status ) ) {
+			return 'Paid';
+		}
+
+		if ( self::is_freemium_status( $status ) ) {
+			return 'Freemium';
+		}
+
+		return ! empty( $status['active'] ) ? 'Active' : 'Inactive';
+	}
+
+	/**
+	 * @param array<string,mixed>|null $status
+	 */
+	public static function can_access_feature( $feature_key, $status = null ) {
+		$feature_key = sanitize_key( (string) $feature_key );
+		if ( ! is_array( $status ) ) {
+			$status = self::get_status();
+		}
+
+		switch ( $feature_key ) {
+			case 'demo_data_import':
+				return self::has_paid_entitlement( $status );
+			default:
+				return true;
+		}
 	}
 
 	/**
@@ -220,8 +320,54 @@ class EcomCine_Licensing {
 		return is_array( $value ) ? $value : array();
 	}
 
+	/**
+	 * @return array<string,mixed>
+	 */
+	private static function get_effective_entitlement() {
+		$cached = self::get_cached_entitlement();
+		if ( ! empty( $cached ) ) {
+			return $cached;
+		}
+
+		return self::build_freemium_contract( 'local-freemium-default' );
+	}
+
 	private static function set_cached_entitlement( $entitlement ) {
 		update_option( self::OPTION_ENTITLEMENT, is_array( $entitlement ) ? $entitlement : array(), false );
+	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	private static function build_freemium_contract( $source = 'local-freemium-default' ) {
+		$catalog = EcomCine_Offer_Catalog::get_catalog();
+		$offer = isset( $catalog['freemium'] ) && is_array( $catalog['freemium'] ) ? $catalog['freemium'] : array();
+		$max_activations = max( 1, (int) ( $offer['max_site_activations'] ?? 1 ) );
+		$limits = isset( $offer['allowances'] ) && is_array( $offer['allowances'] ) ? $offer['allowances'] : array();
+
+		return array(
+			'plan_slug'          => 'freemium',
+			'status'             => 'active',
+			'limits'             => $limits,
+			'activation_policy'  => array(
+				'max_activations'       => $max_activations,
+				'used_activations'      => 1,
+				'current_activations'   => 1,
+				'site_activations_used' => 1,
+				'remaining_activations' => max( 0, $max_activations - 1 ),
+				'site_is_activated'     => true,
+			),
+			'contract_signature' => hash( 'sha256', 'freemium:' . wp_json_encode( $limits ) ),
+			'normalized_at'      => gmdate( 'c' ),
+			'source'             => sanitize_key( (string) $source ),
+		);
+	}
+
+	private static function apply_freemium_fallback( $source, $error_message = '' ) {
+		self::set_cached_entitlement( self::build_freemium_contract( $source ) );
+		if ( '' !== (string) $error_message ) {
+			update_option( self::OPTION_LAST_ERROR, sanitize_text_field( (string) $error_message ), false );
+		}
 	}
 
 	private static function generate_site_fingerprint() {
@@ -259,8 +405,14 @@ class EcomCine_Licensing {
 		$settings = self::get_settings();
 		$license_key = strtoupper( trim( (string) ( $settings['license_key'] ?? '' ) ) );
 		if ( '' === $license_key ) {
-			update_option( self::OPTION_LAST_ERROR, 'License key is required.', false );
-			return false;
+			if ( 'admin_verify' === (string) $reason ) {
+				update_option( self::OPTION_LAST_ERROR, 'License key is required.', false );
+				return false;
+			}
+
+			self::apply_freemium_fallback( 'local-freemium-default' );
+			update_option( self::OPTION_LAST_ERROR, '', false );
+			return true;
 		}
 
 		$license_ref = self::mask_license_key( $license_key );
@@ -277,6 +429,7 @@ class EcomCine_Licensing {
 		$base_url = self::get_control_plane_base_url();
 		if ( '' === $activation_id || '' === $site_token ) {
 			if ( ! self::activate_remote( $base_url, $license_key, $license_ref ) ) {
+				self::apply_freemium_fallback( 'local-freemium-activation-fallback' );
 				return false;
 			}
 			$activation_id = (string) get_option( self::OPTION_ACTIVATION_ID, '' );
@@ -284,7 +437,7 @@ class EcomCine_Licensing {
 		}
 
 		if ( '' === $activation_id || '' === $site_token ) {
-			update_option( self::OPTION_LAST_ERROR, 'Activation credentials missing after verify.', false );
+			self::apply_freemium_fallback( 'local-freemium-activation-fallback', 'Activation credentials missing after verify.' );
 			return false;
 		}
 
@@ -297,7 +450,7 @@ class EcomCine_Licensing {
 
 		$response = self::post_json( trailingslashit( $base_url ) . 'entitlements/resolve', $payload, $site_token );
 		if ( is_wp_error( $response ) ) {
-			update_option( self::OPTION_LAST_ERROR, sprintf( 'Entitlement sync failed: %s', $response->get_error_message() ), false );
+			self::apply_freemium_fallback( 'local-freemium-sync-fallback', sprintf( 'Entitlement sync failed: %s', $response->get_error_message() ) );
 			return false;
 		}
 
@@ -309,7 +462,10 @@ class EcomCine_Licensing {
 				$cp_error = (string) ( $body['error'] ?? $body['message'] ?? '' );
 			}
 			$error = '' !== $cp_error ? sprintf( 'Entitlement sync rejected: %s', $cp_error ) : sprintf( 'Entitlement sync rejected (HTTP %d).', $status_code );
-			update_option( self::OPTION_LAST_ERROR, $error, false );
+			if ( in_array( $status_code, array( 403, 404 ), true ) ) {
+				self::clear_remote_state();
+			}
+			self::apply_freemium_fallback( 'local-freemium-sync-fallback', $error );
 			return false;
 		}
 
@@ -344,6 +500,7 @@ class EcomCine_Licensing {
 			}
 			$error = '' !== $cp_error ? sprintf( 'Activation rejected: %s', $cp_error ) : sprintf( 'Activation rejected (HTTP %d).', $status_code );
 			update_option( self::OPTION_LAST_ERROR, $error, false );
+			self::clear_remote_state();
 			return false;
 		}
 
@@ -378,7 +535,7 @@ class EcomCine_Licensing {
 	 * @return array<string,mixed>
 	 */
 	private static function normalize_contract( $contract ) {
-		$plan = sanitize_key( (string) ( $contract['plan'] ?? 'free' ) );
+		$plan = sanitize_key( (string) ( $contract['plan_slug'] ?? $contract['plan'] ?? 'freemium' ) );
 		$limits = isset( $contract['limits'] ) && is_array( $contract['limits'] ) ? $contract['limits'] : array();
 		$policy = isset( $contract['activation_policy'] ) && is_array( $contract['activation_policy'] ) ? $contract['activation_policy'] : array();
 
@@ -389,6 +546,7 @@ class EcomCine_Licensing {
 			'activation_policy'  => $policy,
 			'contract_signature' => sanitize_text_field( (string) ( $contract['contract_signature'] ?? '' ) ),
 			'normalized_at'      => gmdate( 'c' ),
+			'source'             => isset( $contract['source'] ) ? sanitize_key( (string) $contract['source'] ) : 'control-plane',
 		);
 	}
 
@@ -434,7 +592,7 @@ class EcomCine_Licensing {
 
 		$settings    = self::get_settings();
 		$status      = self::get_status();
-		$entitlement = self::get_cached_entitlement();
+		$entitlement = self::get_effective_entitlement();
 		$result      = isset( $_GET['ecomcine_license_result'] ) ? sanitize_key( (string) wp_unslash( $_GET['ecomcine_license_result'] ) ) : '';
 
 		if ( 'success' === $result ) {
@@ -450,11 +608,19 @@ class EcomCine_Licensing {
 		// Activation count: use activation_policy from entitlement when available,
 		// otherwise count this site as 1 if an activation_id exists.
 		$policy          = isset( $entitlement['activation_policy'] ) && is_array( $entitlement['activation_policy'] ) ? $entitlement['activation_policy'] : array();
-		$active_count    = isset( $policy['current_activations'] ) ? (int) $policy['current_activations'] : ( '' !== (string) get_option( self::OPTION_ACTIVATION_ID, '' ) ? 1 : 0 );
+		$active_count    = isset( $policy['current_activations'] ) ? (int) $policy['current_activations'] : ( isset( $policy['used_activations'] ) ? (int) $policy['used_activations'] : ( isset( $policy['site_activations_used'] ) ? (int) $policy['site_activations_used'] : ( '' !== (string) get_option( self::OPTION_ACTIVATION_ID, '' ) ? 1 : 0 ) ) );
 		$max_activations = isset( $status['max_site_activations'] ) ? (int) $status['max_site_activations'] : 1;
+		$mode_label      = self::get_mode_label( $status );
+		$offer_label     = self::get_offer_label( (string) ( $status['offer_slug'] ?? '' ) );
+		$source_label    = self::get_source_label( (string) ( $status['source'] ?? '' ) );
 
 		$is_activated = '' !== (string) get_option( self::OPTION_ACTIVATION_ID, '' );
 		?>
+		<?php if ( self::is_freemium_status( $status ) ) : ?>
+			<div class="notice notice-info inline" style="max-width: 560px; margin: 16px 0 0;">
+				<p><strong>Freemium mode is active.</strong> Premium features, including Demo Data import, remain disabled until a paid license is activated.</p>
+			</div>
+		<?php endif; ?>
 		<table class="widefat striped" style="max-width: 560px; margin: 16px 0 24px;">
 				<tbody>
 					<tr>
@@ -468,12 +634,20 @@ class EcomCine_Licensing {
 						</td>
 					</tr>
 					<tr>
+						<th>License Mode</th>
+						<td><?php echo esc_html( $mode_label ); ?></td>
+					</tr>
+					<tr>
 						<th>Last Sync</th>
 						<td><?php echo esc_html( ! empty( $status['last_sync'] ) ? (string) $status['last_sync'] : '—' ); ?></td>
 					</tr>
 					<tr>
 						<th>Resolved Offer</th>
-						<td><?php echo esc_html( ! empty( $status['offer_slug'] ) ? (string) $status['offer_slug'] : '—' ); ?></td>
+						<td><?php echo esc_html( $offer_label ); ?></td>
+					</tr>
+					<tr>
+						<th>Entitlement Source</th>
+						<td><?php echo esc_html( $source_label ); ?></td>
 					</tr>
 					<tr>
 						<th>Activation Count</th>

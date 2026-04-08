@@ -1,0 +1,37 @@
+{
+  "name": "Licensing tab paid activation limit",
+  "pages": [
+    {
+      "name": "Licensing tab shows paid plan and current activation count",
+      "url": "/wp-admin/admin.php?page=ecomcine-settings&tab=licensing",
+      "steps": [
+        {
+          "action": "loginAsAdmin"
+        },
+        {
+          "action": "waitFor",
+          "target": "table.widefat.striped"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Active",
+          "within": "table.widefat.striped"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=solo",
+          "within": "table.widefat.striped"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=1 / 3",
+          "within": "table.widefat.striped"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Deactivate License"
+        }
+      ]
+    }
+  ]
+}

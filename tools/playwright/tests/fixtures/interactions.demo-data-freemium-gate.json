@@ -1,0 +1,34 @@
+{
+  "name": "Demo data freemium gate",
+  "pages": [
+    {
+      "name": "Demo Data page shows premium gate in freemium mode",
+      "url": "/wp-admin/admin.php?page=ecomcine-demo-data",
+      "steps": [
+        {
+          "action": "loginAsAdmin"
+        },
+        {
+          "action": "waitFor",
+          "target": "text=EcomCine — Demo Data"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Demo Data import is a premium feature."
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Upgrade to enable this feature."
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Open Licensing"
+        },
+        {
+          "action": "assertHidden",
+          "target": ".ecomcine-import-remote-btn"
+        }
+      ]
+    }
+  ]
+}

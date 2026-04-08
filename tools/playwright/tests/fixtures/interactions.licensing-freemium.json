@@ -1,0 +1,42 @@
+{
+  "name": "Licensing tab freemium fallback",
+  "pages": [
+    {
+      "name": "Licensing tab shows active freemium fallback when no license key is stored",
+      "url": "/wp-admin/admin.php?page=ecomcine-settings&tab=licensing",
+      "steps": [
+        {
+          "action": "loginAsAdmin"
+        },
+        {
+          "action": "waitFor",
+          "target": "table.widefat.striped"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=License Status",
+          "within": "table.widefat.striped"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Active",
+          "within": "table.widefat.striped"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Resolved Offer",
+          "within": "table.widefat.striped"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=freemium",
+          "within": "table.widefat.striped"
+        },
+        {
+          "action": "assertVisible",
+          "target": "#ecomcine-license-key"
+        }
+      ]
+    }
+  ]
+}
