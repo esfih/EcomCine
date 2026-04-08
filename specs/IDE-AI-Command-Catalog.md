@@ -326,6 +326,15 @@ Each command contract defines:
 - failure_class: `tooling`
 - remediation_type: `source-fix`
 
+`id`: `release.build.ecomcine.control_plane`
+- goal: Build private EcomCine Control Plane plugin artifact and manifest
+- command: `./scripts/build-ecomcine-control-plane-release.sh`
+- args: none
+- success: exit `0`
+- failure: non-zero; stop and resolve build script/runtime issue
+- failure_class: `tooling`
+- remediation_type: `source-fix`
+
 `id`: `release.upload.ecomcine.canonical`
 - goal: Upload EcomCine release assets using canonical filenames to prevent broken direct release URLs
 - command: `./scripts/release-upload-canonical-assets.sh <tag> <version> [slug]`

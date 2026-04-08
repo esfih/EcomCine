@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine Control Plane
  * Description: Private billing control-plane plugin for license activation and entitlement resolution.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: EcomCine
  * Requires at least: 6.5
  * Requires PHP: 8.1
@@ -10,7 +10,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_CP_VERSION', '0.1.0' );
+define( 'ECOMCINE_CP_VERSION', '0.1.1' );
 
 final class EcomCine_CP_Plan_Registry {
 	const OPTION_KEY = 'ecomcine_cp_plan_mappings_v1';
