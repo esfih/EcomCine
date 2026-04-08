@@ -847,7 +847,12 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 
 						$profile = function_exists( 'ecomcine_get_person_info' ) ? ecomcine_get_person_info( $vendor_id ) : array();
 						$name    = ! empty( $profile['store_name'] ) ? (string) $profile['store_name'] : (string) $user->display_name;
-						$url     = function_exists( 'ecomcine_get_person_url' ) ? ecomcine_get_person_url( $vendor_id ) : get_author_posts_url( $vendor_id, $user->user_nicename );
+						$url     = function_exists( 'tm_get_vendor_public_profile_url' )
+							? tm_get_vendor_public_profile_url( $vendor_id )
+							: '';
+						if ( '' === trim( (string) $url ) && function_exists( 'ecomcine_get_person_route_url' ) ) {
+							$url = ecomcine_get_person_route_url( $vendor_id );
+						}
 						if ( '' === trim( (string) $url ) ) {
 							continue;
 						}

@@ -122,8 +122,14 @@ class TAP_Compat_Account_Data_Provider implements TAP_Account_Data_Provider {
 			if ( ! is_array( $entry ) ) {
 				continue;
 			}
+			$share_base_url = function_exists( 'ecomcine_get_person_route_url' )
+				? ecomcine_get_person_route_url( $user_id )
+				: '';
+			if ( '' === $share_base_url ) {
+				$share_base_url = get_author_posts_url( $user_id );
+			}
 			$shares[] = [
-				'share_url'   => add_query_arg( [ 'tm_share' => $entry['token'] ?? '' ], get_author_posts_url( $user_id ) ),
+				'share_url'   => add_query_arg( [ 'tm_share' => $entry['token'] ?? '' ], $share_base_url ),
 				'talent_name' => get_userdata( $user_id ) ? get_userdata( $user_id )->display_name : '',
 				'expiry'      => isset( $entry['expiry'] ) ? gmdate( 'Y-m-d H:i:s', (int) $entry['expiry'] ) : '',
 			];

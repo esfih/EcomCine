@@ -206,23 +206,70 @@
 
 .tm-account-dialog {
 	position: relative;
-	width: 70vw;
-	max-width: 70vw;
+	width: min(70vw, 1320px);
+	max-width: min(70vw, 1320px);
 	height: 95vh;
 	margin: 2.5vh auto;
 	background: rgba(0, 0, 0, 0.92);
 	border: 1px solid rgba(255, 255, 255, 0.2);
 	border-radius: 14px;
-	padding: 0 10px;
+	padding: 20px 22px;
 	color: #fff;
 	box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
 	overflow-y: auto;
+}
+
+@media (min-width: 1101px) and (max-width: 1599px) {
+	.tm-account-dialog {
+		width: min(78vw, 1240px);
+		max-width: min(78vw, 1240px);
+	}
+}
+
+@media (min-width: 1600px) and (max-width: 2560px) {
+	.tm-account-dialog {
+		width: min(70vw, 1360px);
+		max-width: min(70vw, 1360px);
+	}
+}
+
+@media (min-width: 2561px) and (max-width: 3839px) {
+	.tm-account-dialog {
+		width: min(64vw, 1520px);
+		max-width: min(64vw, 1520px);
+		padding: 24px 28px;
+	}
+}
+
+@media (min-width: 3840px) {
+	.tm-account-dialog {
+		width: min(58vw, 1840px);
+		max-width: min(58vw, 1840px);
+		padding: 28px 32px;
+	}
+}
+
+@media (min-width: 481px) and (max-width: 1024px) and (orientation: portrait) {
+	.tm-account-dialog {
+		width: min(92vw, 920px);
+		max-width: min(92vw, 920px);
+		padding: 20px;
+	}
+}
+
+@media (min-width: 933px) and (max-width: 1100px) and (orientation: landscape) {
+	.tm-account-dialog {
+		width: min(92vw, 1040px);
+		max-width: min(92vw, 1040px);
+		padding: 18px 20px;
+	}
 }
 
 @media (max-width: 900px) and (orientation: portrait) {
 	.tm-account-dialog {
 		width: 90vw;
 		max-width: 90vw;
+		padding: 18px;
 	}
 }
 
@@ -230,6 +277,7 @@
 	.tm-account-dialog {
 		width: 90vw;
 		max-width: 90vw;
+		padding: 18px;
 	}
 }
 
@@ -1100,7 +1148,7 @@
 	display: none;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login {
+.tm-account-modal .tm-account-login form.tm-account-login-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(320px, 420px));
 	justify-content: center;
@@ -1110,16 +1158,16 @@
 	align-items: start;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login .clear {
+.tm-account-modal .tm-account-login form.tm-account-login-grid .clear {
 	display: none;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login .form-row {
+.tm-account-modal .tm-account-login form.tm-account-login-grid .form-row {
 	margin: 0 !important;
 	padding: 0;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login .form-row label {
+.tm-account-modal .tm-account-login form.tm-account-login-grid .form-row label {
 	font-size: 12px;
 	font-weight: 600;
 	letter-spacing: 0.03em;
@@ -1129,9 +1177,9 @@
 	line-height: 1.25;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login input[type="text"],
-.tm-account-modal .tm-account-login form.woocommerce-form-login input[type="email"],
-.tm-account-modal .tm-account-login form.woocommerce-form-login input[type="password"] {
+.tm-account-modal .tm-account-login form.tm-account-login-grid input[type="text"],
+.tm-account-modal .tm-account-login form.tm-account-login-grid input[type="email"],
+.tm-account-modal .tm-account-login form.tm-account-login-grid input[type="password"] {
 	width: 100%;
 	background: rgba(7, 8, 10, 0.95) !important;
 	border: 1px solid rgba(212, 175, 55, 0.24) !important;
@@ -1146,18 +1194,18 @@
 	margin: 0;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login input::placeholder {
+.tm-account-modal .tm-account-login form.tm-account-login-grid input::placeholder {
 	color: rgba(200, 200, 200, 0.52) !important;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login input:focus {
+.tm-account-modal .tm-account-login form.tm-account-login-grid input:focus {
 	outline: none;
 	border-color: rgba(212, 175, 55, 0.62) !important;
 	box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.16) !important;
 	background: rgba(10, 11, 14, 0.98) !important;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login .woocommerce-form-login__rememberme {
+.tm-account-modal .tm-account-login form.tm-account-login-grid .woocommerce-form-login__rememberme {
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
@@ -1168,12 +1216,12 @@
 	letter-spacing: normal;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login .woocommerce-form-login__rememberme input[type="checkbox"] {
+.tm-account-modal .tm-account-login form.tm-account-login-grid .woocommerce-form-login__rememberme input[type="checkbox"] {
 	margin: 0;
 	accent-color: #d4af37;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login .tm-account-login-actions-row {
+.tm-account-modal .tm-account-login form.tm-account-login-grid .tm-account-login-actions-row {
 	grid-column: 1 / -1;
 	display: flex;
 	align-items: center;
@@ -1182,20 +1230,20 @@
 	flex-wrap: wrap;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login .lost_password,
-.tm-account-modal .tm-account-login form.woocommerce-form-login .jssocials-shares {
+.tm-account-modal .tm-account-login form.tm-account-login-grid .lost_password,
+.tm-account-modal .tm-account-login form.tm-account-login-grid .jssocials-shares {
 	grid-column: 1 / -1;
 	margin: 0;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login .lost_password a {
+.tm-account-modal .tm-account-login form.tm-account-login-grid .lost_password a {
 	color: var(--tm-account-gold);
 	text-decoration: underline;
 	font-size: 12px;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login button[type="submit"],
-.tm-account-modal .tm-account-login form.woocommerce-form-login .woocommerce-button {
+.tm-account-modal .tm-account-login form.tm-account-login-grid button[type="submit"],
+.tm-account-modal .tm-account-login form.tm-account-login-grid .woocommerce-button {
 	appearance: none;
 	-webkit-appearance: none;
 	border: 1px solid rgba(212, 175, 55, 0.68) !important;
@@ -1214,14 +1262,14 @@
 	transition: transform 0.15s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 
-.tm-account-modal .tm-account-login form.woocommerce-form-login button[type="submit"]:hover,
-.tm-account-modal .tm-account-login form.woocommerce-form-login .woocommerce-button:hover {
+.tm-account-modal .tm-account-login form.tm-account-login-grid button[type="submit"]:hover,
+.tm-account-modal .tm-account-login form.tm-account-login-grid .woocommerce-button:hover {
 	filter: brightness(1.06) !important;
 	transform: translateY(-1px);
 	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.44), inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
 }
 
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid {
+.tm-account-modal .tm-account-register form.tm-account-register-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(320px, 420px));
 	justify-content: center;
@@ -1231,17 +1279,17 @@
 	align-items: start;
 }
 
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid .tm-account-grid-item {
+.tm-account-modal .tm-account-register form.tm-account-register-grid .tm-account-grid-item {
 	margin: 0;
 }
 
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid .form-row,
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid p.form-row {
+.tm-account-modal .tm-account-register form.tm-account-register-grid .form-row,
+.tm-account-modal .tm-account-register form.tm-account-register-grid p.form-row {
 	margin: 0 !important;
 	padding: 0;
 }
 
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid .form-row label {
+.tm-account-modal .tm-account-register form.tm-account-register-grid .form-row label {
 	font-size: 12px;
 	font-weight: 600;
 	letter-spacing: 0.03em;
@@ -1251,12 +1299,12 @@
 	line-height: 1.25;
 }
 
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input[type="text"],
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input[type="email"],
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input[type="password"],
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input[type="tel"],
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid select,
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid textarea {
+.tm-account-modal .tm-account-register form.tm-account-register-grid input[type="text"],
+.tm-account-modal .tm-account-register form.tm-account-register-grid input[type="email"],
+.tm-account-modal .tm-account-register form.tm-account-register-grid input[type="password"],
+.tm-account-modal .tm-account-register form.tm-account-register-grid input[type="tel"],
+.tm-account-modal .tm-account-register form.tm-account-register-grid select,
+.tm-account-modal .tm-account-register form.tm-account-register-grid textarea {
 	width: 100%;
 	background: rgba(7, 8, 10, 0.95) !important;
 	border: 1px solid rgba(212, 175, 55, 0.24) !important;
@@ -1271,36 +1319,36 @@
 	margin: 0;
 }
 
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input::placeholder,
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid textarea::placeholder {
+.tm-account-modal .tm-account-register form.tm-account-register-grid input::placeholder,
+.tm-account-modal .tm-account-register form.tm-account-register-grid textarea::placeholder {
 	color: rgba(200, 200, 200, 0.52) !important;
 }
 
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input:focus,
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid select:focus,
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid textarea:focus {
+.tm-account-modal .tm-account-register form.tm-account-register-grid input:focus,
+.tm-account-modal .tm-account-register form.tm-account-register-grid select:focus,
+.tm-account-modal .tm-account-register form.tm-account-register-grid textarea:focus {
 	outline: none;
 	border-color: rgba(212, 175, 55, 0.62) !important;
 	box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.16) !important;
 	background: rgba(10, 11, 14, 0.98) !important;
 }
 
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input[type="checkbox"]:focus,
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input[type="checkbox"]:focus-visible {
+.tm-account-modal .tm-account-register form.tm-account-register-grid input[type="checkbox"]:focus,
+.tm-account-modal .tm-account-register form.tm-account-register-grid input[type="checkbox"]:focus-visible {
 	background: initial;
 	box-shadow: none;
 }
 
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input:-webkit-autofill,
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input:-webkit-autofill:hover,
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid input:-webkit-autofill:focus {
+.tm-account-modal .tm-account-register form.tm-account-register-grid input:-webkit-autofill,
+.tm-account-modal .tm-account-register form.tm-account-register-grid input:-webkit-autofill:hover,
+.tm-account-modal .tm-account-register form.tm-account-register-grid input:-webkit-autofill:focus {
 	-webkit-text-fill-color: #f2f2f2 !important;
 	-webkit-box-shadow: 0 0 0 1000px rgba(7, 8, 10, 0.98) inset !important;
 	transition: background-color 9999s ease-in-out 0s;
 }
 
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid .tm-account-terms-grid,
-.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid .tm-account-submit-row {
+.tm-account-modal .tm-account-register form.tm-account-register-grid .tm-account-terms-grid,
+.tm-account-modal .tm-account-register form.tm-account-register-grid .tm-account-submit-row {
 	grid-column: 1 / -1;
 }
 
@@ -1469,6 +1517,9 @@
 		margin: 2.5vh 16px;
 		padding: 18px;
 	}
+	.tm-account-tabs {
+		flex-wrap: wrap;
+	}
 	.tm-account-booking-grid {
 		grid-template-columns: 1fr;
 	}
@@ -1502,12 +1553,12 @@
 	.tm-account-orders-detail table.order-items tbody td.name {
 		grid-column: 1 / -1;
 	}
-	.tm-account-modal .tm-account-register form.dokan-vendor-register.tm-account-register-grid {
+	.tm-account-modal .tm-account-register form.tm-account-register-grid {
 		grid-template-columns: 1fr;
 		max-width: none;
 		gap: 10px;
 	}
-	.tm-account-modal .tm-account-login form.woocommerce-form-login {
+	.tm-account-modal .tm-account-login form.tm-account-login-grid {
 		grid-template-columns: 1fr;
 		max-width: none;
 		gap: 10px;
@@ -1517,5 +1568,33 @@
 	}
 	.tm-account-modal .tm-account-register .tm-account-password-row {
 		grid-template-columns: 1fr;
+	}
+}
+
+@media (min-width: 481px) and (max-width: 1024px) and (orientation: portrait) {
+	.tm-account-modal .tm-account-login form.tm-account-login-grid,
+	.tm-account-modal .tm-account-register form.tm-account-register-grid,
+	.tm-account-modal .tm-account-register .tm-account-password-row {
+		grid-template-columns: minmax(0, 1fr);
+		max-width: 100%;
+	}
+}
+
+@media (min-width: 933px) and (max-width: 1100px) and (orientation: landscape) {
+	.tm-account-modal .tm-account-login form.tm-account-login-grid,
+	.tm-account-modal .tm-account-register form.tm-account-register-grid {
+		grid-template-columns: repeat(2, minmax(280px, 1fr));
+		max-width: 100%;
+	}
+}
+
+@media (min-width: 3840px) {
+	.tm-account-modal .tm-account-login form.tm-account-login-grid,
+	.tm-account-modal .tm-account-register form.tm-account-register-grid {
+		max-width: 1120px;
+		gap: 14px 20px;
+	}
+	.tm-account-modal .tm-account-register .tm-account-password-row {
+		gap: 14px 20px;
 	}
 }

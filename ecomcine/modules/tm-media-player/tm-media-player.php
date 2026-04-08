@@ -430,15 +430,29 @@ function get_vendor_navigation_list() {
 		if ( function_exists( 'tm_store_ui_is_person_live' ) && ! tm_store_ui_is_person_live( $vendor_id ) ) {
 			continue;
 		}
-		if ( function_exists( 'dokan_get_store_url' ) ) {
+		$user_data = get_userdata( $vendor_id );
+		if ( function_exists( 'tm_get_vendor_public_profile_url' ) ) {
+			$store_url = tm_get_vendor_public_profile_url( $vendor_id );
+		} elseif ( function_exists( 'ecomcine_get_person_route_url' ) ) {
+			$store_url = ecomcine_get_person_route_url( $vendor_id );
+		} elseif ( function_exists( 'ecomcine_get_person_url' ) ) {
+			$store_url = ecomcine_get_person_url( $vendor_id );
+		} elseif ( function_exists( 'dokan_get_store_url' ) ) {
 			$store_url = dokan_get_store_url( $vendor_id );
 		} else {
-			$user_data = get_userdata( $vendor_id );
-			$store_url = $user_data ? get_author_posts_url( $vendor_id, $user_data->user_nicename ) : home_url( '/?author=' . $vendor_id );
+			$store_url = '';
+		}
+		if ( '' === (string) $store_url ) {
+			$store_url = function_exists( 'ecomcine_get_person_route_url' ) ? ecomcine_get_person_route_url( $vendor_id ) : '';
+		}
+		if ( '' === (string) $store_url && function_exists( 'dokan_get_store_url' ) ) {
+			$store_url = dokan_get_store_url( $vendor_id );
+		}
+		if ( '' === (string) $store_url ) {
+			continue;
 		}
 		$store_name = get_user_meta( $vendor_id, 'dokan_store_name', true );
 		if ( empty( $store_name ) ) {
-			$user_data  = get_userdata( $vendor_id );
 			$store_name = $user_data ? $user_data->display_name : ( 'Talent #' . $vendor_id );
 		}
 		$vendor_list[] = array( 'id' => $vendor_id, 'name' => $store_name, 'url' => $store_url );

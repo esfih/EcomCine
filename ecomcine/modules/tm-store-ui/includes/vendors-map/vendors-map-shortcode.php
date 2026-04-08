@@ -218,9 +218,9 @@ add_shortcode( 'vendors_map', function() {
 		$vendor_markers[] = array(
 			'id'         => $user->ID,
 			'name'       => $store_info['store_name'] ?? $user->display_name,
-			'url'        => function_exists( 'ecomcine_get_person_url' )
-				? ecomcine_get_person_url( $user->ID )
-				: ( function_exists( 'dokan_get_store_url' ) ? dokan_get_store_url( $user->ID ) : get_author_posts_url( $user->ID ) ),
+			'url'        => function_exists( 'tm_get_vendor_public_profile_url' )
+				? tm_get_vendor_public_profile_url( $user->ID )
+				: ( function_exists( 'ecomcine_get_person_route_url' ) ? ecomcine_get_person_route_url( $user->ID ) : ( function_exists( 'dokan_get_store_url' ) ? dokan_get_store_url( $user->ID ) : '' ) ),
 			'lat'        => $lat,
 			'lng'        => $lng,
 			'address'    => $address_str,

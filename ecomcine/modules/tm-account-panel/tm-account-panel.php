@@ -63,6 +63,35 @@ function tm_account_panel_svg_icon( $name, $class = '', $title = '' ) {
 	return '<span ' . $attrs . '>•</span>';
 }
 
+function tm_account_panel_normalize_login_form_markup( $markup ) {
+	if ( ! is_string( $markup ) || '' === trim( $markup ) ) {
+		return $markup;
+	}
+
+	if ( preg_match( '/<form\b[^>]*class="([^"]*)"/i', $markup ) ) {
+		$markup = preg_replace(
+			'/<form\b([^>]*)class="([^"]*)"/i',
+			'<form$1class="$2 woocommerce-form-login tm-account-login-grid"',
+			$markup,
+			1
+		);
+	} else {
+		$markup = preg_replace(
+			'/<form\b([^>]*)>/i',
+			'<form$1 class="woocommerce-form-login tm-account-login-grid">',
+			$markup,
+			1
+		);
+	}
+
+	$markup = str_replace( 'class="login-username"', 'class="login-username form-row"', $markup );
+	$markup = str_replace( 'class="login-password"', 'class="login-password form-row"', $markup );
+	$markup = str_replace( 'class="login-remember"', 'class="login-remember form-row"', $markup );
+	$markup = str_replace( 'class="login-submit"', 'class="login-submit form-row tm-account-login-actions-row"', $markup );
+
+	return $markup;
+}
+
 function tm_account_panel_enqueue_assets( $force = false ) {
 	if ( is_admin() ) {
 		return;
@@ -75,7 +104,7 @@ function tm_account_panel_enqueue_assets( $force = false ) {
 	wp_enqueue_style(
 		'tm-account-panel-css',
 		$plugin_url . 'assets/css/account-panel.css',
-		array(),
+		wp_style_is( 'tm-store-ui-responsive', 'registered' ) ? array( 'tm-store-ui-responsive' ) : array(),
 		ECOMCINE_VERSION
 	);
 	wp_enqueue_script(
@@ -343,6 +372,7 @@ function tm_account_panel_render_modal_markup( $force = false ) {
 				),
 			);
 		}
+		$login_form = tm_account_panel_normalize_login_form_markup( $login_form );
 		if ( shortcode_exists( 'dokan-vendor-registration' ) ) {
 			$registration_form = do_shortcode( '[dokan-vendor-registration]' );
 		} else {
@@ -702,9 +732,16 @@ function tm_account_panel_create_talent() {
  * don't yet have a tm_vendor CPT post.
  */
 function tm_account_panel_build_person_url( int $user_id ): string {
+	if ( function_exists( 'ecomcine_get_person_route_url' ) ) {
+		$route_url = ecomcine_get_person_route_url( $user_id );
+		if ( '' !== $route_url ) {
+			return $route_url;
+		}
+	}
+
 	$user = get_userdata( $user_id );
 	if ( ! $user ) {
-		return get_author_posts_url( $user_id );
+		return '';
 	}
 
 	$rewrite_base = get_option( 'ecomcine_person_base', 'person' );
@@ -718,7 +755,7 @@ function tm_account_panel_build_person_url( int $user_id ): string {
 		return (string) dokan_get_store_url( $user_id );
 	}
 
-	return get_author_posts_url( $user_id );
+	return '';
 }
 
 function tm_account_panel_load_qr_library() {
@@ -1468,8 +1505,10 @@ function ecomcine_tm_handle_vendor_registration() {
 	wp_set_current_user( $user_id );
 
 	// Redirect talent to their profile page; customers to the homepage.
-	if ( 'customer' !== $role && function_exists( 'ecomcine_get_person_url' ) ) {
-		$profile_url = ecomcine_get_person_url( $user_id );
+	if ( 'customer' !== $role ) {
+		$profile_url = function_exists( 'tm_account_panel_build_person_url' )
+			? tm_account_panel_build_person_url( $user_id )
+			: ( function_exists( 'ecomcine_get_person_route_url' ) ? ecomcine_get_person_route_url( $user_id ) : '' );
 	} else {
 		$profile_url = get_author_posts_url( $user_id );
 	}

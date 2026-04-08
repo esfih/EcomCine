@@ -52,6 +52,21 @@ async function readShowcaseSnapshot(page) {
 	});
 }
 
+async function readActiveVideoState(page) {
+	return page.evaluate(() => {
+		const activeVideo = Array.from(document.querySelectorAll('video')).find((video) => {
+			const style = window.getComputedStyle(video);
+			return style.display !== 'none' && style.visibility !== 'hidden';
+		}) as HTMLVideoElement | undefined;
+		return activeVideo ? {
+			src: activeVideo.currentSrc || activeVideo.src || null,
+			paused: activeVideo.paused,
+			ended: activeVideo.ended,
+			currentTime: Number(activeVideo.currentTime || 0),
+		} : null;
+	});
+}
+
 async function openShowcasePage(page, baseURL: string) {
 	const homeUrl = new URL('/', baseURL || 'http://localhost:8180').toString();
 	await page.goto(homeUrl, { waitUntil: 'commit', timeout: 30000 });
@@ -74,6 +89,105 @@ async function openShowcasePage(page, baseURL: string) {
 }
 
 test.describe('Showcase vendor swap regression', () => {
+	test('@interactions keyboard shortcuts keep working at laptop viewport widths', async ({ page, baseURL }) => {
+		await page.setViewportSize({ width: 1280, height: 720 });
+		const url = new URL('/?minduration=20', baseURL || 'http://localhost:8180').toString();
+		await page.goto(url, { waitUntil: 'domcontentloaded' });
+		await page.waitForLoadState('networkidle').catch(() => {});
+
+		const overlay = page.locator('.tm-showcase-play-overlay').first();
+		await overlay.waitFor({ state: 'visible', timeout: 15000 });
+		await overlay.click();
+		await expect(overlay).toHaveClass(/is-hidden/, { timeout: 5000 });
+
+		await page.waitForFunction(() => {
+			const activeVideo = Array.from(document.querySelectorAll('video')).find((video) => {
+				const style = window.getComputedStyle(video);
+				return style.display !== 'none' && style.visibility !== 'hidden';
+			}) as HTMLVideoElement | undefined;
+			return !!activeVideo && !activeVideo.paused && activeVideo.currentTime > 0.75;
+		}, undefined, { timeout: 15000 });
+
+		await page.keyboard.press('Space');
+		await page.waitForFunction(() => {
+			const activeVideo = Array.from(document.querySelectorAll('video')).find((video) => {
+				const style = window.getComputedStyle(video);
+				return style.display !== 'none' && style.visibility !== 'hidden';
+			}) as HTMLVideoElement | undefined;
+			return !!activeVideo && activeVideo.paused;
+		}, undefined, { timeout: 5000 });
+
+		await page.keyboard.press('Space');
+		await page.waitForFunction(() => {
+			const activeVideo = Array.from(document.querySelectorAll('video')).find((video) => {
+				const style = window.getComputedStyle(video);
+				return style.display !== 'none' && style.visibility !== 'hidden';
+			}) as HTMLVideoElement | undefined;
+			return !!activeVideo && !activeVideo.paused && activeVideo.currentTime > 0.1;
+		}, undefined, { timeout: 5000 });
+
+		await page.waitForTimeout(700);
+		const beforeArrowDown = await readActiveVideoState(page);
+		expect(beforeArrowDown).not.toBeNull();
+		expect(beforeArrowDown?.paused).toBeFalsy();
+
+		await page.keyboard.press('ArrowDown');
+		await page.waitForFunction((previous) => {
+			const activeVideo = Array.from(document.querySelectorAll('video')).find((video) => {
+				const style = window.getComputedStyle(video);
+				return style.display !== 'none' && style.visibility !== 'hidden';
+			}) as HTMLVideoElement | undefined;
+			if (!activeVideo) return false;
+			const currentSrc = activeVideo.currentSrc || activeVideo.src || null;
+			return currentSrc !== previous.src || Number(activeVideo.currentTime || 0) < Math.max(previous.currentTime - 0.5, 0.35);
+		}, beforeArrowDown, { timeout: 5000 });
+
+		await page.waitForTimeout(700);
+		const beforeArrowUp = await readActiveVideoState(page);
+		expect(beforeArrowUp).not.toBeNull();
+
+		await page.keyboard.press('ArrowUp');
+		await page.waitForFunction((previous) => {
+			const activeVideo = Array.from(document.querySelectorAll('video')).find((video) => {
+				const style = window.getComputedStyle(video);
+				return style.display !== 'none' && style.visibility !== 'hidden';
+			}) as HTMLVideoElement | undefined;
+			if (!activeVideo) return false;
+			const currentSrc = activeVideo.currentSrc || activeVideo.src || null;
+			return currentSrc !== previous.src || Number(activeVideo.currentTime || 0) < Math.max(previous.currentTime - 0.5, 0.35);
+		}, beforeArrowUp, { timeout: 5000 });
+
+		await page.waitForTimeout(700);
+		const beforeClickDown = await readActiveVideoState(page);
+		expect(beforeClickDown).not.toBeNull();
+
+		await page.locator('.keyboard-nav-down').first().click();
+		await page.waitForFunction((previous) => {
+			const activeVideo = Array.from(document.querySelectorAll('video')).find((video) => {
+				const style = window.getComputedStyle(video);
+				return style.display !== 'none' && style.visibility !== 'hidden';
+			}) as HTMLVideoElement | undefined;
+			if (!activeVideo) return false;
+			const currentSrc = activeVideo.currentSrc || activeVideo.src || null;
+			return currentSrc !== previous.src || Number(activeVideo.currentTime || 0) < Math.max(previous.currentTime - 0.5, 0.35);
+		}, beforeClickDown, { timeout: 5000 });
+
+		await page.waitForTimeout(700);
+		const beforeClickUp = await readActiveVideoState(page);
+		expect(beforeClickUp).not.toBeNull();
+
+		await page.locator('.keyboard-nav-up').first().click();
+		await page.waitForFunction((previous) => {
+			const activeVideo = Array.from(document.querySelectorAll('video')).find((video) => {
+				const style = window.getComputedStyle(video);
+				return style.display !== 'none' && style.visibility !== 'hidden';
+			}) as HTMLVideoElement | undefined;
+			if (!activeVideo) return false;
+			const currentSrc = activeVideo.currentSrc || activeVideo.src || null;
+			return currentSrc !== previous.src || Number(activeVideo.currentTime || 0) < Math.max(previous.currentTime - 0.5, 0.35);
+		}, beforeClickUp, { timeout: 5000 });
+	});
+
 	test('@interactions first play survives next talent swap', async ({ page, baseURL }) => {
 		await openShowcasePage(page, baseURL || 'http://localhost:8180');
 

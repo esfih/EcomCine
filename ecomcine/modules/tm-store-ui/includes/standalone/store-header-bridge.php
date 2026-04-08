@@ -249,15 +249,6 @@ if ( ! function_exists( 'tm_store_ui_render_store_header' ) ) {
 			return false;
 		}
 
-		if ( $is_showcase_context && function_exists( 'tm_account_panel_render_modal_markup' ) && false === strpos( $html, 'tm-account-modal' ) ) {
-			ob_start();
-			tm_account_panel_render_modal_markup( true );
-			$modal_html = trim( (string) ob_get_clean() );
-			if ( '' !== $modal_html ) {
-				$html .= "\n" . $modal_html;
-			}
-		}
-
 		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		return true;
 	}

@@ -26,14 +26,23 @@
 	}
 
 	function prepareLoginForm($modal) {
-		var $form = $modal.find(".tm-account-login form.woocommerce-form-login").first();
+		var $form = $modal.find(".tm-account-login form").first();
 		if (!$form.length) return;
 
 		if (!$form.hasClass("tm-account-login-grid")) {
 			$form.addClass("tm-account-login-grid");
 		}
 
+		if (!$form.hasClass("woocommerce-form-login")) {
+			$form.addClass("woocommerce-form-login");
+		}
+
+		$form.children("p").addClass("form-row");
+
 		var $actionsRow = $form.find(".form-row").has(".woocommerce-form-login__rememberme").first();
+		if (!$actionsRow.length) {
+			$actionsRow = $form.find(".login-submit, .form-row").has('button[type="submit"], input[type="submit"]').first();
+		}
 		if ($actionsRow.length && !$actionsRow.hasClass("tm-account-login-actions-row")) {
 			$actionsRow.addClass("tm-account-login-actions-row");
 		}

@@ -50,7 +50,15 @@ class THO_WP_Vendor_Identity_Projector implements THO_Vendor_Identity_Projector 
 			}
 		}
 
-		$store_url = get_author_posts_url( $vendor_id );
+		$store_url = function_exists( 'tm_get_vendor_public_profile_url' )
+			? tm_get_vendor_public_profile_url( $vendor_id )
+			: '';
+		if ( '' === $store_url && function_exists( 'ecomcine_get_person_route_url' ) ) {
+			$store_url = ecomcine_get_person_route_url( $vendor_id );
+		}
+		if ( '' === $store_url ) {
+			$store_url = get_author_posts_url( $vendor_id );
+		}
 
 		return [
 			'vendor_id'  => $vendor_id,

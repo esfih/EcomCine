@@ -549,7 +549,15 @@ if ( ! function_exists( 'mp_print_vendor_avatar_badge' ) ) {
 			return;
 		}
 
-		$store_url  = dokan_get_store_url( $vendor_id );
+		$store_url  = function_exists( 'tm_get_vendor_public_profile_url' )
+			? tm_get_vendor_public_profile_url( $vendor_id )
+			: '';
+		if ( ! $store_url && function_exists( 'ecomcine_get_person_route_url' ) ) {
+			$store_url = ecomcine_get_person_route_url( $vendor_id );
+		}
+		if ( ! $store_url ) {
+			$store_url = dokan_get_store_url( $vendor_id );
+		}
 		$store_info = dokan_get_store_info( $vendor_id );
 		$store_name = ! empty( $store_info['store_name'] )
 			? $store_info['store_name']

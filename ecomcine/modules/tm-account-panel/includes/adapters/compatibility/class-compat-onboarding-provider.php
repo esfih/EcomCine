@@ -136,9 +136,16 @@ class TAP_Compat_Onboarding_Provider implements TAP_Onboarding_Provider {
 		];
 		update_user_meta( $talent_user_id, 'tm_share_tokens', $share_tokens );
 
+		$share_base_url = function_exists( 'ecomcine_get_person_route_url' )
+			? ecomcine_get_person_route_url( $talent_user_id )
+			: '';
+		if ( '' === $share_base_url ) {
+			$share_base_url = get_author_posts_url( $talent_user_id );
+		}
+
 		$share_url = add_query_arg(
 			[ 'tm_share' => $token ],
-			get_author_posts_url( $talent_user_id )
+			$share_base_url
 		);
 
 		return [

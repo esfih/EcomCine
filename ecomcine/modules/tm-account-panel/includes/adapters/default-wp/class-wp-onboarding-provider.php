@@ -131,9 +131,16 @@ class TAP_WP_Onboarding_Provider implements TAP_Onboarding_Provider {
 		$token  = get_post_meta( $post_id, '_tm_inv_token', true );
 		$expiry = (int) get_post_meta( $post_id, '_tm_inv_expiry', true );
 
+		$share_base_url = function_exists( 'ecomcine_get_person_route_url' )
+			? ecomcine_get_person_route_url( $talent_user_id )
+			: '';
+		if ( '' === $share_base_url ) {
+			$share_base_url = get_author_posts_url( $talent_user_id );
+		}
+
 		$share_url = add_query_arg(
 			[ 'tm_share' => $token ],
-			get_author_posts_url( $talent_user_id )
+			$share_base_url
 		);
 
 		return [

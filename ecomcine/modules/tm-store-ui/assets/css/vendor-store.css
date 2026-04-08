@@ -4655,15 +4655,23 @@ img.profile-img,
 }
 
 /* Store categories + level combo pill */
-.store-categories-display {
+.store-categories-display-group {
 	display: flex !important;
 	flex-direction: column !important;
 	align-items: center !important;
+	gap: 6px !important;
+	margin: 3px 0 !important;
+}
+
+.store-categories-display {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
 	gap: 0 !important;
 	padding: 4px 14px !important;
 	border-radius: 999px !important;
 	background: rgba(0, 0, 0, 0.45) !important;
-	margin: 3px 0 !important;
+	margin: 0 !important;
 }
 
 .store-categories-display .tm-combo-pill__cats-row {
@@ -4693,7 +4701,18 @@ img.profile-img,
 	line-height: 1.5 !important;
 }
 
-.store-categories-display .tm-combo-pill__level {
+.store-categories-display-group .tm-combo-pill__level-pill {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	padding: 2px 12px !important;
+	border-radius: 999px !important;
+	background: rgba(0, 0, 0, 0.58) !important;
+	border: 1px solid rgba(255, 255, 255, 0.12) !important;
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+.store-categories-display-group .tm-combo-pill__level {
 	font-size: 12px !important;
 	font-weight: 700 !important;
 	text-align: center !important;
@@ -4705,7 +4724,22 @@ img.profile-img,
 }
 
 /* Tier-specific level colours */
-.tm-combo-pill--basic    .tm-combo-pill__level { color: #a8c8ff !important; }
+.tm-combo-pill--basic .tm-combo-pill__level-pill {
+	border-color: rgba(168, 200, 255, 0.28) !important;
+	background: rgba(18, 34, 62, 0.62) !important;
+}
+
+.tm-combo-pill--mediatic .tm-combo-pill__level-pill {
+	border-color: rgba(125, 242, 220, 0.28) !important;
+	background: rgba(11, 43, 41, 0.62) !important;
+}
+
+.tm-combo-pill--cinematic .tm-combo-pill__level-pill {
+	border-color: rgba(212, 176, 255, 0.28) !important;
+	background: rgba(34, 20, 48, 0.62) !important;
+}
+
+.tm-combo-pill--basic .tm-combo-pill__level { color: #a8c8ff !important; }
 .tm-combo-pill--mediatic .tm-combo-pill__level { color: #7df2dc !important; }
 .tm-combo-pill--cinematic .tm-combo-pill__level { color: #d4b0ff !important; }
 
@@ -4962,6 +4996,17 @@ body.tm-mobile-portrait .keyboard-nav-container {
 	display: block !important;
 }
 
+body.tm-mobile-landscape .tm-showcase-resume-slot,
+body.tm-mobile-portrait .tm-showcase-resume-slot {
+	position: fixed !important;
+	left: 18px !important;
+	right: auto !important;
+	bottom: calc(18px + 36px + 10px) !important;
+	width: auto !important;
+	max-width: calc(100vw - 36px) !important;
+	z-index: 150 !important;
+}
+
 /* Hide the 4 directional arrow buttons on mobile — only the loop button stays. */
 body.tm-mobile-landscape .keyboard-nav-btn:not(.keyboard-nav-loop),
 body.tm-mobile-portrait .keyboard-nav-btn:not(.keyboard-nav-loop) {
@@ -5089,6 +5134,16 @@ body.tm-mobile-portrait .hero-toggle-row {
 	/* Un-hide the parent container (tm-compact-tabs kills it with display:none) */
 	.keyboard-nav-container {
 		display: block !important;
+	}
+
+	.tm-showcase-resume-slot {
+		position: fixed !important;
+		left: 18px !important;
+		right: auto !important;
+		bottom: calc(18px + 36px + 10px) !important;
+		width: auto !important;
+		max-width: calc(100vw - 36px) !important;
+		z-index: 150 !important;
 	}
 
 	/* Hide the directional arrow buttons; keep only the loop button */
@@ -6485,11 +6540,18 @@ body.tm-showcase-page {
 	font-style: italic !important;
 	text-align: left !important;
 }
+#dokan-seller-listing-wrap .store-data .store-categories-display-group {
+	align-items: flex-start !important;
+}
 #dokan-seller-listing-wrap .store-data .store-categories-display .tm-combo-pill__cats,
-#dokan-seller-listing-wrap .store-data .store-categories-display .tm-combo-pill__level,
+#dokan-seller-listing-wrap .store-data .store-categories-display-group .tm-combo-pill__level,
 #dokan-seller-listing-wrap .store-data .store-categories-display .tm-combo-pill__cats-row {
 	text-align: left !important;
 	justify-content: flex-start !important;
+}
+
+#dokan-seller-listing-wrap .store-data .store-categories-display-group .tm-combo-pill__level-pill {
+	align-self: flex-start !important;
 }
 
 /* 7 ─ Location pill: same dark rounded pill style as .store-categories-display */

@@ -145,9 +145,15 @@ class TAP_WP_Account_Data_Provider implements TAP_Account_Data_Provider {
 			$token  = (string) get_post_meta( $post->ID, '_tm_inv_token', true );
 			$expiry = (int) get_post_meta( $post->ID, '_tm_inv_expiry', true );
 			$u      = get_userdata( (int) $post->post_author );
+			$share_base_url = function_exists( 'ecomcine_get_person_route_url' )
+				? ecomcine_get_person_route_url( (int) $post->post_author )
+				: '';
+			if ( '' === $share_base_url ) {
+				$share_base_url = get_author_posts_url( (int) $post->post_author );
+			}
 
 			$shares[] = [
-				'share_url'   => add_query_arg( [ 'tm_share' => $token ], get_author_posts_url( (int) $post->post_author ) ),
+				'share_url'   => add_query_arg( [ 'tm_share' => $token ], $share_base_url ),
 				'talent_name' => $u ? $u->display_name : '',
 				'expiry'      => $expiry ? gmdate( 'Y-m-d H:i:s', $expiry ) : '',
 			];

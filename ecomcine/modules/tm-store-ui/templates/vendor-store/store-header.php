@@ -421,19 +421,23 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
 
                             <?php // Store categories (inline editable) ?>
                             <?php if ( ! empty( $store_category_display ) || $is_owner || $is_preonboard || $is_admin_editing ) : ?>
-        		                        <div class="store-categories-wrapper<?php echo $is_owner ? ' editable-field' : ''; ?>" data-field="store_categories" data-help="Use CTRL + click to select multiple options">
+				                        <div class="store-categories-wrapper<?php echo $is_owner ? ' editable-field' : ''; ?>" data-field="store_categories" data-help="Use CTRL + click to select multiple options">
                                     <div class="field-display">
-                                        <div class="store-categories-display tm-combo-pill<?php echo $_tm_level_tier ? ' tm-combo-pill--' . esc_attr( $_tm_level_tier ) : ''; ?>">
-                                            <span class="tm-combo-pill__cats-row">
-                                                <span class="tm-combo-pill__cats field-value" title="<?php echo esc_attr( $store_category_display_full ); ?>"><?php echo esc_html( $store_category_display ? $store_category_display : 'Categories' ); ?></span>
-                                                <?php if ( $is_owner ) : ?>
-                                                    <button class="edit-field-btn profile-edit-btn" type="button" title="Edit Categories">
-                                                        <?php echo TM_Icons::svg( 'pencil-alt' ); ?>
-                                                    </button>
-                                                <?php endif; ?>
-                                            </span>
+                                        <div class="store-categories-display-group<?php echo $_tm_level_tier ? ' tm-combo-pill--' . esc_attr( $_tm_level_tier ) : ''; ?>">
+                                            <div class="store-categories-display tm-combo-pill">
+                                                <span class="tm-combo-pill__cats-row">
+                                                    <span class="tm-combo-pill__cats field-value" title="<?php echo esc_attr( $store_category_display_full ); ?>"><?php echo esc_html( $store_category_display ? $store_category_display : 'Categories' ); ?></span>
+                                                    <?php if ( $is_owner ) : ?>
+                                                        <button class="edit-field-btn profile-edit-btn" type="button" title="Edit Categories">
+                                                            <?php echo TM_Icons::svg( 'pencil-alt' ); ?>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                </span>
+                                            </div>
                                             <?php if ( $_tm_level_label ) : ?>
-                                            <span class="tm-combo-pill__level"><?php echo esc_html( $_tm_level_label ); ?></span>
+                                            <span class="tm-combo-pill tm-combo-pill__level-pill">
+                                                <span class="tm-combo-pill__level"><?php echo esc_html( $_tm_level_label ); ?></span>
+                                            </span>
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -1542,6 +1546,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                 <?php do_action( 'dokan_store_profile_bottom_drawer', $store_user, $store_info ); ?>
             </div>
             <!-- End Bottom Drawer -->
+                        <div class="tm-showcase-resume-slot" aria-live="polite"></div>
                         <!-- Keyboard Navigation Controls - Bottom Left -->
                         <div class="keyboard-nav-container" aria-label="Navigation controls">
                             <div class="keyboard-nav-row keyboard-nav-top">

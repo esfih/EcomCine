@@ -28,7 +28,13 @@ class THO_Compat_Vendor_Identity_Projector implements THO_Vendor_Identity_Projec
 			$name = $u ? $u->display_name : '';
 		}
 
-		if ( function_exists( 'dokan_get_store_url' ) ) {
+		if ( function_exists( 'tm_get_vendor_public_profile_url' ) ) {
+			$store_url = tm_get_vendor_public_profile_url( $vendor_id );
+		}
+		if ( ! $store_url && function_exists( 'ecomcine_get_person_route_url' ) ) {
+			$store_url = ecomcine_get_person_route_url( $vendor_id );
+		}
+		if ( ! $store_url && function_exists( 'dokan_get_store_url' ) ) {
 			$store_url = dokan_get_store_url( $vendor_id );
 		}
 		if ( ! $store_url ) {

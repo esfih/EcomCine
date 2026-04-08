@@ -8,6 +8,21 @@
 var tmPlayerInitialized = false;
 
 jQuery(document).ready(function($) {
+	var hasCompletedInitialHeroInit = false;
+
+	function wasDocumentReloaded() {
+		try {
+			if (window.performance && typeof window.performance.getEntriesByType === "function") {
+				var navigationEntries = window.performance.getEntriesByType("navigation");
+				if (navigationEntries && navigationEntries.length && navigationEntries[0] && navigationEntries[0].type) {
+					return navigationEntries[0].type === "reload";
+				}
+			}
+			return !!(window.performance && window.performance.navigation && window.performance.navigation.type === 1);
+		} catch (e) {
+			return false;
+		}
+	}
 	
 	// ==========================================
 	// MODULE-SCOPE STATE & HELPERS
@@ -462,6 +477,14 @@ jQuery(document).ready(function($) {
 	// Make newEl visible on top of oldEl with a 120 ms crossfade, then hide oldEl.
 	function setVideoSlotActive(newEl, oldEl) {
 		if (!newEl) return;
+		// Clear stale hero handlers from any slot before roles change. Hidden buffer
+		// elements can finish loading or error after a swap; if they still carry the
+		// previous active-slot handlers they can incorrectly flip overlay/play state.
+		[heroVideoActive, videoBufferNext, videoBufferPrev].forEach(function(el) {
+			if (el) {
+				$(el).off("ended.tmhero loadedmetadata.tmhero playing.tmhero canplay.tmhero volumechange.tmhero error.tmhero");
+			}
+		});
 		// Reset z-index on all known slots before swap
 		[heroVideoActive, videoBufferNext, videoBufferPrev].forEach(function(el) {
 			if (el) { $(el).css("zIndex", 1); }
@@ -479,6 +502,7 @@ jQuery(document).ready(function($) {
 	// Load a src into a hidden buffer slot (always muted during preload).
 	function preloadIntoBuffer(slotEl, src, item) {
 		if (!slotEl || !src) return;
+		$(slotEl).off("ended.tmhero loadedmetadata.tmhero playing.tmhero canplay.tmhero volumechange.tmhero error.tmhero");
 		slotEl.muted = true;
 		// Fix 2 (Mobile): use preload="metadata" so the browser keeps the src URL
 		// ready without triggering background decode that competes with the active slot.
@@ -669,7 +693,12 @@ jQuery(document).ready(function($) {
 	function ensureResumeShowcaseControl() {
 		var $container = $(".keyboard-nav-container").first();
 		if (!$container.length) return $();
-		var $control = $container.find(".tm-showcase-resume-control").first();
+		var $slot = $(".tm-showcase-resume-slot").first();
+		if (!$slot.length) {
+			$slot = $('<div class="tm-showcase-resume-slot" aria-live="polite"></div>');
+			$slot.insertBefore($container);
+		}
+		var $control = $slot.find(".tm-showcase-resume-control").first();
 		if ($control.length) return $control;
 		$control = $(
 			'<button class="tm-showcase-resume-control" type="button" aria-live="polite" aria-label="Resume showcase autoplay" title="Resume showcase autoplay">'
@@ -677,7 +706,7 @@ jQuery(document).ready(function($) {
 			+ '<span class="tm-showcase-resume-control__label">Resume Showcase</span>'
 			+ '</button>'
 		);
-		$container.prepend($control);
+		$slot.append($control);
 		return $control;
 	}
 
@@ -1585,6 +1614,8 @@ jQuery(document).ready(function($) {
 		if (!$target.length) return;
 
 		$target.append(
+			'<div class="tm-showcase-resume-slot" aria-live="polite"></div>'
+			+
 			'<div class="keyboard-nav-container" aria-label="Navigation controls">'
 				+ '<div class="keyboard-nav-row keyboard-nav-top">'
 					+ '<button class="keyboard-nav-btn keyboard-nav-up" type="button" aria-label="Previous media" title="Previous media (↑)">'
@@ -2601,19 +2632,16 @@ jQuery(document).ready(function($) {
 			if (!advanceTimer && !advanceItemSrc) {
 				armAdvanceTimer(item);
 			}
+			syncRemotePlaying(true);
+			return;
 		}
-		var isActivelyPlaying = false;
-		if (item.type === "video" && heroVideoActive) {
-			isActivelyPlaying = !heroVideoActive.paused && !heroVideoActive.ended && !heroVideoActive.error;
-		} else if (item.type === "audio" && $heroAudio.length) {
-			isActivelyPlaying = !$heroAudio[0].paused && !$heroAudio[0].ended;
-		} else if (item.type === "image") {
-			isActivelyPlaying = true;
-		}
-		if (!isActivelyPlaying) {
-			state.isPlaying = false;
-		}
-		syncRemotePlaying(isActivelyPlaying);
+		// Do not synchronously downgrade playback state here for video/audio.
+		// On vendor swaps the browser often resolves play() asynchronously after the
+		// new source is attached; checking paused immediately can incorrectly flip
+		// state.isPlaying back to false and resurrect the play overlay between vendors.
+		// Real failure paths already flow through attemptPlay rejection, media error,
+		// pause handlers, and autoplay-block checks.
+		syncRemotePlaying(true);
 	}
 
 	function pauseCurrent(fromUser) {
@@ -2904,12 +2932,11 @@ jQuery(document).ready(function($) {
 		console.log('[TM PLAYER DEBUG] initHeroPlayer END | state.isPlaying:', state.isPlaying);
 		var playerMode = _playerMode;
 		var showcaseMode = playerMode === "showcase";
-		// Detect F5 / Ctrl+R page reloads (performance.navigation.type === 1).
-		// sessionStorage persists across F5 reloads, so hasShowcaseStarted() can be true
-		// even on a reload. But the browser revokes the autoplay token on reload, causing
-		// the Netflix muted-start to fire briefly then fail — showing a jarring flash.
-		// Treat reloads as a first load so we skip the attempt and go straight to the overlay.
-		var isPageReload = !!(window.performance && window.performance.navigation && window.performance.navigation.type === 1);
+		// Detect F5 / Ctrl+R page reloads only for the document's first player init.
+		// AJAX vendor swaps re-run initHeroPlayer() inside the same document; the browser
+		// keeps reporting the original navigation type for that document, so reading it on
+		// every re-init incorrectly marks soft swaps as reloads and drops autoplay.
+		var isPageReload = !hasCompletedInitialHeroInit && wasDocumentReloaded();
 		restoreShowcaseInteractionState(isPageReload);
 		ensureShowcaseKeyboardNavigation();
 		if (showcaseMode) {
@@ -2954,6 +2981,7 @@ jQuery(document).ready(function($) {
 			disableBackgroundMedia();
 			state.isPlaying = false;
 		}
+		hasCompletedInitialHeroInit = true;
 
 		// Initialize A/B video buffer system (must run before buildPlaylist/loadItem)
 		console.log('[TM PLAYER DEBUG] initHeroPlayer - before initVideoBuffers | state.isPlaying:', state.isPlaying);
@@ -3620,7 +3648,6 @@ jQuery(document).ready(function($) {
 
 	// Keyboard navigation button click handlers
 	$(document).on("click", ".keyboard-nav-up", function() {
-		if (!isKeyboardEnabled()) return;
 		markUserInteraction();
 		pauseShowcaseRotation();
 		unmuteForUserAction();
@@ -3629,7 +3656,6 @@ jQuery(document).ready(function($) {
 	});
 
 	$(document).on("click", ".keyboard-nav-down", function() {
-		if (!isKeyboardEnabled()) return;
 		markUserInteraction();
 		pauseShowcaseRotation();
 		unmuteForUserAction();
@@ -3873,8 +3899,10 @@ jQuery(document).ready(function($) {
 
 	// Global keyboard event listeners
 	$(document).on("keydown", function(e) {
-		var allowVendorArrowKeys = (e && (e.key === "ArrowLeft" || e.key === "ArrowRight"));
-		if (!isKeyboardEnabled() && !allowVendorArrowKeys) return;
+		// Hardware keyboard shortcuts must remain active regardless of responsive
+		// viewport classification. The handheld viewport rules intentionally cover
+		// some laptop/tablet widths for layout purposes, but using them here blocks
+		// real ArrowUp/ArrowDown/Space input on physical keyboards.
 		var isFormField = $(e.target).is("input, textarea, select");
 		var inHeroControls = $(e.target).closest(".hero-remote").length > 0;
 

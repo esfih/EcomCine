@@ -16,7 +16,25 @@ class EcomCine_Commerce_Adapter_WooDokan implements EcomCine_Commerce_Adapter {
 
 	public function get_vendor_store_url( $vendor_id ) {
 		$vendor_id = (int) $vendor_id;
-		if ( ! $vendor_id || ! function_exists( 'dokan_get_store_url' ) ) {
+		if ( ! $vendor_id ) {
+			return '';
+		}
+
+		if ( function_exists( 'tm_get_vendor_public_profile_url' ) ) {
+			$url = tm_get_vendor_public_profile_url( $vendor_id );
+			if ( '' !== $url ) {
+				return $url;
+			}
+		}
+
+		if ( function_exists( 'ecomcine_get_person_route_url' ) ) {
+			$url = ecomcine_get_person_route_url( $vendor_id );
+			if ( '' !== $url ) {
+				return $url;
+			}
+		}
+
+		if ( ! function_exists( 'dokan_get_store_url' ) ) {
 			return '';
 		}
 
