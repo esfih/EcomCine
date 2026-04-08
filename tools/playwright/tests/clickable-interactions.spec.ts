@@ -5,13 +5,14 @@ import path from 'path';
 type SelectorInput = string | string[];
 
 type InteractionStep = {
-  action: 'click' | 'assertVisible' | 'assertHidden' | 'assertHasClass' | 'assertNotHasClass' | 'assertUrlContains' | 'waitFor' | 'loginAsAdmin';
+  action: 'click' | 'fill' | 'selectOption' | 'assertVisible' | 'assertHidden' | 'assertHasClass' | 'assertNotHasClass' | 'assertUrlContains' | 'assertValue' | 'waitFor' | 'loginAsAdmin';
   target?: SelectorInput;
   within?: SelectorInput;
   shadowHosts?: string[];
   shadowTarget?: SelectorInput;
   className?: string;
   value?: string;
+  label?: string;
   timeoutMs?: number;
   optional?: boolean;
 };
@@ -156,6 +157,29 @@ async function executeStep(page: Page, step: InteractionStep, baseURL?: string):
       return;
     }
 
+    if (step.action === 'fill') {
+      if (typeof step.value !== 'string') {
+        throw new Error('fill requires value');
+      }
+      await locator.fill(step.value, { timeout });
+      return;
+    }
+
+    if (step.action === 'selectOption') {
+      if (typeof step.value !== 'string' && typeof step.label !== 'string') {
+        throw new Error('selectOption requires value or label');
+      }
+      const option: { value?: string; label?: string } = {};
+      if (typeof step.value === 'string') {
+        option.value = step.value;
+      }
+      if (typeof step.label === 'string') {
+        option.label = step.label;
+      }
+      await locator.selectOption(option, { timeout });
+      return;
+    }
+
     if (step.action === 'assertVisible') {
       await expect(locator).toBeVisible({ timeout });
       return;
@@ -184,6 +208,14 @@ async function executeStep(page: Page, step: InteractionStep, baseURL?: string):
         throw new Error('assertNotHasClass requires className');
       }
       await expect(locator).not.toHaveClass(new RegExp(`\\b${escapeRegExp(step.className)}\\b`), { timeout });
+      return;
+    }
+
+    if (step.action === 'assertValue') {
+      if (typeof step.value !== 'string') {
+        throw new Error('assertValue requires value');
+      }
+      await expect(locator).toHaveValue(step.value, { timeout });
       return;
     }
   } catch (err) {

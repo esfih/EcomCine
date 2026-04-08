@@ -20,11 +20,14 @@ Define a canonical way to reuse the generic clickable-interactions Playwright su
 Supported actions:
 
 - `click`
+- `fill`
+- `selectOption`
 - `assertVisible`
 - `assertHidden`
 - `assertHasClass`
 - `assertNotHasClass`
 - `assertUrlContains`
+- `assertValue`
 - `waitFor`
 
 Portable selector options:

@@ -1,0 +1,61 @@
+{
+  "name": "Control plane billing allowances admin",
+  "pages": [
+    {
+      "name": "Billing allowances variation override saves and previews resolved limits",
+      "url": "/wp-admin/admin.php?page=ecomcine-control-plane-billing-allowances&product_id=2569&variation_id=2",
+      "steps": [
+        {
+          "action": "loginAsAdmin"
+        },
+        {
+          "action": "waitFor",
+          "target": "#ecomcine-cp-variation-id"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Guided Allowances Editor"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Variation Override Limits"
+        },
+        {
+          "action": "assertValue",
+          "target": "#ecomcine-cp-variation-id",
+          "value": "2"
+        },
+        {
+          "action": "fill",
+          "target": "#ecomcine-cp-queue_max",
+          "value": "77"
+        },
+        {
+          "action": "click",
+          "target": "button[name='ecomcine_cp_allowances_action'][value='save_form']"
+        },
+        {
+          "action": "waitFor",
+          "target": ".notice.notice-success"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Saved wmos_allowances_v1 payload."
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=Resolved Limits Preview"
+        },
+        {
+          "action": "assertValue",
+          "target": "#ecomcine-cp-queue_max",
+          "value": "77"
+        },
+        {
+          "action": "assertVisible",
+          "target": "text=queue_max"
+        }
+      ]
+    }
+  ]
+}
