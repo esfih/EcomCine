@@ -121,6 +121,18 @@ function tm_store_ui_enqueue_assets() {
 		: ( function_exists( 'dokan_get_option' )
 			? (string) dokan_get_option( 'mapbox_access_token', 'dokan_appearance', '' )
 			: '' );
+	$_person_singular = function_exists( 'ecomcine_get_person_public_label_singular' )
+		? ecomcine_get_person_public_label_singular()
+		: 'Talent';
+	$_person_plural   = function_exists( 'ecomcine_get_person_public_label_plural' )
+		? ecomcine_get_person_public_label_plural()
+		: 'Talents';
+	$_person_terms_url = function_exists( 'ecomcine_get_person_terms_url' )
+		? ecomcine_get_person_terms_url()
+		: home_url( '/talent-terms/' );
+	$_person_terms_label = function_exists( 'ecomcine_get_person_terms_label' )
+		? ecomcine_get_person_terms_label()
+		: 'Talent Terms';
 
 	if ( wp_script_is( 'tm-store-ui-js', 'enqueued' ) ) {
 		wp_localize_script( 'tm-store-ui-js', 'vendorStoreUiData', array(
@@ -133,6 +145,10 @@ function tm_store_ui_enqueue_assets() {
 			'isOwner'               => $_is_owner,
 			'canEdit'               => $_can_edit,
 			'mapbox_token'          => $_mapbox,
+			'personLabelSingular'   => $_person_singular,
+			'personLabelPlural'     => $_person_plural,
+			'personTermsUrl'        => esc_url_raw( $_person_terms_url ),
+			'personTermsLabel'      => $_person_terms_label,
 			'jqueryUiCssUrl'        => WP_CONTENT_URL . '/plugins/woocommerce-bookings/dist/jquery-ui-styles.css',
 			'jqueryUiCoreUrl'       => includes_url( 'js/jquery/ui/core.min.js' ),
 			'jqueryUiDatepickerUrl' => includes_url( 'js/jquery/ui/datepicker.min.js' ),

@@ -107,7 +107,7 @@ $remaining_args = array_diff_key( $_GET, array_flip( $clear_filter_keys ) );
 $clear_url      = esc_url( strtok( $_SERVER['REQUEST_URI'], '?' ) . ( $remaining_args ? '?' . http_build_query( $remaining_args ) : '' ) );
 ?>
 
-<form id="ecomcine-person-listing-filter-form" class="ecomcine-person-listing__filters" method="get" action="<?php echo esc_url( get_permalink( get_queried_object_id() ) ?: home_url( '/talents/' ) ); ?>">
+<form id="ecomcine-person-listing-filter-form" class="ecomcine-person-listing__filters" method="get" action="<?php echo esc_url( get_permalink( get_queried_object_id() ) ?: ( function_exists( 'ecomcine_get_person_listing_url' ) ? ecomcine_get_person_listing_url() : home_url( '/talents/' ) ) ); ?>">
 	<div class="store-lists-other-filter-wrap ecomcine-person-filter-bar">
 		<div class="store-search-field item ecomcine-person-filter-field">
 			<label for="ecomcine-person-search">&#128269; <?php esc_html_e( 'Search:', 'tm-store-ui' ); ?></label>

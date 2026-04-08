@@ -185,7 +185,7 @@
             ?>
 
         <?php else : ?>
-            <p class="dokan-error"><?php esc_html_e( 'No talent found!', 'dokan-lite' ); ?></p>
+            <p class="dokan-error"><?php echo esc_html( 'No ' . strtolower( function_exists( 'ecomcine_get_person_public_label_singular' ) ? ecomcine_get_person_public_label_singular() : 'Talent' ) . ' found!' ); ?></p>
         <?php endif; ?>
     </div>
 </div>

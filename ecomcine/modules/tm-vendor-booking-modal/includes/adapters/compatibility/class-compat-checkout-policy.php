@@ -36,11 +36,13 @@ class TVBM_Compat_Checkout_Policy implements TVBM_Checkout_Policy {
 	}
 
 	public function privacy_terms_policy(): array {
-		$talent_terms = esc_url( home_url( '/talent-terms/' ) );
+		$person_terms_label = function_exists( 'ecomcine_get_person_terms_label' ) ? ecomcine_get_person_terms_label() : 'Talent Terms';
+		$talent_terms = function_exists( 'ecomcine_get_person_terms_url' ) ? esc_url( ecomcine_get_person_terms_url() ) : esc_url( home_url( '/talent-terms/' ) );
 		$hirer_terms  = esc_url( home_url( '/hirer-terms/' ) );
 		$privacy_text = sprintf(
-			'By booking, you agree to our <a href="%s">Talent Terms</a> and <a href="%s">Hirer Terms</a>.',
+			'By booking, you agree to our <a href="%s">%s</a> and <a href="%s">Hirer Terms</a>.',
 			$talent_terms,
+			esc_html( $person_terms_label ),
 			$hirer_terms
 		);
 

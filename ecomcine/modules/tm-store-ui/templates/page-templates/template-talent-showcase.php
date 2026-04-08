@@ -50,7 +50,8 @@ get_header( 'shop' );
 if ( $vendor_id && function_exists( 'tm_render_showcase_shell' ) ) {
 	echo tm_render_showcase_shell( $vendor_id, $vendor_ids );
 } else {
-	echo '<div class="tm-talent-showcase-empty">No talent available.</div>';
+	$person_singular = function_exists( 'ecomcine_get_person_public_label_singular' ) ? strtolower( ecomcine_get_person_public_label_singular() ) : 'talent';
+	echo '<div class="tm-talent-showcase-empty">No ' . esc_html( $person_singular ) . ' available.</div>';
 }
 ?>
 

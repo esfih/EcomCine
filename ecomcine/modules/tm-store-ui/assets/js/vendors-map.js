@@ -362,6 +362,7 @@
 				var visible = filteredFeatures();
 				var ids     = sortedVendorIds( visible, activeSortKey );
 				var count   = ids.length;
+				var personPluralLower = instance.personPluralLower || 'talents';
 
 				// Showcase button
 				var scBtn = panelEl.querySelector( '.tm-vmap-showcase-btn' );
@@ -430,19 +431,20 @@
 			var initialIds    = sortedVendorIds( allFeatures, activeSortKey );
 			var initialCount  = initialIds.length;
 			var initialFParams = new URLSearchParams();
+			var personPluralLower = instance.personPluralLower || 'talents';
 			initialFParams.set( 'tm_order', activeSortKey );
 
 			html += '<a class="tm-vmap-showcase-btn"'
 				+ ' href="' + escapeHtml( ( instance.showcaseUrl || '/showcase/' ) + '?tm_ids=' + initialIds.join( ',' ) + '&tm_order=' + activeSortKey ) + '">'
 				+ '&#9654;&#8201;Showcase '
 				+ '<span class="tm-vmap-sc-count">' + initialCount + '</span>'
-				+ ' talents</a>';
+				+ ' ' + escapeHtml( personPluralLower ) + '</a>';
 
 			html += '<a class="tm-vmap-filter-btn"'
 				+ ' href="' + escapeHtml( ( instance.talentsUrl || '/talents/' ) + '?' + initialFParams.toString() ) + '">'
 				+ '&#9783;&#8201;Filter '
 				+ '<span class="tm-vmap-sc-count">' + initialCount + '</span>'
-				+ ' talents</a>';
+				+ ' ' + escapeHtml( personPluralLower ) + '</a>';
 
 			panelEl.innerHTML = html;
 

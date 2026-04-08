@@ -272,11 +272,12 @@ add_shortcode( 'vendors_map', function() {
 		? esc_url( get_permalink( $_sc_page ) )
 		: esc_url( home_url( '/showcase/' ) );
 
-	// Resolve talents page URL via slug — avoids relying on Dokan's store-listing page.
-	$_talents_page  = get_page_by_path( 'talents', OBJECT, 'page' );
-	$_talents_url   = $_talents_page instanceof WP_Post
-		? esc_url( get_permalink( $_talents_page ) )
+	$_talents_url   = function_exists( 'ecomcine_get_person_listing_url' )
+		? esc_url( ecomcine_get_person_listing_url() )
 		: esc_url( home_url( '/talents/' ) );
+	$_person_plural = function_exists( 'ecomcine_get_person_public_label_plural' )
+		? strtolower( ecomcine_get_person_public_label_plural() )
+		: 'talents';
 
 	wp_add_inline_script(
 		'tm-vendors-map-js',
@@ -288,6 +289,7 @@ add_shortcode( 'vendors_map', function() {
 			'categories'  => $map_categories,
 			'showcaseUrl' => $_showcase_url,
 			'talentsUrl'  => $_talents_url,
+			'personPluralLower' => $_person_plural,
 		) ) . ');',
 		'before' // runs before vendors-map.js so data is ready when the script executes
 	);

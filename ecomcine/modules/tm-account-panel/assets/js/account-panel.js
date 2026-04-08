@@ -85,6 +85,7 @@
 		})
 		.done(function(response) {
 			console.log("[createTalentProfile] AJAX done", response);
+			var personLabelSingular = (window.tmAccountPanel && tmAccountPanel.personLabelSingular) ? tmAccountPanel.personLabelSingular : 'Talent';
 			if (response && response.success && response.data && response.data.store_url) {
 				closeAdminCreateDialog();
 				window.location.href = response.data.store_url;
@@ -94,13 +95,14 @@
 			if (msg === "email_exists") {
 				alert("That email address is already registered. Please use a different email or leave it blank.");
 			} else {
-				alert("Unable to create talent profile: " + msg);
+				alert("Unable to create " + personLabelSingular.toLowerCase() + " profile: " + msg);
 			}
 			$submit.prop("disabled", false).text("Create & Open Profile");
 		})
 		.fail(function(jqXHR, textStatus, errorThrown) {
 			console.error("[createTalentProfile] AJAX failed", textStatus, errorThrown, jqXHR.status, jqXHR.responseText);
-			alert("Unable to create a new talent profile.");
+			var personLabelSingular = (window.tmAccountPanel && tmAccountPanel.personLabelSingular) ? tmAccountPanel.personLabelSingular : 'Talent';
+			alert("Unable to create a new " + personLabelSingular.toLowerCase() + " profile.");
 			$submit.prop("disabled", false).text("Create & Open Profile");
 		});
 	}
@@ -195,11 +197,12 @@
 		}
 
 		if (!$form.find("#tm-account-type").length) {
+			var personLabelSingular = (window.tmAccountPanel && tmAccountPanel.personLabelSingular) ? tmAccountPanel.personLabelSingular : 'Talent';
 			var accountTypeHtml =
 				'<p class="form-row form-group tm-account-account-type-row">' +
 				'<label for="tm-account-type">Account Type <span class="required">*</span></label>' +
 				'<select id="tm-account-type" class="input-text form-control" required="required">' +
-				'<option value="talent">Talent (Vendor)</option>' +
+				'<option value="talent">' + personLabelSingular + ' (Vendor)</option>' +
 				'<option value="hirer">Hirer (Customer)</option>' +
 				'</select>' +
 				'</p>';
@@ -219,6 +222,7 @@
 		if (!$form.find(".tm-account-terms-grid").length) {
 			var privacyUrl = (window.tmAccountPanel && tmAccountPanel.privacyUrl) ? tmAccountPanel.privacyUrl : (window.location.origin + "/privacy");
 			var termsUrl = (window.tmAccountPanel && tmAccountPanel.talentTermsUrl) ? tmAccountPanel.talentTermsUrl : (window.location.origin + "/talent-terms/");
+			var personTermsLabel = (window.tmAccountPanel && tmAccountPanel.personTermsLabel) ? tmAccountPanel.personTermsLabel : 'Talent Terms';
 			var termsRow =
 				'<div class="tm-account-terms-grid">' +
 				'<div class="tm-account-terms-item">' +
@@ -227,7 +231,7 @@
 				'</div>' +
 				'<div class="tm-account-terms-item">' +
 				'<input type="checkbox" id="tm-account-accept-terms" name="tc_agree" class="input-checkbox" required="required" />' +
-				'<label for="tm-account-accept-terms">Accept <a class="tm-account-terms-link" href="' + termsUrl + '" target="_blank" rel="noopener noreferrer"><span class="tm-account-terms-link-label">talent terms</span> &amp; conditions</a></label>' +
+				'<label for="tm-account-accept-terms">Accept <a class="tm-account-terms-link" href="' + termsUrl + '" target="_blank" rel="noopener noreferrer"><span class="tm-account-terms-link-label">' + personTermsLabel.toLowerCase() + '</span> &amp; conditions</a></label>' +
 				'</div>' +
 				'</div>';
 			var $submitRow = $form.find('input[name="register"], button[name="register"]').first().closest("p.form-row");
@@ -316,6 +320,7 @@
 
 			var talentTermsUrl = (window.tmAccountPanel && tmAccountPanel.talentTermsUrl) ? tmAccountPanel.talentTermsUrl : (window.location.origin + "/talent-terms/");
 			var hirerTermsUrl = (window.tmAccountPanel && tmAccountPanel.hirerTermsUrl) ? tmAccountPanel.hirerTermsUrl : (window.location.origin + "/hirer-terms/");
+			var personTermsLabel = (window.tmAccountPanel && tmAccountPanel.personTermsLabel) ? tmAccountPanel.personTermsLabel : 'Talent Terms';
 			var $termsLink = $form.find(".tm-account-terms-link");
 			var $termsLabel = $form.find(".tm-account-terms-link-label");
 
@@ -325,7 +330,7 @@
 					$termsLabel.text("hirer terms");
 				} else {
 					$termsLink.attr("href", talentTermsUrl);
-					$termsLabel.text("talent terms");
+					$termsLabel.text(personTermsLabel.toLowerCase());
 				}
 			}
 		}

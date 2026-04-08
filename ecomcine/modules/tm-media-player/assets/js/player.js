@@ -865,6 +865,12 @@ jQuery(document).ready(function($) {
 		originalData: null
 	};
 
+	function publicPersonSingularLabel() {
+		return (window.vendorStoreUiData && vendorStoreUiData.personLabelSingular)
+			? vendorStoreUiData.personLabelSingular
+			: 'Talent';
+	}
+
 	function openFieldEditorModal(fieldType, $wrapper) {
 		var $modal = $('.tm-field-editor-modal');
 		var $dialog = $modal.find('.tm-field-editor-dialog');
@@ -877,11 +883,12 @@ jQuery(document).ready(function($) {
 		currentFieldEditor.fieldType = fieldType;
 		
 		// Set title
+		var personSingularLabel = publicPersonSingularLabel();
 		var titles = {
 			'store_categories': 'Edit Categories',
 			'contact_emails': 'Edit Contact Emails',
 			'contact_phones': 'Edit Contact Phones',
-		'store_name': 'Edit Talent Name',
+		'store_name': 'Edit ' + personSingularLabel + ' Name',
 		'geo_location': 'Edit Location'
 	};
 	
@@ -977,7 +984,8 @@ jQuery(document).ready(function($) {
 		var avatarId = data && data.admin_avatar_id ? data.admin_avatar_id : '';
 		var vendorAvatarUrl = data && data.vendor_avatar_url ? data.vendor_avatar_url : '';
 		var vendorAvatarId = data && data.vendor_avatar_id ? data.vendor_avatar_id : '';
-		var defaultMessage = 'Dear $TalentName,\n\n$AdminName is inviting you to join Casting Agency Co and has already pre-filled your profile. Create an account to claim your talent profile, you will then be able to complete/publish it.';
+		var personSingularLower = publicPersonSingularLabel().toLowerCase();
+		var defaultMessage = 'Dear $TalentName,\n\n$AdminName is inviting you to join Casting Agency Co and has already pre-filled your profile. Create an account to claim your ' + personSingularLower + ' profile, you will then be able to complete/publish it.';
 		var message = data && data.admin_message ? data.admin_message : defaultMessage;
 
 		var html = '';
@@ -1002,7 +1010,7 @@ jQuery(document).ready(function($) {
 		html += '</div>';
 		html += '<div class="tm-onboard-avatar-actions">';
 		html += '<button type="button" class="tm-onboard-avatar-btn">Change Admin Avatar</button>';
-		html += '<button type="button" class="tm-onboard-vendor-avatar-btn">Change Talent Avatar</button>';
+		html += '<button type="button" class="tm-onboard-vendor-avatar-btn">Change ' + escapeHtml(publicPersonSingularLabel()) + ' Avatar</button>';
 		html += '</div>';
 		html += '<input type="hidden" class="tm-onboard-avatar-id" value="' + escapeHtml(avatarId) + '" />';
 		html += '<input type="hidden" class="tm-onboard-avatar-url" value="' + escapeHtml(avatarUrl) + '" />';
@@ -1131,7 +1139,10 @@ jQuery(document).ready(function($) {
 		}
 
 		function showClaimGateTooltip() {
-			showCenteredTooltip('Please enter your email and password, then accept the privacy policy and talent terms to claim your profile.', 3000);
+			var personTermsLabel = (window.vendorStoreUiData && vendorStoreUiData.personTermsLabel)
+				? String(vendorStoreUiData.personTermsLabel).toLowerCase()
+				: 'talent terms';
+			showCenteredTooltip('Please enter your email and password, then accept the privacy policy and ' + personTermsLabel + ' to claim your profile.', 3000);
 		}
 
 		updateClaimGate();

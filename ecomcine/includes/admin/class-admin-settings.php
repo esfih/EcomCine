@@ -132,8 +132,9 @@ class EcomCine_Admin_Settings {
 			return '<p>No categories found yet.</p>';
 		}
 
-		$talents_page = get_page_by_path( 'talents', OBJECT, 'page' );
-		$talents_url  = $talents_page instanceof WP_Post ? get_permalink( $talents_page ) : home_url( '/talents/' );
+		$talents_url = function_exists( 'ecomcine_get_person_listing_url' )
+			? ecomcine_get_person_listing_url()
+			: home_url( '/talents/' );
 		$grid_rows = max( 1, min( 12, (int) ( $grid_settings['rows'] ?? 2 ) ) );
 		$grid_columns = max( 1, min( 6, (int) ( $grid_settings['columns'] ?? 4 ) ) );
 		$card_gap = max( 0, min( 80, (int) ( $grid_settings['card_gap'] ?? 18 ) ) );
@@ -288,8 +289,10 @@ class EcomCine_Admin_Settings {
 			// Showcase CTA
 			if ( '' !== $showcase_cta_url ) {
 				$showcase_count = count( $showcase_ids );
+				$person_singular = function_exists( 'ecomcine_get_person_public_label_singular' ) ? strtolower( ecomcine_get_person_public_label_singular() ) : 'talent';
+				$person_plural = function_exists( 'ecomcine_get_person_public_label_plural' ) ? strtolower( ecomcine_get_person_public_label_plural() ) : 'talents';
 				$html .= '<a id="tm-showcase-btn" href="' . esc_url( $showcase_cta_url ) . '">';
-				$html .= '&#9654;&#8201;' . esc_html( sprintf( _n( 'Showcase this %d talent', 'Showcase these %d talents', $showcase_count, 'ecomcine' ), $showcase_count ) );
+				$html .= '&#9654;&#8201;' . esc_html( sprintf( _n( 'Showcase this %d ' . $person_singular, 'Showcase these %d ' . $person_plural, $showcase_count, 'ecomcine' ), $showcase_count ) );
 				$html .= '</a>';
 			}
 			// Next arrow
@@ -350,6 +353,25 @@ class EcomCine_Admin_Settings {
 	 * Admin action: create default onboarding pages.
 	 */
 	public static function ensure_bootstrap_pages() {
+		$listing_title = function_exists( 'ecomcine_get_person_public_label_plural' )
+			? ecomcine_get_person_public_label_plural()
+			: 'Talents';
+		$listing_slug  = function_exists( 'ecomcine_get_person_directory_slug' )
+			? ecomcine_get_person_directory_slug()
+			: 'talents';
+		$categories_title = function_exists( 'ecomcine_get_person_categories_page_title' )
+			? ecomcine_get_person_categories_page_title()
+			: 'Talent Categories';
+		$categories_slug = function_exists( 'ecomcine_get_person_categories_page_slug' )
+			? ecomcine_get_person_categories_page_slug()
+			: 'talents-categories';
+		$locations_title = function_exists( 'ecomcine_get_person_locations_page_title' )
+			? ecomcine_get_person_locations_page_title()
+			: 'Talent Locations';
+		$locations_slug = function_exists( 'ecomcine_get_person_locations_page_slug' )
+			? ecomcine_get_person_locations_page_slug()
+			: 'talents-locations';
+
 		$pages = array(
 			array(
 				'title'     => 'Showcase',
@@ -358,20 +380,20 @@ class EcomCine_Admin_Settings {
 				'template'  => 'tm-store-ui/template-talent-showcase',
 			),
 			array(
-				'title'     => 'Talents',
-				'slug'      => 'talents',
+				'title'     => $listing_title,
+				'slug'      => $listing_slug,
 				'shortcode' => '[ecomcine-stores]',
 				'template'  => 'tm-store-ui/page-platform',
 			),
 			array(
-				'title'     => 'Categories',
-				'slug'      => 'categories',
+				'title'     => $categories_title,
+				'slug'      => $categories_slug,
 				'shortcode' => '[ecomcine_categories]',
 				'template'  => 'tm-store-ui/page-platform',
 			),
 			array(
-				'title'     => 'Locations',
-				'slug'      => 'locations',
+				'title'     => $locations_title,
+				'slug'      => $locations_slug,
 				'shortcode' => '[vendors_map]',
 				'template'  => 'tm-store-ui/page-platform',
 			),
@@ -888,6 +910,314 @@ class EcomCine_Admin_Settings {
 	}
 
 	/**
+	 * Pluralize a public-facing label.
+	 *
+	 * @param string $label Singular label.
+	 * @return string
+	 */
+	private static function pluralize_public_label( string $label ): string {
+		if ( function_exists( 'ecomcine_pluralize_public_label' ) ) {
+			return ecomcine_pluralize_public_label( $label );
+		}
+
+		$label = trim( $label );
+		if ( '' === $label ) {
+			return '';
+		}
+
+		if ( preg_match( '/[^aeiou]y$/i', $label ) ) {
+			return substr( $label, 0, -1 ) . 'ies';
+		}
+
+		if ( preg_match( '/(s|x|z|ch|sh)$/i', $label ) ) {
+			return $label . 'es';
+		}
+
+		return $label . 's';
+	}
+
+	/**
+	 * Resolve the singular public label from a settings payload.
+	 *
+	 * @param array $settings Settings payload.
+	 * @return string
+	 */
+	private static function person_label_from_settings( array $settings ): string {
+		$label = isset( $settings['labels']['talent_label'] ) ? trim( (string) $settings['labels']['talent_label'] ) : '';
+		return '' !== $label ? $label : 'Talent';
+	}
+
+	/**
+	 * Resolve the plural listing title from a settings payload.
+	 *
+	 * @param array $settings Settings payload.
+	 * @return string
+	 */
+	private static function person_listing_title_from_settings( array $settings ): string {
+		$title = self::pluralize_public_label( self::person_label_from_settings( $settings ) );
+		return '' !== $title ? $title : 'Talents';
+	}
+
+	/**
+	 * Resolve the public listing slug from a settings payload.
+	 *
+	 * @param array $settings Settings payload.
+	 * @return string
+	 */
+	private static function person_listing_slug_from_settings( array $settings ): string {
+		$slug = sanitize_title( self::person_label_from_settings( $settings ) );
+		return '' !== $slug ? $slug : 'talents';
+	}
+
+	/**
+	 * Resolve the public terms title from a settings payload.
+	 *
+	 * @param array $settings Settings payload.
+	 * @return string
+	 */
+	private static function person_terms_title_from_settings( array $settings ): string {
+		return self::person_label_from_settings( $settings ) . ' Terms';
+	}
+
+	/**
+	 * Resolve the public terms slug from a settings payload.
+	 *
+	 * @param array $settings Settings payload.
+	 * @return string
+	 */
+	private static function person_terms_slug_from_settings( array $settings ): string {
+		return self::person_listing_slug_from_settings( $settings ) . '-terms';
+	}
+
+	/**
+	 * Locate a page for public terminology synchronization.
+	 *
+	 * @param string $option_key Optional option holding a page ID.
+	 * @param array  $candidate_slugs Candidate slugs to probe.
+	 * @return WP_Post|null
+	 */
+	private static function find_public_page( string $option_key, array $candidate_slugs ) {
+		if ( '' !== $option_key ) {
+			$page_id = (int) get_option( $option_key, 0 );
+			if ( $page_id > 0 ) {
+				$page = get_post( $page_id );
+				if ( $page instanceof WP_Post && 'page' === $page->post_type ) {
+					return $page;
+				}
+			}
+		}
+
+		foreach ( array_values( array_unique( array_filter( $candidate_slugs ) ) ) as $candidate_slug ) {
+			$page = get_page_by_path( (string) $candidate_slug, OBJECT, 'page' );
+			if ( $page instanceof WP_Post ) {
+				return $page;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Synchronize the public listing page title/slug with current terminology.
+	 *
+	 * @param array $current Existing settings.
+	 * @param array $sanitized New settings.
+	 * @return void
+	 */
+	private static function sync_person_listing_page( array $current, array $sanitized ): void {
+		$new_title = self::person_listing_title_from_settings( $sanitized );
+		$new_slug  = self::person_listing_slug_from_settings( $sanitized );
+		$page      = self::find_public_page(
+			'ecomcine_listing_page_id',
+			array(
+				$new_slug,
+				self::person_listing_slug_from_settings( $current ),
+				sanitize_title( self::person_listing_title_from_settings( $current ) ),
+				'talents',
+			)
+		);
+
+		$payload = array(
+			'post_title'   => $new_title,
+			'post_name'    => $new_slug,
+			'post_type'    => 'page',
+			'post_status'  => 'publish',
+			'post_content' => '[ecomcine-stores]',
+		);
+
+		if ( $page instanceof WP_Post ) {
+			$payload['ID'] = (int) $page->ID;
+			if ( false !== strpos( (string) $page->post_content, '[ecomcine-stores]' ) ) {
+				$payload['post_content'] = (string) $page->post_content;
+			}
+
+			$page_id = wp_update_post( $payload, true );
+		} else {
+			$page_id = wp_insert_post( $payload, true );
+		}
+
+		if ( ! is_wp_error( $page_id ) && (int) $page_id > 0 ) {
+			update_post_meta( (int) $page_id, '_wp_page_template', 'tm-store-ui/page-platform' );
+			update_option( 'ecomcine_listing_page_id', (int) $page_id, false );
+		}
+	}
+
+	/**
+	 * Synchronize the public terms page title/slug with current terminology.
+	 *
+	 * @param array $current Existing settings.
+	 * @param array $sanitized New settings.
+	 * @return void
+	 */
+	private static function sync_person_terms_page( array $current, array $sanitized ): void {
+		$new_title = self::person_terms_title_from_settings( $sanitized );
+		$new_slug  = self::person_terms_slug_from_settings( $sanitized );
+		$page      = self::find_public_page(
+			'',
+			array(
+				$new_slug,
+				self::person_terms_slug_from_settings( $current ),
+				'talent-terms',
+			)
+		);
+
+		if ( ! $page instanceof WP_Post ) {
+			return;
+		}
+
+		wp_update_post(
+			array(
+				'ID'         => (int) $page->ID,
+				'post_title' => $new_title,
+				'post_name'  => $new_slug,
+			)
+		);
+	}
+
+	/**
+	 * Synchronize a shortcode-backed public page title/slug.
+	 *
+	 * @param array  $candidate_slugs Candidate legacy/current slugs.
+	 * @param string $shortcode Shortcode marker used by the page.
+	 * @param string $new_title Canonical page title.
+	 * @param string $new_slug Canonical page slug.
+	 * @return void
+	 */
+	private static function sync_shortcode_page( array $candidate_slugs, string $shortcode, string $new_title, string $new_slug ): void {
+		$page = self::find_public_page( '', array_merge( array( $new_slug ), $candidate_slugs ) );
+
+		if ( ! $page instanceof WP_Post && '' !== $shortcode ) {
+			$page_query = get_posts(
+				array(
+					'post_type'      => 'page',
+					'post_status'    => array( 'publish', 'draft', 'private' ),
+					'posts_per_page' => 10,
+					's'              => $shortcode,
+				)
+			);
+
+			foreach ( $page_query as $candidate_page ) {
+				if ( $candidate_page instanceof WP_Post && false !== strpos( (string) $candidate_page->post_content, $shortcode ) ) {
+					$page = $candidate_page;
+					break;
+				}
+			}
+		}
+
+		$payload = array(
+			'post_title'   => $new_title,
+			'post_name'    => $new_slug,
+			'post_type'    => 'page',
+			'post_status'  => 'publish',
+			'post_content' => $shortcode,
+		);
+
+		if ( $page instanceof WP_Post ) {
+			$payload['ID'] = (int) $page->ID;
+			if ( false !== strpos( (string) $page->post_content, $shortcode ) ) {
+				$payload['post_content'] = (string) $page->post_content;
+			}
+			$page_id = wp_update_post( $payload, true );
+		} else {
+			$page_id = wp_insert_post( $payload, true );
+		}
+
+		if ( ! is_wp_error( $page_id ) && (int) $page_id > 0 ) {
+			update_post_meta( (int) $page_id, '_wp_page_template', 'tm-store-ui/page-platform' );
+		}
+	}
+
+	/**
+	 * Synchronize the public categories page title/slug with current terminology.
+	 *
+	 * @param array $current Existing settings.
+	 * @param array $sanitized New settings.
+	 * @return void
+	 */
+	private static function sync_person_categories_page( array $current, array $sanitized ): void {
+		$new_slug  = self::person_listing_slug_from_settings( $sanitized ) . '-categories';
+		$new_title = self::person_label_from_settings( $sanitized ) . ' Categories';
+
+		self::sync_shortcode_page(
+			array(
+				self::person_listing_slug_from_settings( $current ) . '-categories',
+				sanitize_title( self::person_listing_title_from_settings( $current ) ) . '-categories',
+				'talents-categories',
+				'categories',
+			),
+			'[ecomcine_categories]',
+			$new_title,
+			$new_slug
+		);
+	}
+
+	/**
+	 * Synchronize the public locations page title/slug with current terminology.
+	 *
+	 * @param array $current Existing settings.
+	 * @param array $sanitized New settings.
+	 * @return void
+	 */
+	private static function sync_person_locations_page( array $current, array $sanitized ): void {
+		$new_slug  = self::person_listing_slug_from_settings( $sanitized ) . '-locations';
+		$new_title = self::person_label_from_settings( $sanitized ) . ' Locations';
+
+		self::sync_shortcode_page(
+			array(
+				self::person_listing_slug_from_settings( $current ) . '-locations',
+				sanitize_title( self::person_listing_title_from_settings( $current ) ) . '-locations',
+				'talents-locations',
+				'locations',
+			),
+			'[vendors_map]',
+			$new_title,
+			$new_slug
+		);
+	}
+
+	/**
+	 * Synchronize public terminology-derived routes and page slugs.
+	 *
+	 * @param array $current Existing settings.
+	 * @param array $sanitized New settings.
+	 * @return void
+	 */
+	private static function sync_public_terminology( array $current, array $sanitized ): void {
+		self::sync_person_listing_page( $current, $sanitized );
+		self::sync_person_categories_page( $current, $sanitized );
+		self::sync_person_locations_page( $current, $sanitized );
+		self::sync_person_terms_page( $current, $sanitized );
+
+		$new_profile_base = self::person_listing_slug_from_settings( $sanitized );
+		$current_base     = trim( (string) get_option( 'ecomcine_person_base', self::person_listing_slug_from_settings( $current ) ), '/' );
+
+		if ( $current_base !== $new_profile_base ) {
+			update_option( 'ecomcine_person_base', $new_profile_base, false );
+			delete_option( 'ecomcine_person_rewrite_flushed' );
+		}
+	}
+
+	/**
 	 * Resolve single label with fallback.
 	 */
 	public static function get_label( $key, $fallback = '' ) {
@@ -1059,6 +1389,8 @@ class EcomCine_Admin_Settings {
 			}
 		}
 
+		self::sync_public_terminology( $current, $sanitized );
+
 		if ( isset( $input['socials'] ) && is_array( $input['socials'] ) ) {
 			$raw_social_label       = isset( $input['socials']['label'] ) ? sanitize_text_field( (string) $input['socials']['label'] ) : '';
 			$sanitized['socials']   = array();
@@ -1222,7 +1554,7 @@ class EcomCine_Admin_Settings {
 			<div style="margin-top:16px; max-width:700px; background:#fff; border:1px solid #ccd0d4; border-radius:3px; padding:18px 20px; box-shadow:0 1px 1px rgba(0,0,0,.04);">
 				<h2 style="margin-top:0;">Persons Grid</h2>
 				<p class="description" style="margin-bottom:16px;">
-					Define how many rows and columns are displayed per Talents page.
+					Define how many rows and columns are displayed per <?php echo esc_html( function_exists( 'ecomcine_get_person_public_label_plural' ) ? ecomcine_get_person_public_label_plural() : 'Talents' ); ?> page.
 					Cards per page are computed as <strong>rows x columns</strong>.
 				</p>
 
@@ -1383,7 +1715,7 @@ class EcomCine_Admin_Settings {
 						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block; margin-right:10px;">
 							<?php wp_nonce_field( 'ecomcine_bootstrap_pages' ); ?>
 							<input type="hidden" name="action" value="ecomcine_create_bootstrap_pages" />
-							<?php submit_button( 'Create Pages', 'secondary', 'submit', false, array( 'onclick' => "return confirm('Create/patch Showcase, Talents, Categories, and Locations pages with their shortcodes?');" ) ); ?>
+							<?php submit_button( 'Create Pages', 'secondary', 'submit', false, array( 'onclick' => "return confirm('Create/patch Showcase, " . esc_js( function_exists( 'ecomcine_get_person_public_label_plural' ) ? ecomcine_get_person_public_label_plural() : 'Talents' ) . ", " . esc_js( function_exists( 'ecomcine_get_person_categories_page_title' ) ? ecomcine_get_person_categories_page_title() : 'Talent Categories' ) . ", and " . esc_js( function_exists( 'ecomcine_get_person_locations_page_title' ) ? ecomcine_get_person_locations_page_title() : 'Talent Locations' ) . " pages with their shortcodes?');" ) ); ?>
 						</form>
 						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;">
 							<?php wp_nonce_field( 'ecomcine_bootstrap_theme' ); ?>
@@ -1391,7 +1723,7 @@ class EcomCine_Admin_Settings {
 							<?php submit_button( 'Install + Activate Theme', 'secondary', 'submit', false, array( 'onclick' => "return confirm('Install (if needed) and activate the recommended theme now?');" ) ); ?>
 						</form>
 					</p>
-					<p class="description">Creates baseline pages: Showcase [tm_talent_showcase], Talents [ecomcine-stores], Categories [ecomcine_categories], Locations [ecomcine_locations]. To import demo vendor profiles, use <a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-demo-data' ) ); ?>">EcomCine &rarr; Demo Data</a>.</p>
+					<p class="description">Creates baseline pages: Showcase [tm_talent_showcase], <?php echo esc_html( function_exists( 'ecomcine_get_person_public_label_plural' ) ? ecomcine_get_person_public_label_plural() : 'Talents' ); ?> [ecomcine-stores], <?php echo esc_html( function_exists( 'ecomcine_get_person_categories_page_title' ) ? ecomcine_get_person_categories_page_title() : 'Talent Categories' ); ?> [ecomcine_categories], <?php echo esc_html( function_exists( 'ecomcine_get_person_locations_page_title' ) ? ecomcine_get_person_locations_page_title() : 'Talent Locations' ); ?> [ecomcine_locations]. To import demo vendor profiles, use <a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-demo-data' ) ); ?>">EcomCine &rarr; Demo Data</a>.</p>
 				</div>
 
 				<form method="post" action="options.php">

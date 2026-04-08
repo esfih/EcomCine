@@ -89,7 +89,15 @@ function tm_account_panel_enqueue_assets( $force = false ) {
 	if ( empty( $privacy_url ) ) {
 		$privacy_url = trailingslashit( home_url() ) . 'privacy';
 	}
-	$talent_terms_url = home_url( '/talent-terms/' );
+	$person_singular  = function_exists( 'ecomcine_get_person_public_label_singular' )
+		? ecomcine_get_person_public_label_singular()
+		: 'Talent';
+	$person_plural    = function_exists( 'ecomcine_get_person_public_label_plural' )
+		? ecomcine_get_person_public_label_plural()
+		: 'Talents';
+	$talent_terms_url = function_exists( 'ecomcine_get_person_terms_url' )
+		? ecomcine_get_person_terms_url()
+		: home_url( '/talent-terms/' );
 	$hirer_terms_url  = home_url( '/hirer-terms/' );
 	wp_localize_script(
 		'tm-account-panel-js',
@@ -102,6 +110,9 @@ function tm_account_panel_enqueue_assets( $force = false ) {
 			'privacyUrl' => esc_url_raw( $privacy_url ),
 			'talentTermsUrl' => esc_url_raw( $talent_terms_url ),
 			'hirerTermsUrl' => esc_url_raw( $hirer_terms_url ),
+			'personLabelSingular' => $person_singular,
+			'personLabelPlural' => $person_plural,
+			'personTermsLabel' => $person_singular . ' Terms',
 			'debug'   => defined( 'WP_DEBUG' ) && WP_DEBUG,
 		)
 	);
@@ -375,15 +386,16 @@ function tm_account_panel_render_modal_markup( $force = false ) {
 	}
 	?>
 	<?php if ( current_user_can( 'manage_options' ) ) : ?>
-		<div class="tm-account-tab tm-account-tab--admin" role="button" tabindex="0" aria-label="Add Talent" title="Add Talent">
+		<?php $person_singular_label = function_exists( 'ecomcine_get_person_public_label_singular' ) ? ecomcine_get_person_public_label_singular() : 'Talent'; ?>
+		<div class="tm-account-tab tm-account-tab--admin" role="button" tabindex="0" aria-label="<?php echo esc_attr( 'Add ' . $person_singular_label ); ?>" title="<?php echo esc_attr( 'Add ' . $person_singular_label ); ?>">
 			<span class="tm-account-tab__icon"><?php echo tm_account_panel_svg_icon( 'user' ); ?></span>
-			<span class="tm-account-tab__label">Add Talent</span>
+			<span class="tm-account-tab__label"><?php echo esc_html( 'Add ' . $person_singular_label ); ?></span>
 		</div>
-		<div id="tm-admin-create-dialog" class="tm-admin-create-dialog" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Add New Talent">
+		<div id="tm-admin-create-dialog" class="tm-admin-create-dialog" aria-hidden="true" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr( 'Add New ' . $person_singular_label ); ?>">
 			<div class="tm-admin-create-backdrop"></div>
 			<div class="tm-admin-create-box" role="document">
 				<div class="tm-admin-create-header">
-					<strong><?php esc_html_e( 'Add New Talent', 'ecomcine' ); ?></strong>
+					<strong><?php echo esc_html( 'Add New ' . $person_singular_label ); ?></strong>
 					<button class="tm-admin-create-close" type="button" aria-label="<?php esc_attr_e( 'Close', 'ecomcine' ); ?>">&times;</button>
 				</div>
 				<form class="tm-admin-create-form" id="tm-admin-create-form" novalidate>
@@ -393,7 +405,7 @@ function tm_account_panel_render_modal_markup( $force = false ) {
 					</p>
 					<p class="form-row">
 						<label for="tm-admin-talent-email"><?php esc_html_e( 'Email', 'ecomcine' ); ?> <span class="tm-admin-create-optional">(<?php esc_html_e( 'optional', 'ecomcine' ); ?>)</span></label>
-						<input type="email" id="tm-admin-talent-email" name="talent_email" class="input-text" autocomplete="off" placeholder="talent@example.com" />
+						<input type="email" id="tm-admin-talent-email" name="talent_email" class="input-text" autocomplete="off" placeholder="<?php echo esc_attr( sanitize_title( $person_singular_label ) . '@example.com' ); ?>" />
 					</p>
 					<p class="form-row">
 						<label for="tm-admin-talent-phone"><?php esc_html_e( 'Phone', 'ecomcine' ); ?> <span class="tm-admin-create-optional">(<?php esc_html_e( 'optional', 'ecomcine' ); ?>)</span></label>
@@ -874,7 +886,8 @@ function tm_account_panel_share_link() {
 	$vendor_id = isset( $_POST['vendor_id'] ) ? absint( $_POST['vendor_id'] ) : 0;
 	$is_preonboard = (bool) get_user_meta( $vendor_id, 'tm_preonboard', true );
 	if ( ! $is_preonboard ) {
-		wp_send_json_error( [ 'message' => 'This talent is not in pre-onboarding mode.' ], 400 );
+		$person_singular = function_exists( 'ecomcine_get_person_public_label_singular' ) ? strtolower( ecomcine_get_person_public_label_singular() ) : 'talent';
+		wp_send_json_error( [ 'message' => 'This ' . $person_singular . ' is not in pre-onboarding mode.' ], 400 );
 	}
 
 	$result = tm_account_panel_prepare_onboarding_link( $vendor_id );
@@ -892,7 +905,8 @@ function tm_account_panel_share_link() {
 		$_talent_data = get_userdata( $vendor_id );
 		$talent_name  = $_talent_data ? (string) $_talent_data->display_name : '';
 	}
-	$default_message = "Dear \$TalentName,\n\n\$AdminName is inviting you to join Casting Agency Co and has already pre-filled your profile. Create an account to claim your talent profile, you will then be able to complete/publish it.";
+	$person_singular = function_exists( 'ecomcine_get_person_public_label_singular' ) ? strtolower( ecomcine_get_person_public_label_singular() ) : 'talent';
+	$default_message = "Dear \$TalentName,\n\n\$AdminName is inviting you to join Casting Agency Co and has already pre-filled your profile. Create an account to claim your {$person_singular} profile, you will then be able to complete/publish it.";
 
 	$admin_message = isset( $_POST['admin_message'] ) ? wp_unslash( $_POST['admin_message'] ) : '';
 	$admin_message = $admin_message ? wp_kses_post( $admin_message ) : '';

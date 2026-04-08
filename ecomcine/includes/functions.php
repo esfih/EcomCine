@@ -564,6 +564,310 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	}
 
 	/**
+	 * Pluralize a public-facing label using simple English rules.
+	 *
+	 * @param string $label
+	 * @return string
+	 */
+	function ecomcine_pluralize_public_label( string $label ): string {
+		$label = trim( $label );
+		if ( '' === $label ) {
+			return '';
+		}
+
+		if ( preg_match( '/[^aeiou]y$/i', $label ) ) {
+			return substr( $label, 0, -1 ) . 'ies';
+		}
+
+		if ( preg_match( '/(s|x|z|ch|sh)$/i', $label ) ) {
+			return $label . 'es';
+		}
+
+		return $label . 's';
+	}
+
+	/**
+	 * Return the admin-configured public singular label for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_public_label_singular(): string {
+		$label = class_exists( 'EcomCine_Admin_Settings', false )
+			? EcomCine_Admin_Settings::get_label( 'talent_label', 'Talent' )
+			: 'Talent';
+
+		$label = trim( (string) $label );
+		return '' !== $label ? $label : 'Talent';
+	}
+
+	/**
+	 * Return the admin-configured public plural label for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_public_label_plural(): string {
+		$plural = ecomcine_pluralize_public_label( ecomcine_get_person_public_label_singular() );
+		return '' !== $plural ? $plural : 'Talents';
+	}
+
+	/**
+	 * Return the canonical public listing slug for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_directory_slug(): string {
+		$slug = sanitize_title( ecomcine_get_person_public_label_singular() );
+		return '' !== $slug ? $slug : 'talents';
+	}
+
+	/**
+	 * Return the canonical public single-profile base.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_profile_base(): string {
+		$default_base = ecomcine_get_person_directory_slug();
+		$base         = trim( (string) get_option( 'ecomcine_person_base', $default_base ), '/' );
+
+		if ( '' === $base ) {
+			$base = $default_base;
+		}
+
+		return sanitize_title( $base );
+	}
+
+	/**
+	 * Return the canonical public terms page slug.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_terms_slug(): string {
+		return ecomcine_get_person_directory_slug() . '-terms';
+	}
+
+	/**
+	 * Return the public terms label for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_terms_label(): string {
+		return ecomcine_get_person_public_label_singular() . ' Terms';
+	}
+
+	/**
+	 * Return the configured listing page if present.
+	 *
+	 * @return WP_Post|null
+	 */
+	function ecomcine_get_person_listing_page() {
+		$listing_page_id = (int) get_option( 'ecomcine_listing_page_id', 0 );
+		if ( $listing_page_id > 0 ) {
+			$page = get_post( $listing_page_id );
+			if ( $page instanceof WP_Post && 'page' === $page->post_type ) {
+				return $page;
+			}
+		}
+
+		$candidate_slugs = array_values(
+			array_unique(
+				array_filter(
+					array(
+						ecomcine_get_person_directory_slug(),
+						sanitize_title( ecomcine_get_person_public_label_plural() ),
+						'talents',
+					)
+				)
+			)
+		);
+
+		foreach ( $candidate_slugs as $candidate_slug ) {
+			$page = get_page_by_path( $candidate_slug, OBJECT, 'page' );
+			if ( $page instanceof WP_Post ) {
+				return $page;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Return the public listing URL for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_listing_url(): string {
+		$page = ecomcine_get_person_listing_page();
+		if ( $page instanceof WP_Post ) {
+			return (string) get_permalink( $page );
+		}
+
+		return trailingslashit( home_url( '/' . ecomcine_get_person_directory_slug() ) );
+	}
+
+	/**
+	 * Return the canonical categories page slug for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_categories_page_slug(): string {
+		return ecomcine_get_person_directory_slug() . '-categories';
+	}
+
+	/**
+	 * Return the canonical categories page title for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_categories_page_title(): string {
+		return ecomcine_get_person_public_label_singular() . ' Categories';
+	}
+
+	/**
+	 * Return the configured categories page if present.
+	 *
+	 * @return WP_Post|null
+	 */
+	function ecomcine_get_person_categories_page() {
+		$candidate_slugs = array_values(
+			array_unique(
+				array_filter(
+					array(
+						ecomcine_get_person_categories_page_slug(),
+						sanitize_title( ecomcine_get_person_public_label_plural() ) . '-categories',
+						'talents-categories',
+						'categories',
+					)
+				)
+			)
+		);
+
+		foreach ( $candidate_slugs as $candidate_slug ) {
+			$page = get_page_by_path( $candidate_slug, OBJECT, 'page' );
+			if ( $page instanceof WP_Post ) {
+				return $page;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Return the public categories page URL for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_categories_page_url(): string {
+		$page = ecomcine_get_person_categories_page();
+		if ( $page instanceof WP_Post ) {
+			return (string) get_permalink( $page );
+		}
+
+		return trailingslashit( home_url( '/' . ecomcine_get_person_categories_page_slug() ) );
+	}
+
+	/**
+	 * Return the canonical locations page slug for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_locations_page_slug(): string {
+		return ecomcine_get_person_directory_slug() . '-locations';
+	}
+
+	/**
+	 * Return the canonical locations page title for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_locations_page_title(): string {
+		return ecomcine_get_person_public_label_singular() . ' Locations';
+	}
+
+	/**
+	 * Return the configured locations page if present.
+	 *
+	 * @return WP_Post|null
+	 */
+	function ecomcine_get_person_locations_page() {
+		$candidate_slugs = array_values(
+			array_unique(
+				array_filter(
+					array(
+						ecomcine_get_person_locations_page_slug(),
+						sanitize_title( ecomcine_get_person_public_label_plural() ) . '-locations',
+						'talents-locations',
+						'locations',
+					)
+				)
+			)
+		);
+
+		foreach ( $candidate_slugs as $candidate_slug ) {
+			$page = get_page_by_path( $candidate_slug, OBJECT, 'page' );
+			if ( $page instanceof WP_Post ) {
+				return $page;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Return the public locations page URL for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_locations_page_url(): string {
+		$page = ecomcine_get_person_locations_page();
+		if ( $page instanceof WP_Post ) {
+			return (string) get_permalink( $page );
+		}
+
+		return trailingslashit( home_url( '/' . ecomcine_get_person_locations_page_slug() ) );
+	}
+
+	/**
+	 * Return the configured terms page if present.
+	 *
+	 * @return WP_Post|null
+	 */
+	function ecomcine_get_person_terms_page() {
+		$candidate_slugs = array_values(
+			array_unique(
+				array_filter(
+					array(
+						ecomcine_get_person_terms_slug(),
+						'talent-terms',
+					)
+				)
+			)
+		);
+
+		foreach ( $candidate_slugs as $candidate_slug ) {
+			$page = get_page_by_path( $candidate_slug, OBJECT, 'page' );
+			if ( $page instanceof WP_Post ) {
+				return $page;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Return the public terms page URL for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_terms_url(): string {
+		$page = ecomcine_get_person_terms_page();
+		if ( $page instanceof WP_Post ) {
+			return (string) get_permalink( $page );
+		}
+
+		return trailingslashit( home_url( '/' . ecomcine_get_person_terms_slug() ) );
+	}
+
+	/**
 	 * Return the canonical public profile URL for a person.
 	 *
 	 * Uses EcomCine's own /person/{nicename}/ rewrite when the rewrite rule is
@@ -589,8 +893,9 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 			return '';
 		}
 
-		// EcomCine native rewrite rule: /person/{user_nicename}/.
-		$rewrite_base = get_option( 'ecomcine_person_base', 'person' );
+		$rewrite_base = function_exists( 'ecomcine_get_person_profile_base' )
+			? ecomcine_get_person_profile_base()
+			: trim( (string) get_option( 'ecomcine_person_base', 'person' ), '/' );
 		$user         = get_userdata( $user_id );
 		if ( $user && $user->user_nicename ) {
 			$url = trailingslashit( home_url( '/' . trim( $rewrite_base, '/' ) . '/' . $user->user_nicename ) );
@@ -606,9 +911,11 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	}
 }
 
-// Register /person/{nicename}/ routing and map it to ecomcine_person query var.
+// Register /{configured-person-base}/{nicename}/ routing and map it to ecomcine_person query var.
 add_action( 'init', function() {
-	$rewrite_base = trim( (string) get_option( 'ecomcine_person_base', 'person' ), '/' );
+	$rewrite_base = function_exists( 'ecomcine_get_person_profile_base' )
+		? ecomcine_get_person_profile_base()
+		: trim( (string) get_option( 'ecomcine_person_base', 'person' ), '/' );
 	if ( '' === $rewrite_base ) {
 		$rewrite_base = 'person';
 	}
@@ -655,7 +962,9 @@ add_filter( 'pre_get_document_title', function( string $title ): string {
 		}
 	}
 	if ( '' === $full_name ) {
-		$full_name = 'Person';
+		$full_name = function_exists( 'ecomcine_get_person_public_label_singular' )
+			? ecomcine_get_person_public_label_singular()
+			: 'Person';
 	}
 
 	$site_name = trim( (string) get_bloginfo( 'name' ) );
@@ -744,15 +1053,10 @@ if ( ! function_exists( 'ecomcine_is_person_listing' ) ) {
 	 * @return bool
 	 */
 	function ecomcine_is_person_listing(): bool {
-		// Check against the configured talents/listing page ID.
-		$listing_page_id = (int) get_option( 'ecomcine_listing_page_id', 0 );
-		if ( $listing_page_id && is_page( $listing_page_id ) ) {
-			return true;
-		}
-
-		// Fallback: page with the 'talents' slug.
-		$talents_page = get_page_by_path( 'talents' );
-		if ( $talents_page && is_page( $talents_page->ID ) ) {
+		$listing_page = function_exists( 'ecomcine_get_person_listing_page' )
+			? ecomcine_get_person_listing_page()
+			: null;
+		if ( $listing_page instanceof WP_Post && is_page( $listing_page->ID ) ) {
 			return true;
 		}
 

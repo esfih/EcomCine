@@ -106,7 +106,11 @@ $store_category_display = strlen($store_category_display) > 30 ? substr($store_c
 $shop_name = $store_user->get_shop_name();
 $shop_name = $shop_name ? $shop_name : '';
 $shop_name_words = preg_split( '/\s+/', trim( $shop_name ) );
-$contact_first_name = ( $shop_name_words && ! empty( $shop_name_words[0] ) ) ? $shop_name_words[0] : 'this talent';
+$public_person_singular = function_exists( 'ecomcine_get_person_public_label_singular' ) ? ecomcine_get_person_public_label_singular() : 'Talent';
+$public_person_singular_lower = strtolower( $public_person_singular );
+$public_person_terms_url = function_exists( 'ecomcine_get_person_terms_url' ) ? ecomcine_get_person_terms_url() : home_url( '/talent-terms/' );
+$public_person_terms_label_lower = strtolower( function_exists( 'ecomcine_get_person_terms_label' ) ? ecomcine_get_person_terms_label() : 'Talent Terms' );
+$contact_first_name = ( $shop_name_words && ! empty( $shop_name_words[0] ) ) ? $shop_name_words[0] : 'this ' . $public_person_singular_lower;
 
 $geo_lat = isset( $person_geo['lat'] ) ? $person_geo['lat'] : '';
 $geo_lng = isset( $person_geo['lng'] ) ? $person_geo['lng'] : '';
@@ -377,7 +381,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                             <?php if ( $onboard_claimed || ! empty( $onboard_state['valid'] ) ) : ?>
                                 <?php $admin_name = ! empty( $onboard_state['admin_name'] ) ? $onboard_state['admin_name'] : 'An admin'; ?>
                                 <div class="tm-onboard-help">
-                                    <button type="button" class="help-toggle-btn" aria-label="Show help" data-help-text="<?php echo esc_attr( $admin_name ); ?> has pre-filled your talent profile. Please review and complete any missing fields, then click Save.">
+                                    <button type="button" class="help-toggle-btn" aria-label="Show help" data-help-text="<?php echo esc_attr( $admin_name ); ?> has pre-filled your <?php echo esc_attr( $public_person_singular_lower ); ?> profile. Please review and complete any missing fields, then click Save.">
                                         <?php echo TM_Icons::svg( 'question-circle' ); ?>
                                     </button>
                                 </div>
@@ -389,7 +393,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 <?php endif; ?>
                                 <?php
                                 $store_name_value = $store_user->get_shop_name();
-                                $store_name_display = $store_name_value ? $store_name_value : 'Talent Name';
+                                $store_name_display = $store_name_value ? $store_name_value : $public_person_singular . ' Name';
                                 ?>
                             <div class="store-name-wrapper<?php echo $is_owner ? ' editable-field' : ''; ?>" data-field="store_name" data-help="You can display your real name or a stage name.">
                                 <div class="field-display">
@@ -405,7 +409,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 </div>
                                 <?php if ( $is_owner ) : ?>
                                     <div class="field-edit">
-                                        <label>EDIT Talent Name</label>
+                                        <label><?php echo esc_html( 'EDIT ' . $public_person_singular . ' Name' ); ?></label>
                                         <input type="text" name="store_name" class="edit-field-input" value="<?php echo esc_attr( $store_user->get_shop_name() ); ?>">
                                         <div class="field-edit-actions">
                                             <button class="save-field-btn" type="button"><?php echo TM_Icons::svg( 'check' ); ?> Save</button>
@@ -1025,8 +1029,8 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                             : get_avatar_url( $claim_vendor_id, array( 'size' => 120 ) );
                     }
                     $raw_message = (string) get_user_meta( $claim_vendor_id, 'tm_preonboard_admin_message', true );
-                    $talent_name = $store_user->get_shop_name() ? $store_user->get_shop_name() : 'Talent';
-                    $default_message = "Dear \$TalentName,\n\n\$AdminName is inviting you to join Casting Agency Co and has already pre-filled your profile. Create an account to claim your talent profile, you will then be able to complete/publish it.";
+                    $talent_name = $store_user->get_shop_name() ? $store_user->get_shop_name() : $public_person_singular;
+					$default_message = "Dear \$TalentName,\n\n\$AdminName is inviting you to join Casting Agency Co and has already pre-filled your profile. Create an account to claim your {$public_person_singular_lower} profile, you will then be able to complete/publish it.";
                     $raw_message = $raw_message ? $raw_message : $default_message;
                     $render_message = str_replace(
                         [ '$TalentName', '$AdminName' ],
@@ -1076,7 +1080,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 </label>
                                 <label>
                                     <input type="checkbox" name="tm_accept_terms" required />
-                                    I Accept the <a href="<?php echo esc_url( home_url( '/talent-terms' ) ); ?>" target="_blank" rel="noopener">talent terms</a>
+                                    I Accept the <a href="<?php echo esc_url( $public_person_terms_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $public_person_terms_label_lower ); ?></a>
                                 </label>
                             </div>
                             <button class="tm-onboard-claim-btn" type="submit">Claim profile &amp; create account</button>
@@ -1195,7 +1199,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
 
                     // ── "View details" popup: group missing L1 fields by section ──────────
                     $_field_sections = [
-                        'Talent Name'        => 'Identity',   'Profile Photo'      => 'Identity',
+                        ( $public_person_singular . ' Name' ) => 'Identity',   'Profile Photo'      => 'Identity',
                         'Banner Image'       => 'Identity',   'Location'           => 'Identity',
                         'Category'           => 'Identity',   'Phone'              => 'Contact',
                         'Email'              => 'Contact',
@@ -1520,16 +1524,16 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 </button>
                             </div>
                             <div class="keyboard-nav-row keyboard-nav-bottom">
-                                <button class="keyboard-nav-btn keyboard-nav-left" type="button" aria-label="Previous talent" title="Previous talent (←)">
+                                <button class="keyboard-nav-btn keyboard-nav-left" type="button" aria-label="<?php echo esc_attr( 'Previous ' . $public_person_singular_lower ); ?>" title="<?php echo esc_attr( 'Previous ' . $public_person_singular_lower . ' (←)' ); ?>">
                                     <span class="keyboard-nav-icon">▲</span>
                                 </button>
                                 <button class="keyboard-nav-btn keyboard-nav-down" type="button" aria-label="Next media" title="Next media (↓)">
                                     <span class="keyboard-nav-icon">▼</span>
                                 </button>
-                                <button class="keyboard-nav-btn keyboard-nav-right" type="button" aria-label="Next talent" title="Next talent (→)">
+                                <button class="keyboard-nav-btn keyboard-nav-right" type="button" aria-label="<?php echo esc_attr( 'Next ' . $public_person_singular_lower ); ?>" title="<?php echo esc_attr( 'Next ' . $public_person_singular_lower . ' (→)' ); ?>">
                                     <span class="keyboard-nav-icon">▲</span>
                                 </button>
-                                <button class="keyboard-nav-btn keyboard-nav-loop" type="button" aria-label="Toggle talent loop" aria-pressed="false" title="Talent loop off (advance to next talent)">
+                                <button class="keyboard-nav-btn keyboard-nav-loop" type="button" aria-label="<?php echo esc_attr( 'Toggle ' . $public_person_singular_lower . ' loop' ); ?>" aria-pressed="false" title="<?php echo esc_attr( ucfirst( $public_person_singular_lower ) . ' loop off (advance to next ' . $public_person_singular_lower . ')' ); ?>">
                                     <span class="keyboard-nav-icon"><?php echo TM_Icons::svg( 'sync-alt' ); ?></span>
                                 </button>
                             </div>

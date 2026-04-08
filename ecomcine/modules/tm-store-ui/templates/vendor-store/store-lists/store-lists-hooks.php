@@ -1010,7 +1010,7 @@ add_action( 'wp_footer', function() {
 				var $sc = $( '<a/>', {
 					id:   'tm-showcase-btn',
 					href: d.url + '?tm_ids=' + d.ids.join( ',' ),
-					text: '\u25b6\u2009Showcase these ' + d.total + ' talents',
+					text: '\u25b6\u2009Showcase these ' + d.total + ' <?php echo esc_js( strtolower( function_exists( 'ecomcine_get_person_public_label_plural' ) ? ecomcine_get_person_public_label_plural() : 'talents' ) ); ?>',
 				} );
 
 				$bar.append( $sortWrap, $sc );

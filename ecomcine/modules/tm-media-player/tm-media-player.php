@@ -497,9 +497,10 @@ if ( ! function_exists( 'tm_render_showcase_shell' ) ) :
 function tm_render_showcase_shell( $vendor_id, $vendor_ids = array() ) {
 	$vendor_id  = absint( $vendor_id );
 	$vendor_ids = array_values( array_filter( array_map( 'absint', (array) $vendor_ids ) ) );
+	$person_singular = function_exists( 'ecomcine_get_person_public_label_singular' ) ? strtolower( ecomcine_get_person_public_label_singular() ) : 'talent';
 
 	if ( ! $vendor_id ) {
-		return '<div class="tm-talent-showcase-empty">No talent available.</div>';
+		return '<div class="tm-talent-showcase-empty">No ' . esc_html( $person_singular ) . ' available.</div>';
 	}
 
 	set_query_var( 'author', $vendor_id );
@@ -526,7 +527,7 @@ function tm_render_showcase_shell( $vendor_id, $vendor_ids = array() ) {
 					? tm_store_ui_render_store_header( $vendor_id )
 					: false;
 				if ( ! $tm_rendered ) {
-					echo '<div class="tm-talent-showcase-empty">Unable to render talent profile.</div>';
+					echo '<div class="tm-talent-showcase-empty">Unable to render ' . esc_html( $person_singular ) . ' profile.</div>';
 				}
 				?>
 			</div>
@@ -550,10 +551,11 @@ function tm_talent_showcase_shortcode( $atts = array() ) {
 	$mode      = strtolower( (string) $atts['mode'] );
 	if ( '' === $mode ) { $mode = 'showcase'; }
 	$vendor_ids = tm_get_showcase_vendor_ids();
-	if ( empty( $vendor_ids ) ) { return '<div class="tm-talent-showcase-empty">No talent available.</div>'; }
+	$person_singular = function_exists( 'ecomcine_get_person_public_label_singular' ) ? strtolower( ecomcine_get_person_public_label_singular() ) : 'talent';
+	if ( empty( $vendor_ids ) ) { return '<div class="tm-talent-showcase-empty">No ' . esc_html( $person_singular ) . ' available.</div>'; }
 	$vendor_id  = (int) $vendor_ids[0];
 	$payload    = tm_get_vendor_store_content_payload( $vendor_id );
-	if ( is_wp_error( $payload ) ) { return '<div class="tm-talent-showcase-empty">Unable to load talent showcase.</div>'; }
+	if ( is_wp_error( $payload ) ) { return '<div class="tm-talent-showcase-empty">Unable to load ' . esc_html( $person_singular ) . ' showcase.</div>'; }
 	TM_Media_Player_Assets::enqueue_for_showcase( $vendor_id, $mode, $vendor_ids );
 	return tm_render_showcase_shell( $vendor_id, $vendor_ids );
 }

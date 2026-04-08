@@ -60,7 +60,8 @@ get_header( 'shop' );
 				? tm_store_ui_render_store_header( $vendor_id )
 				: false;
 			if ( ! $rendered ) {
-				echo '<div class="tm-talent-showcase-empty">Unable to render talent profile.</div>';
+				$person_singular = function_exists( 'ecomcine_get_person_public_label_singular' ) ? strtolower( ecomcine_get_person_public_label_singular() ) : 'talent';
+				echo '<div class="tm-talent-showcase-empty">Unable to render ' . esc_html( $person_singular ) . ' profile.</div>';
 			}
 			?>
 		<?php else : ?>
