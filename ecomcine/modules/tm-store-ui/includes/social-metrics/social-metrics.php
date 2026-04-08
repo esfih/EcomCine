@@ -2632,6 +2632,33 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 	$is_owner = function_exists( 'tm_can_edit_vendor_profile' ) 
 		? tm_can_edit_vendor_profile( $vendor_id )
 		: ( $current_user_id && $current_user_id == $vendor_id );
+	$drawer_social_label = function_exists( 'ecomcine_profile_get_drawer_section_label' )
+		? ecomcine_profile_get_drawer_section_label( 'social_metrics', 'Social Influence Metrics' )
+		: 'Social Influence Metrics';
+	$social_metric_config = function_exists( 'ecomcine_profile_get_social_metric_config_map' )
+		? ecomcine_profile_get_social_metric_config_map()
+		: array();
+	$get_social_metric_setting = static function( string $platform, string $key, string $fallback ) use ( $social_metric_config ): string {
+		if ( isset( $social_metric_config[ $platform ][ $key ] ) && is_string( $social_metric_config[ $platform ][ $key ] ) ) {
+			$value = trim( $social_metric_config[ $platform ][ $key ] );
+			if ( '' !== $value ) {
+				return $value;
+			}
+		}
+
+		return $fallback;
+	};
+	$is_social_metric_enabled = static function( string $platform ) use ( $social_metric_config ): bool {
+		if ( ! isset( $social_metric_config[ $platform ] ) || ! is_array( $social_metric_config[ $platform ] ) ) {
+			return true;
+		}
+
+		return ! array_key_exists( 'enabled', $social_metric_config[ $platform ] ) || ! empty( $social_metric_config[ $platform ]['enabled'] );
+	};
+	$youtube_label = $get_social_metric_setting( 'youtube', 'label', 'YouTube' );
+	$instagram_label = $get_social_metric_setting( 'instagram', 'label', 'Instagram' );
+	$facebook_label = $get_social_metric_setting( 'facebook', 'label', 'Facebook' );
+	$linkedin_label = $get_social_metric_setting( 'linkedin', 'label', 'LinkedIn' );
 	
 	// Get vendor's store categories
 	$store_categories = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );
@@ -2951,7 +2978,7 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 	
 	<div id="social-section" class="talent-physical-attributes attribute-slide-section social-section">
 		<h3 class="section-title">
-			<i class="fas fa-chart-line section-title-icon"></i> Social Influence Metrics
+			<i class="fas fa-chart-line section-title-icon"></i> <?php echo esc_html( $drawer_social_label ); ?>
 			<span class="help-icon-wrapper">
 				<button type="button" class="help-toggle-btn help-toggle-btn--social" aria-label="Show help" data-help-text="Statistics based on last 10 posts average. Growth metrics compare the latest period against the previous one (daily, then weekly, then monthly).">
 					<i class="fas fa-question-circle" aria-hidden="true"></i>
@@ -3119,10 +3146,18 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 						<?php
 					}
 					
-					render_social_url_field( 'YouTube', 'fa-youtube', $youtube_url, $youtube_status );
-					render_social_url_field( 'Instagram', 'fa-instagram', $instagram_url, $instagram_status );
-					render_social_url_field( 'Facebook', 'fa-facebook-square', $facebook_url, $facebook_status );
-					render_social_url_field( 'LinkedIn', 'fa-linkedin', $linkedin_url, $linkedin_status );
+					if ( $is_social_metric_enabled( 'youtube' ) ) {
+						render_social_url_field( $youtube_label, 'fa-youtube', $youtube_url, $youtube_status );
+					}
+					if ( $is_social_metric_enabled( 'instagram' ) ) {
+						render_social_url_field( $instagram_label, 'fa-instagram', $instagram_url, $instagram_status );
+					}
+					if ( $is_social_metric_enabled( 'facebook' ) ) {
+						render_social_url_field( $facebook_label, 'fa-facebook-square', $facebook_url, $facebook_status );
+					}
+					if ( $is_social_metric_enabled( 'linkedin' ) ) {
+						render_social_url_field( $linkedin_label, 'fa-linkedin', $linkedin_url, $linkedin_status );
+					}
 					?>
 				</div>
 			</div>
@@ -3131,11 +3166,12 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 		<div class="attribute-grid">
 			
 			<!-- YouTube Metrics -->
+			<?php if ( $is_social_metric_enabled( 'youtube' ) ) : ?>
 			<div class="social-metric-column" data-platform="youtube">
 				<div class="social-header">
 					<i class="fab fa-youtube social-header-icon"></i>
 					<div>
-						<h4 class="social-title">YouTube</h4>
+						<h4 class="social-title"><?php echo esc_html( $youtube_label ); ?></h4>
 						<?php if ( $youtube_display_url ) : ?>
 							<a href="<?php echo esc_url( $youtube_display_url ); ?>" target="_blank" class="social-profile-link">
 								<i class="fas fa-external-link-alt social-profile-link-icon"></i> View Profile
@@ -3148,30 +3184,30 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 				<div class="social-stats">
 					<?php if ( $youtube_fetching ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Subscribers: <strong class="stat-value--gold">...</strong>
+							<i class="fas fa-users stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'youtube', 'followers_label', 'Subscribers' ) ); ?>: <strong class="stat-value--gold">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-chart-bar stat-icon"></i> Avg Views: <strong class="stat-value--rose">...</strong>
+							<i class="fas fa-chart-bar stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'youtube', 'views_label', 'Avg Views' ) ); ?>: <strong class="stat-value--rose">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">...</strong>
+							<i class="fas fa-heart stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'youtube', 'reactions_label', 'Avg Reactions' ) ); ?>: <strong class="stat-value--rose">...</strong>
 						</div>
 					<?php elseif ( $youtube_error ) : ?>
 						<div class="stat-item stat-item--muted">error</div>
 					<?php elseif ( $youtube_subscribers !== null || $youtube_avg_views !== null || $youtube_avg_reactions !== null ) : ?>
 						<?php if ( $youtube_subscribers !== null ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-users stat-icon"></i> Subscribers: <strong class="stat-value--gold"><?php echo $format_social_number( $youtube_subscribers ); ?></strong>
+								<i class="fas fa-users stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'youtube', 'followers_label', 'Subscribers' ) ); ?>: <strong class="stat-value--gold"><?php echo $format_social_number( $youtube_subscribers ); ?></strong>
 							</div>
 						<?php endif; ?>
 						<?php if ( $youtube_avg_views !== null ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-chart-bar stat-icon"></i> Avg Views: <strong class="stat-value--rose"><?php echo $format_social_number( $youtube_avg_views ); ?></strong>
+								<i class="fas fa-chart-bar stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'youtube', 'views_label', 'Avg Views' ) ); ?>: <strong class="stat-value--rose"><?php echo $format_social_number( $youtube_avg_views ); ?></strong>
 							</div>
 						<?php endif; ?>
 						<?php if ( $youtube_avg_reactions !== null ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose"><?php echo $format_social_number( $youtube_avg_reactions ); ?></strong>
+								<i class="fas fa-heart stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'youtube', 'reactions_label', 'Avg Reactions' ) ); ?>: <strong class="stat-value--rose"><?php echo $format_social_number( $youtube_avg_reactions ); ?></strong>
 							</div>
 						<?php endif; ?>
 					<?php else : ?>
@@ -3194,13 +3230,15 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 					<?php endif; ?>
 				</div>
 			</div>
+			<?php endif; ?>
 			
 			<!-- Instagram Metrics -->
+			<?php if ( $is_social_metric_enabled( 'instagram' ) ) : ?>
 			<div class="social-metric-column" data-platform="instagram">
 				<div class="social-header">
 					<i class="fab fa-instagram social-header-icon"></i>
 					<div>
-						<h4 class="social-title">Instagram</h4>
+						<h4 class="social-title"><?php echo esc_html( $instagram_label ); ?></h4>
 						<?php if ( $instagram_display_url ) : ?>
 							<a href="<?php echo esc_url( $instagram_display_url ); ?>" target="_blank" class="social-profile-link">
 								<i class="fas fa-external-link-alt social-profile-link-icon"></i> View Profile
@@ -3213,25 +3251,25 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 				<div class="social-stats">
 					<?php if ( $instagram_fetching ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold">...</strong>
+							<i class="fas fa-users stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'instagram', 'followers_label', 'Followers' ) ); ?>: <strong class="stat-value--gold">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">...</strong>
+							<i class="fas fa-heart stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'instagram', 'reactions_label', 'Avg Reactions' ) ); ?>: <strong class="stat-value--rose">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-comment-dots stat-icon"></i> Avg Comments: <strong class="stat-value--rose">...</strong>
+							<i class="fas fa-comment-dots stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'instagram', 'comments_label', 'Avg Comments' ) ); ?>: <strong class="stat-value--rose">...</strong>
 						</div>
 					<?php elseif ( $instagram_error ) : ?>
 						<div class="stat-item stat-item--muted">error</div>
 					<?php elseif ( $instagram_followers > 0 ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold"><?php echo $format_social_number( $instagram_followers ); ?></strong>
+							<i class="fas fa-users stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'instagram', 'followers_label', 'Followers' ) ); ?>: <strong class="stat-value--gold"><?php echo $format_social_number( $instagram_followers ); ?></strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose"><?php echo $format_social_number( $instagram_avg_reactions ); ?></strong>
+							<i class="fas fa-heart stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'instagram', 'reactions_label', 'Avg Reactions' ) ); ?>: <strong class="stat-value--rose"><?php echo $format_social_number( $instagram_avg_reactions ); ?></strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-comment-dots stat-icon"></i> Avg Comments: <strong class="stat-value--rose"><?php echo $format_social_number( $instagram_avg_comments ); ?></strong>
+							<i class="fas fa-comment-dots stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'instagram', 'comments_label', 'Avg Comments' ) ); ?>: <strong class="stat-value--rose"><?php echo $format_social_number( $instagram_avg_comments ); ?></strong>
 						</div>
 					<?php else : ?>
 						<div class="stat-item stat-item--muted">
@@ -3246,13 +3284,15 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 					<?php endif; ?>
 				</div>
 			</div>
+			<?php endif; ?>
 			
 			<!-- Facebook Metrics -->
+			<?php if ( $is_social_metric_enabled( 'facebook' ) ) : ?>
 			<div class="social-metric-column" data-platform="facebook">
 				<div class="social-header">
 					<i class="fab fa-facebook-square social-header-icon"></i>
 					<div>
-						<h4 class="social-title">Facebook</h4>
+						<h4 class="social-title"><?php echo esc_html( $facebook_label ); ?></h4>
 						<?php if ( $facebook_display_url ) : ?>
 							<a href="<?php echo esc_url( $facebook_display_url ); ?>" target="_blank" class="social-profile-link">
 								<i class="fas fa-external-link-alt social-profile-link-icon"></i> View Profile
@@ -3265,35 +3305,35 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 				<div class="social-stats">
 					<?php if ( $facebook_fetching ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold">...</strong>
+							<i class="fas fa-users stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'facebook', 'followers_label', 'Followers' ) ); ?>: <strong class="stat-value--gold">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-eye stat-icon"></i> Avg Views: <strong class="stat-value--rose">...</strong>
+							<i class="fas fa-eye stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'facebook', 'views_label', 'Avg Views' ) ); ?>: <strong class="stat-value--rose">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-thumbs-up stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">...</strong>
+							<i class="fas fa-thumbs-up stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'facebook', 'reactions_label', 'Avg Reactions' ) ); ?>: <strong class="stat-value--rose">...</strong>
 						</div>
 					<?php elseif ( $facebook_error ) : ?>
 						<div class="stat-item stat-item--muted">error</div>
 					<?php elseif ( $facebook_stats_hidden ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold">N/A</strong>
+							<i class="fas fa-users stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'facebook', 'followers_label', 'Followers' ) ); ?>: <strong class="stat-value--gold">N/A</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-eye stat-icon"></i> Avg Views: <strong class="stat-value--rose">N/A</strong>
+							<i class="fas fa-eye stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'facebook', 'views_label', 'Avg Views' ) ); ?>: <strong class="stat-value--rose">N/A</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-thumbs-up stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">N/A</strong>
+							<i class="fas fa-thumbs-up stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'facebook', 'reactions_label', 'Avg Reactions' ) ); ?>: <strong class="stat-value--rose">N/A</strong>
 						</div>
 					<?php elseif ( $facebook_followers > 0 ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold"><?php echo $format_social_number( $facebook_followers ); ?></strong>
+							<i class="fas fa-users stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'facebook', 'followers_label', 'Followers' ) ); ?>: <strong class="stat-value--gold"><?php echo $format_social_number( $facebook_followers ); ?></strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-eye stat-icon"></i> Avg Views: <strong class="stat-value--rose"><?php echo $format_social_number( $facebook_avg_views ); ?></strong>
+							<i class="fas fa-eye stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'facebook', 'views_label', 'Avg Views' ) ); ?>: <strong class="stat-value--rose"><?php echo $format_social_number( $facebook_avg_views ); ?></strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-thumbs-up stat-icon"></i> Avg Reactions: <strong class="stat-value--rose"><?php echo $format_social_number( $facebook_avg_reactions ); ?></strong>
+							<i class="fas fa-thumbs-up stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'facebook', 'reactions_label', 'Avg Reactions' ) ); ?>: <strong class="stat-value--rose"><?php echo $format_social_number( $facebook_avg_reactions ); ?></strong>
 						</div>
 					<?php else : ?>
 						<div class="stat-item stat-item--muted">
@@ -3315,13 +3355,15 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 					<?php endif; ?>
 				</div>
 			</div>
+			<?php endif; ?>
 			
 			<!-- LinkedIn Metrics -->
+			<?php if ( $is_social_metric_enabled( 'linkedin' ) ) : ?>
 			<div class="social-metric-column" data-platform="linkedin">
 				<div class="social-header">
 					<i class="fab fa-linkedin social-header-icon"></i>
 					<div>
-						<h4 class="social-title">LinkedIn</h4>
+						<h4 class="social-title"><?php echo esc_html( $linkedin_label ); ?></h4>
 						<?php if ( $linkedin_display_url ) : ?>
 							<a href="<?php echo esc_url( $linkedin_display_url ); ?>" target="_blank" class="social-profile-link">
 								<i class="fas fa-external-link-alt social-profile-link-icon"></i> View Profile
@@ -3334,30 +3376,30 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 				<div class="social-stats">
 					<?php if ( $linkedin_fetching ) : ?>
 						<div class="stat-item">
-							<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold">...</strong>
+							<i class="fas fa-users stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'linkedin', 'followers_label', 'Followers' ) ); ?>: <strong class="stat-value--gold">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">...</strong>
+							<i class="fas fa-heart stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'linkedin', 'reactions_label', 'Avg Reactions' ) ); ?>: <strong class="stat-value--rose">...</strong>
 						</div>
 						<div class="stat-item">
-							<i class="fas fa-user-friends stat-icon"></i> Connections: <strong class="stat-value--rose">...</strong>
+							<i class="fas fa-user-friends stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'linkedin', 'connections_label', 'Connections' ) ); ?>: <strong class="stat-value--rose">...</strong>
 						</div>
 					<?php elseif ( $linkedin_error ) : ?>
 						<div class="stat-item stat-item--muted">error</div>
 					<?php else : ?>
 						<?php if ( $linkedin_followers > 0 ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-users stat-icon"></i> Followers: <strong class="stat-value--gold">&nbsp;<?php echo $format_social_number( $linkedin_followers ); ?></strong>
+								<i class="fas fa-users stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'linkedin', 'followers_label', 'Followers' ) ); ?>: <strong class="stat-value--gold">&nbsp;<?php echo $format_social_number( $linkedin_followers ); ?></strong>
 							</div>
 						<?php endif; ?>
 						<?php if ( isset( $linkedin_metrics['avg_reactions'] ) && $linkedin_metrics['avg_reactions'] !== null ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-heart stat-icon"></i> Avg Reactions: <strong class="stat-value--rose">&nbsp;<?php echo $format_social_number( (int) $linkedin_metrics['avg_reactions'] ); ?></strong>
+								<i class="fas fa-heart stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'linkedin', 'reactions_label', 'Avg Reactions' ) ); ?>: <strong class="stat-value--rose">&nbsp;<?php echo $format_social_number( (int) $linkedin_metrics['avg_reactions'] ); ?></strong>
 							</div>
 						<?php endif; ?>
 						<?php if ( isset( $linkedin_metrics['connections'] ) && $linkedin_metrics['connections'] ) : ?>
 							<div class="stat-item">
-								<i class="fas fa-user-friends stat-icon"></i> Connections: <strong class="stat-value--rose">&nbsp;<?php echo $format_social_number( (int) $linkedin_metrics['connections'] ); ?></strong>
+								<i class="fas fa-user-friends stat-icon"></i> <?php echo esc_html( $get_social_metric_setting( 'linkedin', 'connections_label', 'Connections' ) ); ?>: <strong class="stat-value--rose">&nbsp;<?php echo $format_social_number( (int) $linkedin_metrics['connections'] ); ?></strong>
 							</div>
 						<?php endif; ?>
 						<?php if ( ! $linkedin_followers && ( ! isset( $linkedin_metrics['avg_reactions'] ) || $linkedin_metrics['avg_reactions'] === null ) ) : ?>
@@ -3381,6 +3423,7 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 					<?php endif; ?>
 				</div>
 			</div>
+			<?php endif; ?>
 			
 			<!-- Growth Metrics -->
 			<div class="social-metric-column social-metric-column--growth">

@@ -201,7 +201,11 @@ if ( ! function_exists( 'render_editable_attribute' ) ) {
 		}
 		echo '<div class="stat-item ' . $wrapper_class . '"' . $data_attr_string . '>';
 		echo '<div class="field-display">';
-		echo '<span class="stat-icon--attribute">' . $icon . '</span>';
+		if ( is_string( $icon ) && false !== strpos( $icon, '<' ) ) {
+			echo '<span class="stat-icon--attribute stat-icon--attribute-html">' . wp_kses_post( $icon ) . '</span>';
+		} else {
+			echo '<span class="stat-icon--attribute">' . esc_html( (string) $icon ) . '</span>';
+		}
 		echo esc_html( $label ) . ': ';
 		echo '<strong class="field-value stat-value--gold">' . esc_html( $display_text ) . '</strong>';
 		if ( $is_owner && $editable ) {

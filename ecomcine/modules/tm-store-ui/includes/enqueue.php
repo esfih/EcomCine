@@ -133,6 +133,10 @@ function tm_store_ui_enqueue_assets() {
 	$_person_terms_label = function_exists( 'ecomcine_get_person_terms_label' )
 		? ecomcine_get_person_terms_label()
 		: 'Talent Terms';
+	$_social_metric_config = array();
+	if ( class_exists( 'EcomCine_Admin_Settings', false ) && method_exists( 'EcomCine_Admin_Settings', 'get_profile_social_metric_map' ) ) {
+		$_social_metric_config = EcomCine_Admin_Settings::get_profile_social_metric_map();
+	}
 
 	if ( wp_script_is( 'tm-store-ui-js', 'enqueued' ) ) {
 		wp_localize_script( 'tm-store-ui-js', 'vendorStoreUiData', array(
@@ -149,6 +153,7 @@ function tm_store_ui_enqueue_assets() {
 			'personLabelPlural'     => $_person_plural,
 			'personTermsUrl'        => esc_url_raw( $_person_terms_url ),
 			'personTermsLabel'      => $_person_terms_label,
+			'socialMetricConfig'    => $_social_metric_config,
 			'jqueryUiCssUrl'        => WP_CONTENT_URL . '/plugins/woocommerce-bookings/dist/jquery-ui-styles.css',
 			'jqueryUiCoreUrl'       => includes_url( 'js/jquery/ui/core.min.js' ),
 			'jqueryUiDatepickerUrl' => includes_url( 'js/jquery/ui/datepicker.min.js' ),

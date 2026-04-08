@@ -107,6 +107,40 @@ if ( ! function_exists( 'tm_vendor_profile_get_person_category_ids' ) ) {
 	}
 }
 
+if ( ! function_exists( 'tm_vendor_profile_get_dynamic_field_keys' ) ) {
+	/**
+	 * Get registry-backed custom field keys assigned to a vendor.
+	 *
+	 * @param int $user_id Vendor ID.
+	 * @return string[]
+	 */
+	function tm_vendor_profile_get_dynamic_field_keys( int $user_id ): array {
+		if ( $user_id < 1 || ! class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			return array();
+		}
+
+		$field_keys = array();
+		$categories = EcomCine_Person_Category_Registry::get_for_person( $user_id );
+
+		foreach ( $categories as $category ) {
+			$category_id = isset( $category['id'] ) ? (int) $category['id'] : 0;
+			if ( $category_id < 1 ) {
+				continue;
+			}
+
+			$fields = EcomCine_Person_Category_Registry::get_fields_for_category( $category_id, false );
+			foreach ( $fields as $field ) {
+				$field_key = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+				if ( '' !== $field_key ) {
+					$field_keys[] = $field_key;
+				}
+			}
+		}
+
+		return array_values( array_unique( $field_keys ) );
+	}
+}
+
 /**
  * Native vendor/person check — works with and without Dokan.
  * Returns true if the user has the EcomCine person role OR the legacy Dokan seller role.
@@ -174,6 +208,7 @@ add_action( 'wp_ajax_vendor_save_attribute', function() {
 		'social_youtube', 'social_instagram', 'social_facebook', 'social_linkedin',
 		'store_categories'
 	];
+	$allowed_fields = array_values( array_unique( array_merge( $allowed_fields, tm_vendor_profile_get_dynamic_field_keys( $user_id ) ) ) );
 	
 	if ( ! in_array( $field, $allowed_fields ) ) {
 		tm_ajax_send_json_error( ['message' => 'Invalid field'], 400 );

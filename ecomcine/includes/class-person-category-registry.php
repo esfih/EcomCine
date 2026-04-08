@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
 class EcomCine_Person_Category_Registry {
 
 	const DB_VERSION_KEY = 'ecomcine_category_db_version';
-	const DB_VERSION     = '4';
+	const DB_VERSION     = '6';
 
 	// ── Schema ──────────────────────────────────────────────────────────────
 
@@ -64,6 +64,8 @@ class EcomCine_Person_Category_Registry {
 			field_type      VARCHAR(32)     NOT NULL DEFAULT 'select',
 			field_options   LONGTEXT        NULL,
 			field_icon      VARCHAR(100)    NOT NULL DEFAULT '',
+			field_icon_attachment_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			field_icon_url  TEXT            NOT NULL,
 			sort_order      INT             NOT NULL DEFAULT 0,
 			required        TINYINT(1)      NOT NULL DEFAULT 0,
 			show_in_public  TINYINT(1)      NOT NULL DEFAULT 1,
@@ -79,6 +81,7 @@ class EcomCine_Person_Category_Registry {
 		dbDelta( $sql_fields );
 
 		update_option( self::DB_VERSION_KEY, self::DB_VERSION );
+		self::seed_defaults();
 	}
 
 	// ── CRUD for categories ──────────────────────────────────────────────────
@@ -329,7 +332,7 @@ class EcomCine_Person_Category_Registry {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT id, category_id, field_key, field_label, field_type, field_options, field_icon, sort_order, required, show_in_public, show_in_filters
+				"SELECT id, category_id, field_key, field_label, field_type, field_options, field_icon, field_icon_attachment_id, field_icon_url, sort_order, required, show_in_public, show_in_filters
 				 FROM {$table}
 				 WHERE category_id = %d {$where}
 				 ORDER BY sort_order ASC, id ASC",
@@ -366,7 +369,7 @@ class EcomCine_Person_Category_Registry {
 		$table = $wpdb->prefix . 'ecomcine_category_fields';
 		$row   = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT id, category_id, field_key, field_label, field_type, field_options, field_icon, sort_order, required, show_in_public, show_in_filters
+				"SELECT id, category_id, field_key, field_label, field_type, field_options, field_icon, field_icon_attachment_id, field_icon_url, sort_order, required, show_in_public, show_in_filters
 				 FROM {$table}
 				 WHERE id = %d LIMIT 1",
 				$field_id
@@ -401,6 +404,8 @@ class EcomCine_Person_Category_Registry {
 		$field_label = sanitize_text_field( $data['field_label'] ?? '' );
 		$field_type  = self::sanitize_field_type( $data['field_type'] ?? 'select' );
 		$field_icon  = sanitize_text_field( $data['field_icon'] ?? '' );
+		$field_icon_attachment_id = absint( $data['field_icon_attachment_id'] ?? 0 );
+		$field_icon_url = self::sanitize_icon_url( (string) ( $data['field_icon_url'] ?? '' ) );
 		$sort_order  = (int) ( $data['sort_order'] ?? 0 );
 		$required    = empty( $data['required'] ) ? 0 : 1;
 		$show_public = array_key_exists( 'show_in_public', $data ) ? ( empty( $data['show_in_public'] ) ? 0 : 1 ) : 1;
@@ -421,12 +426,14 @@ class EcomCine_Person_Category_Registry {
 				'field_type'      => $field_type,
 				'field_options'   => $field_options,
 				'field_icon'      => $field_icon,
+				'field_icon_attachment_id' => $field_icon_attachment_id,
+				'field_icon_url'  => $field_icon_url,
 				'sort_order'      => $sort_order,
 				'required'        => $required,
 				'show_in_public'  => $show_public,
 				'show_in_filters' => $show_filter,
 			),
-			array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d' )
+			array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%d', '%d' )
 		);
 
 		return $result ? (int) $wpdb->insert_id : false;
@@ -448,7 +455,7 @@ class EcomCine_Person_Category_Registry {
 		}
 
 		$allowed = array(
-			'field_key', 'field_label', 'field_type', 'field_options', 'field_icon',
+			'field_key', 'field_label', 'field_type', 'field_options', 'field_icon', 'field_icon_attachment_id', 'field_icon_url',
 			'sort_order', 'required', 'show_in_public', 'show_in_filters',
 		);
 
@@ -468,6 +475,14 @@ class EcomCine_Person_Category_Registry {
 				case 'field_label':
 				case 'field_icon':
 					$payload[ $key ] = sanitize_text_field( (string) $data[ $key ] );
+					$formats[] = '%s';
+					break;
+				case 'field_icon_attachment_id':
+					$payload[ $key ] = absint( $data[ $key ] );
+					$formats[] = '%d';
+					break;
+				case 'field_icon_url':
+					$payload[ $key ] = self::sanitize_icon_url( (string) $data[ $key ] );
 					$formats[] = '%s';
 					break;
 				case 'field_type':
@@ -810,25 +825,195 @@ class EcomCine_Person_Category_Registry {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
 
-		if ( $count > 0 ) {
-			return; // Already seeded.
+		if ( 0 === $count ) {
+			$defaults = array(
+				array( 'Actor',             'actor',              '', 1,  'user' ),
+				array( 'Model',             'model',              '', 2,  'star' ),
+				array( 'TV Host',           'tv-host',            '', 3,  'comment-dots' ),
+				array( 'Athlete',           'athlete',            '', 4,  'thumbs-up' ),
+				array( 'Musician',          'musician',           '', 5,  'music' ),
+				array( 'Director',          'director',           '', 6,  'film' ),
+				array( 'Photographer',      'photographer',       '', 7,  'camera' ),
+				array( 'Voiceover Artist',  'voiceover-artist',   '', 8,  'volume-high' ),
+				array( 'Stunt Performer',   'stunt-performer',    '', 9,  'rocket' ),
+				array( 'Production Crew',   'production-crew',    '', 10, 'briefcase' ),
+			);
+
+			foreach ( $defaults as [ $name, $slug, $desc, $order, $icon_key ] ) {
+				self::create( $name, $slug, $desc, $order, $icon_key );
+			}
+		}
+
+		self::ensure_demographic_availability_category();
+	}
+
+	/**
+	 * Ensure the built-in Demographic & Availability drawer also exists as a
+	 * regular registry category with editable default custom fields.
+	 */
+	private static function ensure_demographic_availability_category(): void {
+		$category = self::get_by_slug( 'demographic-availability' );
+
+		if ( ! $category ) {
+			$category_id = self::create(
+				'Demographic & Availability',
+				'demographic-availability',
+				'Default system category for demographic and booking availability fields.',
+				0,
+				'user'
+			);
+
+			$category = $category_id ? self::get_category( (int) $category_id ) : null;
+		}
+
+		if ( ! $category ) {
+			return;
+		}
+
+		$category_id     = (int) $category['id'];
+		$existing_fields = self::get_fields_for_category( $category_id, false );
+		$existing_keys   = array();
+
+		foreach ( $existing_fields as $field ) {
+			$field_key = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+			if ( '' !== $field_key ) {
+				$existing_keys[ $field_key ] = true;
+			}
 		}
 
 		$defaults = array(
-			array( 'Actor',             'actor',              '', 1,  'user' ),
-			array( 'Model',             'model',              '', 2,  'star' ),
-			array( 'TV Host',           'tv-host',            '', 3,  'comment-dots' ),
-			array( 'Athlete',           'athlete',            '', 4,  'thumbs-up' ),
-			array( 'Musician',          'musician',           '', 5,  'music' ),
-			array( 'Director',          'director',           '', 6,  'film' ),
-			array( 'Photographer',      'photographer',       '', 7,  'camera' ),
-			array( 'Voiceover Artist',  'voiceover-artist',   '', 8,  'volume-high' ),
-			array( 'Stunt Performer',   'stunt-performer',    '', 9,  'rocket' ),
-			array( 'Production Crew',   'production-crew',    '', 10, 'briefcase' ),
+			array(
+				'field_key'       => 'demo_birth_date',
+				'field_label'     => 'Birth Date',
+				'field_type'      => 'text',
+				'field_options'   => array(),
+				'sort_order'      => 1,
+				'required'        => 0,
+				'show_in_public'  => 1,
+				'show_in_filters' => 0,
+			),
+			array(
+				'field_key'       => 'demo_ethnicity',
+				'field_label'     => 'Ethnicity',
+				'field_type'      => 'checkbox',
+				'field_options'   => array(
+					'caucasian'        => 'Caucasian',
+					'african'          => 'African',
+					'asian'            => 'Asian',
+					'hispanic'         => 'Hispanic/Latino',
+					'middle_eastern'   => 'Middle Eastern',
+					'native_american'  => 'Native American',
+					'pacific_islander' => 'Pacific Islander',
+				),
+				'sort_order'      => 2,
+				'required'        => 0,
+				'show_in_public'  => 1,
+				'show_in_filters' => 0,
+			),
+			array(
+				'field_key'       => 'demo_languages',
+				'field_label'     => 'Languages',
+				'field_type'      => 'checkbox',
+				'field_options'   => array(
+					'english'    => 'English',
+					'spanish'    => 'Spanish',
+					'french'     => 'French',
+					'german'     => 'German',
+					'italian'    => 'Italian',
+					'portuguese' => 'Portuguese',
+					'arabic'     => 'Arabic',
+					'chinese'    => 'Chinese (Mandarin)',
+					'japanese'   => 'Japanese',
+					'korean'     => 'Korean',
+					'hindi'      => 'Hindi',
+					'russian'    => 'Russian',
+				),
+				'sort_order'      => 3,
+				'required'        => 0,
+				'show_in_public'  => 1,
+				'show_in_filters' => 0,
+			),
+			array(
+				'field_key'       => 'demo_availability',
+				'field_label'     => 'Availability',
+				'field_type'      => 'select',
+				'field_options'   => array(
+					'part-time' => 'Part-time',
+					'full-time' => 'Full-time',
+					'on-demand' => 'On-demand',
+				),
+				'sort_order'      => 4,
+				'required'        => 0,
+				'show_in_public'  => 1,
+				'show_in_filters' => 0,
+			),
+			array(
+				'field_key'       => 'demo_notice_time',
+				'field_label'     => 'Notice Time',
+				'field_type'      => 'select',
+				'field_options'   => array(
+					'in_days'   => 'in Days',
+					'in_weeks'  => 'in Weeks',
+					'in_months' => 'in Months',
+				),
+				'sort_order'      => 5,
+				'required'        => 0,
+				'show_in_public'  => 1,
+				'show_in_filters' => 0,
+			),
+			array(
+				'field_key'       => 'demo_can_travel',
+				'field_label'     => 'Can Travel',
+				'field_type'      => 'select',
+				'field_options'   => array(
+					'yes' => 'Yes',
+					'no'  => 'No',
+				),
+				'sort_order'      => 6,
+				'required'        => 0,
+				'show_in_public'  => 1,
+				'show_in_filters' => 0,
+			),
+			array(
+				'field_key'       => 'demo_daily_rate',
+				'field_label'     => 'Daily Rate',
+				'field_type'      => 'select',
+				'field_options'   => array(
+					'under_1k' => '<$1K',
+					'1k_to_2k' => '$1K to $2K',
+					'3k_to_5k' => '$3K to $5K',
+					'over_5k'  => '>$5K',
+				),
+				'sort_order'      => 7,
+				'required'        => 0,
+				'show_in_public'  => 1,
+				'show_in_filters' => 0,
+			),
+			array(
+				'field_key'       => 'demo_education',
+				'field_label'     => 'Education',
+				'field_type'      => 'select',
+				'field_options'   => array(
+					'doctorate'   => 'Doctorate',
+					'masters'     => 'Master\'s Degree',
+					'bachelors'   => 'Bachelor\'s Degree',
+					'associates'  => 'Associate\'s Degree',
+					'diploma'     => 'Diploma',
+					'high_school' => 'High School',
+				),
+				'sort_order'      => 8,
+				'required'        => 0,
+				'show_in_public'  => 1,
+				'show_in_filters' => 0,
+			),
 		);
 
-		foreach ( $defaults as [ $name, $slug, $desc, $order, $icon_key ] ) {
-			self::create( $name, $slug, $desc, $order, $icon_key );
+		foreach ( $defaults as $field_data ) {
+			if ( isset( $existing_keys[ $field_data['field_key'] ] ) ) {
+				continue;
+			}
+
+			self::create_field( $category_id, $field_data );
 		}
 	}
 
@@ -893,6 +1078,24 @@ class EcomCine_Person_Category_Registry {
 		}
 
 		return self::sanitize_icon_url( (string) ( $category['icon_url'] ?? '' ) );
+	}
+
+	/**
+	 * Resolve the preferred image URL for a custom field icon.
+	 *
+	 * @param array $field Field row.
+	 * @return string
+	 */
+	public static function get_field_icon_url( array $field ): string {
+		$attachment_id = isset( $field['field_icon_attachment_id'] ) ? absint( $field['field_icon_attachment_id'] ) : 0;
+		if ( $attachment_id > 0 ) {
+			$attachment_url = wp_get_attachment_url( $attachment_id );
+			if ( is_string( $attachment_url ) && '' !== $attachment_url ) {
+				return esc_url_raw( $attachment_url );
+			}
+		}
+
+		return self::sanitize_icon_url( (string) ( $field['field_icon_url'] ?? '' ) );
 	}
 
 	// ── Legacy Dokan taxonomy sync ────────────────────────────────────────────

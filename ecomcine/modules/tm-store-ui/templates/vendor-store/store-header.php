@@ -1473,43 +1473,69 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
             ?>
 
             <!-- Bottom Drawer: Tabs + Panels -->
+            <?php
+            $drawer_demographic_label = function_exists( 'ecomcine_profile_get_drawer_section_label' )
+                ? ecomcine_profile_get_drawer_section_label( 'demographics', 'Demographic & Availability' )
+                : 'Demographic & Availability';
+            $drawer_social_label = function_exists( 'ecomcine_profile_get_drawer_section_label' )
+                ? ecomcine_profile_get_drawer_section_label( 'social_metrics', 'Social Influence Metrics' )
+                : 'Social Influence Metrics';
+            $drawer_dynamic_sections = function_exists( 'ecomcine_profile_get_dynamic_category_sections' )
+                ? ecomcine_profile_get_dynamic_category_sections( $vendor_id, $is_owner )
+                : array();
+            $drawer_label_markup = static function( string $label ): string {
+                $label = trim( $label );
+                if ( '' === $label ) {
+                    return '<span class="bottom-tab-text"></span>';
+                }
+
+                $parts = preg_split( '/\s+/', $label, 2 );
+                $word  = isset( $parts[0] ) ? $parts[0] : $label;
+                $rest  = isset( $parts[1] ) ? ' ' . $parts[1] : '';
+
+                return '<span class="bottom-tab-text"><span class="bottom-tab-word">' . esc_html( $word ) . '</span><span class="bottom-tab-rest">' . esc_html( $rest ) . '</span></span>';
+            };
+            $drawer_tab_icon = static function( string $default_icon, string $label, string $markup = '' ): string {
+                if ( '' !== $markup ) {
+                    return $markup;
+                }
+
+                return TM_Icons::svg( $default_icon, '', $label );
+            };
+            ?>
             <div class="profile-bottom-drawer<?php echo $is_owner ? ' owner-viewing' : ''; ?>">
                 <div class="profile-bottom-tabs">
                     <div class="bottom-tab-item" data-target="demographic-section">
                         <span class="bottom-tab-label">
-                            <span class="bottom-tab-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'id-card' ); ?></span>
-                            <span class="bottom-tab-text"><span class="bottom-tab-word">Demographic</span><span class="bottom-tab-rest"> &amp; Availability</span></span>
+                            <span class="bottom-tab-icon" aria-hidden="true"><?php echo $drawer_tab_icon( 'id-card', $drawer_demographic_label ); ?></span>
+                            <?php echo $drawer_label_markup( $drawer_demographic_label ); ?>
                             <?php if ( $is_owner ) : ?><span class="tab-edit-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'pencil-alt' ); ?></span><?php endif; ?>
                         </span>
                     </div>
-                    
                     <div class="bottom-tab-item" data-target="social-section">
                         <span class="bottom-tab-label">
-                            <span class="bottom-tab-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'chart-line' ); ?></span>
-                            <span class="bottom-tab-text"><span class="bottom-tab-word">Social</span><span class="bottom-tab-rest"> Influence Metrics</span></span>
+                            <span class="bottom-tab-icon" aria-hidden="true"><?php echo $drawer_tab_icon( 'chart-line', $drawer_social_label ); ?></span>
+                            <?php echo $drawer_label_markup( $drawer_social_label ); ?>
                             <?php if ( $is_owner ) : ?><span class="tab-edit-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'pencil-alt' ); ?></span><?php endif; ?>
                         </span>
                     </div>
-                    
-                    <?php if ( $has_physical_tab ) : ?>
-                        <div class="bottom-tab-item" data-target="physical-section">
+                    <?php foreach ( $drawer_dynamic_sections as $drawer_section ) : ?>
+                        <?php
+                        $drawer_section_id = isset( $drawer_section['section_id'] ) ? (string) $drawer_section['section_id'] : '';
+                        $drawer_section_label = isset( $drawer_section['label'] ) ? (string) $drawer_section['label'] : '';
+                        $drawer_section_icon = isset( $drawer_section['icon_markup'] ) ? (string) $drawer_section['icon_markup'] : '';
+                        if ( '' === $drawer_section_id || '' === $drawer_section_label ) {
+                            continue;
+                        }
+                        ?>
+                        <div class="bottom-tab-item" data-target="<?php echo esc_attr( $drawer_section_id ); ?>">
                             <span class="bottom-tab-label">
-                                <span class="bottom-tab-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'ruler-combined' ); ?></span>
-                                <span class="bottom-tab-text"><span class="bottom-tab-word">Physical</span><span class="bottom-tab-rest"> Attributes</span></span>
+                                <span class="bottom-tab-icon" aria-hidden="true"><?php echo $drawer_tab_icon( 'briefcase', $drawer_section_label, $drawer_section_icon ); ?></span>
+                                <?php echo $drawer_label_markup( $drawer_section_label ); ?>
                                 <?php if ( $is_owner ) : ?><span class="tab-edit-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'pencil-alt' ); ?></span><?php endif; ?>
                             </span>
                         </div>
-                    <?php endif; ?>
-
-                    <?php if ( $has_cameraman_tab ) : ?>
-                        <div class="bottom-tab-item" data-target="cameraman-section">
-                            <span class="bottom-tab-label">
-                                <span class="bottom-tab-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'camera' ); ?></span>
-                                <span class="bottom-tab-text"><span class="bottom-tab-word">Equipment</span><span class="bottom-tab-rest"> &amp; Skills</span></span>
-                                <?php if ( $is_owner ) : ?><span class="tab-edit-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'pencil-alt' ); ?></span><?php endif; ?>
-                            </span>
-                        </div>
-                    <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
 
                 <?php do_action( 'dokan_store_profile_bottom_drawer_primary', $store_user, $store_info ); ?>

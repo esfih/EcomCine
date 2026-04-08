@@ -23,6 +23,472 @@
 
 defined( 'ABSPATH' ) || exit;
 
+if ( ! function_exists( 'ecomcine_profile_get_drawer_section_label' ) ) {
+	/**
+	 * Resolve an admin-managed bottom drawer section label.
+	 *
+	 * @param string $section_key Section key.
+	 * @param string $fallback    Default label.
+	 * @return string
+	 */
+	function ecomcine_profile_get_drawer_section_label( string $section_key, string $fallback ): string {
+		if ( class_exists( 'EcomCine_Admin_Settings', false ) && method_exists( 'EcomCine_Admin_Settings', 'get_profile_drawer_sections' ) ) {
+			$sections = EcomCine_Admin_Settings::get_profile_drawer_sections();
+			if ( isset( $sections[ $section_key ]['label'] ) && is_string( $sections[ $section_key ]['label'] ) ) {
+				$label = trim( $sections[ $section_key ]['label'] );
+				if ( '' !== $label ) {
+					return $label;
+				}
+			}
+		}
+
+		return $fallback;
+	}
+}
+
+if ( ! function_exists( 'ecomcine_profile_get_social_metric_config_map' ) ) {
+	/**
+	 * Resolve admin-managed social metric configuration indexed by platform.
+	 *
+	 * @return array<string,array<string,mixed>>
+	 */
+	function ecomcine_profile_get_social_metric_config_map(): array {
+		if ( class_exists( 'EcomCine_Admin_Settings', false ) && method_exists( 'EcomCine_Admin_Settings', 'get_profile_social_metric_map' ) ) {
+			return EcomCine_Admin_Settings::get_profile_social_metric_map();
+		}
+
+		return array();
+	}
+}
+
+if ( ! function_exists( 'ecomcine_profile_field_has_value' ) ) {
+	/**
+	 * Determine whether a profile field value should be considered non-empty.
+	 *
+	 * @param mixed $value Raw user meta value.
+	 * @return bool
+	 */
+	function ecomcine_profile_field_has_value( $value ): bool {
+		if ( is_array( $value ) ) {
+			return ! empty(
+				array_filter(
+					array_map(
+						static function( $item ) {
+							if ( is_scalar( $item ) ) {
+								return trim( (string) $item );
+							}
+
+							return '';
+						},
+						$value
+					)
+				)
+			);
+		}
+
+		if ( null === $value || false === $value ) {
+			return false;
+		}
+
+		if ( is_string( $value ) ) {
+			return '' !== trim( $value );
+		}
+
+		return true;
+	}
+}
+
+if ( ! function_exists( 'ecomcine_profile_get_dynamic_category_sections' ) ) {
+	/**
+	 * Build dynamic bottom drawer sections from assigned categories with custom fields.
+	 *
+	 * @param int  $vendor_id Vendor ID.
+	 * @param bool $is_owner  Whether current viewer can edit.
+	 * @return array<int,array<string,mixed>>
+	 */
+	function ecomcine_profile_get_dynamic_category_sections( int $vendor_id, bool $is_owner ): array {
+		if ( $vendor_id < 1 || ! class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			return array();
+		}
+
+		$sections          = array();
+		$excluded_slugs    = array( 'demographic-availability' );
+		$categories        = EcomCine_Person_Category_Registry::get_for_person( $vendor_id );
+
+		foreach ( $categories as $category ) {
+			$category_id = isset( $category['id'] ) ? (int) $category['id'] : 0;
+			$slug        = isset( $category['slug'] ) ? sanitize_title( (string) $category['slug'] ) : '';
+			$name        = isset( $category['name'] ) ? trim( (string) $category['name'] ) : '';
+
+			if ( $category_id < 1 || '' === $slug || '' === $name || in_array( $slug, $excluded_slugs, true ) ) {
+				continue;
+			}
+
+			$fields = EcomCine_Person_Category_Registry::get_fields_for_category( $category_id, true );
+			if ( empty( $fields ) ) {
+				continue;
+			}
+
+			$field_rows = array();
+			$has_value  = false;
+
+			foreach ( $fields as $field ) {
+				$field_key = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+				if ( '' === $field_key ) {
+					continue;
+				}
+
+				$current_value = get_user_meta( $vendor_id, $field_key, true );
+				$field_type    = isset( $field['field_type'] ) ? sanitize_key( (string) $field['field_type'] ) : 'text';
+
+				if ( 'checkbox' === $field_type && ! is_array( $current_value ) ) {
+					$current_value = '' === (string) $current_value ? array() : array( (string) $current_value );
+				}
+
+				if ( ecomcine_profile_field_has_value( $current_value ) ) {
+					$has_value = true;
+				}
+
+				$field_rows[] = array(
+					'definition' => $field,
+					'value'      => $current_value,
+				);
+			}
+
+			if ( empty( $field_rows ) || ( ! $is_owner && ! $has_value ) ) {
+				continue;
+			}
+
+			$icon_markup = '';
+			$category_icon_url = EcomCine_Person_Category_Registry::get_category_icon_url( $category );
+			if ( '' !== $category_icon_url ) {
+				$icon_markup = '<img class="section-title-image" src="' . esc_url( $category_icon_url ) . '" alt="' . esc_attr( $name ) . '" />';
+			} else {
+				$icon_key = isset( $category['icon_key'] ) ? EcomCine_Person_Category_Registry::sanitize_icon_key( (string) $category['icon_key'] ) : '';
+				if ( '' !== $icon_key && class_exists( 'TM_Icons' ) ) {
+					$icon_markup = TM_Icons::svg( $icon_key, 'section-title-icon', $name );
+				} else {
+					$first_field = $field_rows[0]['definition'];
+					$first_icon  = EcomCine_Person_Category_Registry::get_field_icon_url( $first_field );
+					if ( '' !== $first_icon ) {
+						$icon_markup = '<img class="section-title-image" src="' . esc_url( $first_icon ) . '" alt="' . esc_attr( $name ) . '" />';
+					} elseif ( class_exists( 'TM_Icons' ) ) {
+						$icon_markup = TM_Icons::svg( 'briefcase', 'section-title-icon', $name );
+					}
+				}
+			}
+
+			$sections[] = array(
+				'category'    => $category,
+				'fields'      => $field_rows,
+				'section_id'  => 'category-section-' . sanitize_html_class( $slug ),
+				'label'       => $name,
+				'icon_markup' => $icon_markup,
+			);
+		}
+
+		return $sections;
+	}
+}
+
+if ( ! function_exists( 'ecomcine_profile_get_demographic_fallback_fields' ) ) {
+	/**
+	 * Provide fallback demographic field definitions until the registry category exists.
+	 *
+	 * @return array<string,array<string,mixed>>
+	 */
+	function ecomcine_profile_get_demographic_fallback_fields(): array {
+		return array(
+			'demo_birth_date' => array(
+				'field_key'   => 'demo_birth_date',
+				'field_label' => 'Birth Date',
+				'field_type'  => 'text',
+				'options_map' => array(),
+				'field_icon'  => '📅',
+				'sort_order'  => 1,
+			),
+			'demo_ethnicity' => array(
+				'field_key'   => 'demo_ethnicity',
+				'field_label' => 'Ethnicity',
+				'field_type'  => 'checkbox',
+				'options_map' => array(
+					'caucasian'        => 'Caucasian',
+					'african'          => 'African',
+					'asian'            => 'Asian',
+					'hispanic'         => 'Hispanic/Latino',
+					'middle_eastern'   => 'Middle Eastern',
+					'native_american'  => 'Native American',
+					'pacific_islander' => 'Pacific Islander',
+				),
+				'field_icon'  => '🌍',
+				'sort_order'  => 2,
+			),
+			'demo_languages' => array(
+				'field_key'   => 'demo_languages',
+				'field_label' => 'Languages',
+				'field_type'  => 'checkbox',
+				'options_map' => array(
+					'english'    => 'English',
+					'spanish'    => 'Spanish',
+					'french'     => 'French',
+					'german'     => 'German',
+					'italian'    => 'Italian',
+					'portuguese' => 'Portuguese',
+					'arabic'     => 'Arabic',
+					'chinese'    => 'Chinese (Mandarin)',
+					'japanese'   => 'Japanese',
+					'korean'     => 'Korean',
+					'hindi'      => 'Hindi',
+					'russian'    => 'Russian',
+				),
+				'field_icon'  => '💬',
+				'sort_order'  => 3,
+			),
+			'demo_availability' => array(
+				'field_key'   => 'demo_availability',
+				'field_label' => 'Availability',
+				'field_type'  => 'select',
+				'options_map' => array(
+					'part-time' => 'Part-time',
+					'full-time' => 'Full-time',
+					'on-demand' => 'On-demand',
+				),
+				'field_icon'  => '🕒',
+				'sort_order'  => 4,
+			),
+			'demo_notice_time' => array(
+				'field_key'   => 'demo_notice_time',
+				'field_label' => 'Notice Time',
+				'field_type'  => 'select',
+				'options_map' => array(
+					'in_days'   => 'in Days',
+					'in_weeks'  => 'in Weeks',
+					'in_months' => 'in Months',
+				),
+				'field_icon'  => '🔔',
+				'sort_order'  => 5,
+			),
+			'demo_can_travel' => array(
+				'field_key'   => 'demo_can_travel',
+				'field_label' => 'Can Travel',
+				'field_type'  => 'select',
+				'options_map' => array(
+					'yes' => 'Yes',
+					'no'  => 'No',
+				),
+				'field_icon'  => '✈️',
+				'sort_order'  => 6,
+			),
+			'demo_daily_rate' => array(
+				'field_key'   => 'demo_daily_rate',
+				'field_label' => 'Daily Rate',
+				'field_type'  => 'select',
+				'options_map' => array(
+					'under_1k' => '<$1K',
+					'1k_to_2k' => '$1K to $2K',
+					'3k_to_5k' => '$3K to $5K',
+					'over_5k'  => '>$5K',
+				),
+				'field_icon'  => '💰',
+				'sort_order'  => 7,
+			),
+			'demo_education' => array(
+				'field_key'   => 'demo_education',
+				'field_label' => 'Education',
+				'field_type'  => 'select',
+				'options_map' => array(
+					'doctorate'   => 'Doctorate',
+					'masters'     => 'Master\'s Degree',
+					'bachelors'   => 'Bachelor\'s Degree',
+					'associates'  => 'Associate\'s Degree',
+					'diploma'     => 'Diploma',
+					'high_school' => 'High School',
+				),
+				'field_icon'  => '🎓',
+				'sort_order'  => 8,
+			),
+		);
+	}
+}
+
+if ( ! function_exists( 'ecomcine_profile_normalize_demographic_field_definition' ) ) {
+	/**
+	 * Normalize a demographic field definition for profile and form rendering.
+	 *
+	 * @param array<string,mixed> $field Raw field definition.
+	 * @return array<string,mixed>
+	 */
+	function ecomcine_profile_normalize_demographic_field_definition( array $field ): array {
+		$field_key  = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+		$field_type = isset( $field['field_type'] ) ? sanitize_key( (string) $field['field_type'] ) : 'text';
+		$help_texts = array(
+			'demo_birth_date' => 'Age will be calculated automatically.',
+			'demo_ethnicity'  => 'Hold CTRL (Windows) or CMD (Mac) to select multiple.',
+			'demo_languages'  => 'Hold CTRL (Windows) or CMD (Mac) to select multiple.',
+		);
+		$defaults = ecomcine_profile_get_demographic_fallback_fields();
+		$input_type = 'text';
+		$is_multi   = false;
+
+		if ( 'demo_birth_date' === $field_key ) {
+			$input_type = 'date';
+		} else {
+			switch ( $field_type ) {
+				case 'number':
+					$input_type = 'number';
+					break;
+				case 'textarea':
+					$input_type = 'textarea';
+					break;
+				case 'checkbox':
+					$input_type = 'select';
+					$is_multi   = true;
+					break;
+				case 'radio':
+				case 'select':
+					$input_type = 'select';
+					break;
+				default:
+					$input_type = 'text';
+			}
+		}
+
+		$field['field_key']   = $field_key;
+		$field['field_label'] = isset( $field['field_label'] ) && '' !== trim( (string) $field['field_label'] ) ? (string) $field['field_label'] : $field_key;
+		$field['options_map'] = isset( $field['options_map'] ) && is_array( $field['options_map'] ) ? $field['options_map'] : array();
+		$field['field_icon']  = isset( $field['field_icon'] ) && '' !== (string) $field['field_icon']
+			? (string) $field['field_icon']
+			: ( $defaults[ $field_key ]['field_icon'] ?? '•' );
+		$field['input_type']  = $input_type;
+		$field['multi']       = $is_multi;
+		$field['help_text']   = $help_texts[ $field_key ] ?? '';
+
+		return $field;
+	}
+}
+
+if ( ! function_exists( 'ecomcine_profile_get_demographic_field_definitions' ) ) {
+	/**
+	 * Resolve Demographic & Availability field definitions from the registry.
+	 *
+	 * @param bool $public_only Limit to fields visible on public profiles.
+	 * @return array<int,array<string,mixed>>
+	 */
+	function ecomcine_profile_get_demographic_field_definitions( bool $public_only = false ): array {
+		$definitions = array();
+		$fallbacks   = ecomcine_profile_get_demographic_fallback_fields();
+
+		if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
+			$category = EcomCine_Person_Category_Registry::get_by_slug( 'demographic-availability' );
+			if ( $category && isset( $category['id'] ) ) {
+				$fields = EcomCine_Person_Category_Registry::get_fields_for_category( (int) $category['id'], $public_only );
+				foreach ( $fields as $field ) {
+					$field_key = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+					if ( '' === $field_key ) {
+						continue;
+					}
+
+					$base = $fallbacks[ $field_key ] ?? array(
+						'field_key'   => $field_key,
+						'field_label' => $field_key,
+						'field_type'  => 'text',
+						'options_map' => array(),
+						'field_icon'  => '•',
+						'sort_order'  => isset( $field['sort_order'] ) ? (int) $field['sort_order'] : 0,
+					);
+
+					$definitions[] = ecomcine_profile_normalize_demographic_field_definition( array_merge( $base, $field ) );
+				}
+			}
+		}
+
+		if ( ! empty( $definitions ) ) {
+			usort(
+				$definitions,
+				static function( array $left, array $right ): int {
+					$left_sort  = isset( $left['sort_order'] ) ? (int) $left['sort_order'] : 0;
+					$right_sort = isset( $right['sort_order'] ) ? (int) $right['sort_order'] : 0;
+					return $left_sort <=> $right_sort;
+				}
+			);
+
+			return $definitions;
+		}
+
+		foreach ( $fallbacks as $field ) {
+			$definitions[] = ecomcine_profile_normalize_demographic_field_definition( $field );
+		}
+
+		return $definitions;
+	}
+}
+
+if ( ! function_exists( 'ecomcine_profile_normalize_demographic_field_value' ) ) {
+	/**
+	 * Normalize legacy demographic option values to current option keys.
+	 *
+	 * Older records may store option labels instead of option keys. Resolve them
+	 * against both the current admin labels and the fallback seed labels so the
+	 * current field definition still controls rendering.
+	 *
+	 * @param mixed               $value Raw user meta value.
+	 * @param array<string,mixed> $field Field definition.
+	 * @return mixed
+	 */
+	function ecomcine_profile_normalize_demographic_field_value( $value, array $field ) {
+		$field_key    = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+		$current_map  = isset( $field['options_map'] ) && is_array( $field['options_map'] ) ? $field['options_map'] : array();
+		$fallbacks    = ecomcine_profile_get_demographic_fallback_fields();
+		$fallback_map = isset( $fallbacks[ $field_key ]['options_map'] ) && is_array( $fallbacks[ $field_key ]['options_map'] )
+			? $fallbacks[ $field_key ]['options_map']
+			: array();
+		$is_multi = ! empty( $field['multi'] );
+
+		if ( empty( $current_map ) && empty( $fallback_map ) ) {
+			return $value;
+		}
+
+		$current_reverse = array();
+		foreach ( $current_map as $option_key => $option_label ) {
+			$current_reverse[ (string) $option_label ] = (string) $option_key;
+		}
+
+		$fallback_reverse = array();
+		foreach ( $fallback_map as $option_key => $option_label ) {
+			$fallback_reverse[ (string) $option_label ] = (string) $option_key;
+		}
+
+		$normalize_one = static function( $item ) use ( $current_map, $current_reverse, $fallback_reverse ) {
+			$item = is_scalar( $item ) ? trim( (string) $item ) : '';
+			if ( '' === $item ) {
+				return '';
+			}
+
+			if ( array_key_exists( $item, $current_map ) ) {
+				return $item;
+			}
+
+			if ( isset( $current_reverse[ $item ] ) ) {
+				return $current_reverse[ $item ];
+			}
+
+			if ( isset( $fallback_reverse[ $item ] ) ) {
+				return $fallback_reverse[ $item ];
+			}
+
+			return $item;
+		};
+
+		if ( $is_multi ) {
+			$items = is_array( $value ) ? $value : ( '' === trim( (string) $value ) ? array() : array( (string) $value ) );
+			$items = array_values( array_filter( array_map( $normalize_one, $items ), 'strlen' ) );
+			return array_values( array_unique( $items ) );
+		}
+
+		return $normalize_one( $value );
+	}
+}
+
 
 // =============================================================================
 // 1. PROFILE DISPLAY
@@ -71,114 +537,27 @@ add_action( 'ecomcine_person_profile_display', function( $store_user, $store_inf
 		}
 	}
 
-	// Collect field data
-	$demo_fields = [
-		'age' => [
-			'label' => 'Age',
-			'icon'  => '📅',
-			'value' => (function() use ($vendor_id) {
-				$birth_date = get_user_meta( $vendor_id, 'demo_birth_date', true );
-				if ( empty( $birth_date ) ) return '';
-				$birth = new DateTime( $birth_date );
-				$today = new DateTime();
-				$age   = $today->diff( $birth )->y;
-				return $age . ' years';
-			})()
-		],
-		'ethnicity' => [
-			'label'   => 'Ethnicity',
-			'icon'    => '🌍',
-			'value'   => get_user_meta( $vendor_id, 'demo_ethnicity', true ),
-			'multi'   => true,
-			'options' => [
-				'caucasian'        => 'Caucasian',
-				'african'          => 'African',
-				'asian'            => 'Asian',
-				'hispanic'         => 'Hispanic/Latino',
-				'middle_eastern'   => 'Middle Eastern',
-				'native_american'  => 'Native American',
-				'pacific_islander' => 'Pacific Islander',
-			]
-		],
-		'languages' => [
-			'label'   => 'Languages',
-			'icon'    => '💬',
-			'value'   => get_user_meta( $vendor_id, 'demo_languages', true ),
-			'multi'   => true,
-			'options' => [
-				'english'    => 'English',
-				'spanish'    => 'Spanish',
-				'french'     => 'French',
-				'german'     => 'German',
-				'italian'    => 'Italian',
-				'portuguese' => 'Portuguese',
-				'arabic'     => 'Arabic',
-				'chinese'    => 'Chinese (Mandarin)',
-				'japanese'   => 'Japanese',
-				'korean'     => 'Korean',
-				'hindi'      => 'Hindi',
-				'russian'    => 'Russian',
-			]
-		],
-		'availability' => [
-			'label'   => 'Availability',
-			'icon'    => '🕒',
-			'value'   => get_user_meta( $vendor_id, 'demo_availability', true ),
-			'options' => [
-				'part-time' => 'Part-time',
-				'full-time' => 'Full-time',
-				'on-demand' => 'On-demand',
-			]
-		],
-		'notice_time' => [
-			'label'   => 'Notice Time',
-			'icon'    => '🔔',
-			'value'   => get_user_meta( $vendor_id, 'demo_notice_time', true ),
-			'options' => [
-				'in_days'   => 'in Days',
-				'in_weeks'  => 'in Weeks',
-				'in_months' => 'in Months',
-			]
-		],
-		'can_travel' => [
-			'label'   => 'Can Travel',
-			'icon'    => '✈️',
-			'value'   => get_user_meta( $vendor_id, 'demo_can_travel', true ),
-			'options' => [
-				'yes' => 'Yes',
-				'no'  => 'No',
-			]
-		],
-		'daily_rate' => [
-			'label'   => 'Daily Rate',
-			'icon'    => '💰',
-			'value'   => get_user_meta( $vendor_id, 'demo_daily_rate', true ),
-			'options' => [
-				'under_1k' => '<$1K',
-				'1k_to_2k' => '$1K to $2K',
-				'3k_to_5k' => '$3K to $5K',
-				'over_5k'  => '>$5K',
-			]
-		],
-		'education' => [
-			'label'   => 'Education',
-			'icon'    => '🎓',
-			'value'   => get_user_meta( $vendor_id, 'demo_education', true ),
-			'options' => [
-				'doctorate'  => 'Doctorate',
-				'masters'    => 'Master\'s Degree',
-				'bachelors'  => 'Bachelor\'s Degree',
-				'associates' => 'Associate\'s Degree',
-				'diploma'    => 'Diploma',
-				'high_school' => 'High School',
-			]
-		],
-	];
+	$demo_fields = ecomcine_profile_get_demographic_field_definitions( true );
 
 	// Check if any fields have values
 	$has_values = false;
 	foreach ( $demo_fields as $field ) {
-		if ( ! empty( $field['value'] ) ) {
+		$field_key = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+		if ( '' === $field_key ) {
+			continue;
+		}
+
+		$current_value = ecomcine_profile_normalize_demographic_field_value( get_user_meta( $vendor_id, $field_key, true ), $field );
+		if ( ! empty( $field['multi'] ) && ! is_array( $current_value ) ) {
+			$current_value = '' === (string) $current_value ? array() : array( (string) $current_value );
+		}
+
+		if ( 'demo_birth_date' === $field_key ) {
+			$age = calculate_age_from_birth_date( (string) $current_value );
+			$current_value = null !== $age ? $age . ' years' : '';
+		}
+
+		if ( ecomcine_profile_field_has_value( $current_value ) ) {
 			$has_values = true;
 			break;
 		}
@@ -187,7 +566,7 @@ add_action( 'ecomcine_person_profile_display', function( $store_user, $store_inf
 	?>
 	<div id="demographic-section" class="talent-physical-attributes vendor-demographic-section attribute-slide-section">
 		<h3 class="section-title">
-			<i class="fas fa-user-circle section-title-icon"></i> Demographic & Availability
+			<i class="fas fa-user-circle section-title-icon"></i> <?php echo esc_html( ecomcine_profile_get_drawer_section_label( 'demographics', 'Demographic & Availability' ) ); ?>
 			<?php if ( $is_owner ) : ?>
 				<span class="owner-edit-hint">(Click pencil to edit)</span>
 			<?php endif; ?>
@@ -199,91 +578,45 @@ add_action( 'ecomcine_person_profile_display', function( $store_user, $store_inf
 				</div>
 			<?php else : ?>
 				<?php
-				$birth_date = get_user_meta( $vendor_id, 'demo_birth_date', true );
-				render_editable_attribute([
-					'name'       => 'demo_birth_date',
-					'label'      => 'Age',
-					'edit_label' => 'Birth Date',
-					'icon'       => '📅',
-					'user_id'    => $vendor_id,
-					'is_owner'   => $is_owner,
-					'value'      => $demo_fields['age']['value'],
-					'raw_value'  => $birth_date,
-					'type'       => 'date',
-					'help_text'  => 'FORMAT: MM/DD/YYYY (AGE IS AUTO CALCULATED)',
-				]);
+				foreach ( $demo_fields as $field ) {
+					$field_key   = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+					$field_label = isset( $field['field_label'] ) ? (string) $field['field_label'] : $field_key;
+					$options_map = isset( $field['options_map'] ) && is_array( $field['options_map'] ) ? $field['options_map'] : array();
+					$current_value = '' !== $field_key ? ecomcine_profile_normalize_demographic_field_value( get_user_meta( $vendor_id, $field_key, true ), $field ) : '';
+					$raw_value = $current_value;
+					$icon_url = class_exists( 'EcomCine_Person_Category_Registry', false ) ? EcomCine_Person_Category_Registry::get_field_icon_url( $field ) : '';
+					$icon_value = '' !== $icon_url
+						? '<img class="stat-icon-image" src="' . esc_url( $icon_url ) . '" alt="' . esc_attr( $field_label ) . '" />'
+						: ( isset( $field['field_icon'] ) ? (string) $field['field_icon'] : '•' );
 
-				render_editable_attribute([
-					'name'      => 'demo_ethnicity',
-					'label'     => 'Ethnicity',
-					'icon'      => '🌍',
-					'user_id'   => $vendor_id,
-					'is_owner'  => $is_owner,
-					'options'   => $demo_fields['ethnicity']['options'],
-					'multi'     => true,
-					'help_text' => 'Use CTRL + CLICK to select multiple options',
-				]);
+					if ( ! empty( $field['multi'] ) && ! is_array( $current_value ) ) {
+						$current_value = '' === (string) $current_value ? array() : array( (string) $current_value );
+					}
 
-				render_editable_attribute([
-					'name'      => 'demo_languages',
-					'label'     => 'Languages',
-					'icon'      => '💬',
-					'user_id'   => $vendor_id,
-					'is_owner'  => $is_owner,
-					'options'   => $demo_fields['languages']['options'],
-					'multi'     => true,
-					'help_text' => 'Use CTRL + CLICK to select multiple languages',
-				]);
+					$display_label = $field_label;
+					if ( 'demo_birth_date' === $field_key ) {
+						$age = calculate_age_from_birth_date( (string) $raw_value );
+						$current_value = null !== $age ? $age . ' years' : '';
+						if ( 'Birth Date' === $field_label ) {
+							$display_label = 'Age';
+						}
+					}
 
-				render_editable_attribute([
-					'name'      => 'demo_availability',
-					'label'     => 'Availability',
-					'icon'      => '🕒',
-					'user_id'   => $vendor_id,
-					'is_owner'  => $is_owner,
-					'options'   => $demo_fields['availability']['options'],
-					'help_text' => 'Select your general availability for bookings',
-				]);
-
-				render_editable_attribute([
-					'name'      => 'demo_notice_time',
-					'label'     => 'Notice Time',
-					'icon'      => '🔔',
-					'user_id'   => $vendor_id,
-					'is_owner'  => $is_owner,
-					'options'   => $demo_fields['notice_time']['options'],
-					'help_text' => 'Minimum time needed before accepting a booking',
-				]);
-
-				render_editable_attribute([
-					'name'      => 'demo_can_travel',
-					'label'     => 'Can Travel',
-					'icon'      => '✈️',
-					'user_id'   => $vendor_id,
-					'is_owner'  => $is_owner,
-					'options'   => $demo_fields['can_travel']['options'],
-					'help_text' => 'Willing to travel for work opportunities',
-				]);
-
-				render_editable_attribute([
-					'name'      => 'demo_daily_rate',
-					'label'     => 'Daily Rate',
-					'icon'      => '💰',
-					'user_id'   => $vendor_id,
-					'is_owner'  => $is_owner,
-					'options'   => $demo_fields['daily_rate']['options'],
-					'help_text' => 'Your standard daily rate for bookings',
-				]);
-
-				render_editable_attribute([
-					'name'      => 'demo_education',
-					'label'     => 'Education',
-					'icon'      => '🎓',
-					'user_id'   => $vendor_id,
-					'is_owner'  => $is_owner,
-					'options'   => $demo_fields['education']['options'],
-					'help_text' => 'Highest level of education completed',
-				]);
+					render_editable_attribute([
+						'name'       => $field_key,
+						'label'      => $display_label,
+						'edit_label' => $field_label,
+						'icon'       => $icon_value,
+						'user_id'    => $vendor_id,
+						'is_owner'   => $is_owner,
+						'options'    => $options_map,
+						'multi'      => ! empty( $field['multi'] ),
+						'type'       => $field['input_type'] ?? 'text',
+						'value'      => $current_value,
+						'raw_value'  => $raw_value,
+						'help_text'  => $field['help_text'] ?? '',
+					]);
+				}
 				?>
 			<?php endif; ?>
 		</div>
@@ -304,142 +637,92 @@ add_action( 'ecomcine_person_profile_display', function( $store_user, $store_inf
 		return;
 	}
 
-	// Use EcomCine Person Category Registry (portable, no Dokan dependency).
-	// Falls back to store_category taxonomy when registry returns empty or is not loaded.
-	if ( class_exists( 'EcomCine_Person_Category_Registry', false ) ) {
-		$cat_rows         = EcomCine_Person_Category_Registry::get_for_person( $vendor_id );
-		$store_categories = wp_list_pluck( $cat_rows, 'slug' );
-		// If registry has no entries for this person, fall back to Dokan taxonomy.
-		if ( empty( $store_categories ) ) {
-			$_terms = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );
-			$store_categories = is_wp_error( $_terms ) ? array() : $_terms;
-		}
-	} else {
-		$store_categories = wp_get_object_terms( $vendor_id, 'store_category', array( 'fields' => 'slugs' ) );
-		if ( is_wp_error( $store_categories ) ) {
-			$store_categories = array();
-		}
-	}
-	$store_categories = array_map( 'strtolower', $store_categories );
-	$has_physical_category  = in_array( 'model', $store_categories, true ) || in_array( 'artist', $store_categories, true ) || in_array( 'actor', $store_categories, true );
-	$has_cameraman_category = in_array( 'cameraman', $store_categories, true );
-
 	$current_user_id = get_current_user_id();
 	$is_owner = function_exists( 'tm_can_edit_vendor_profile' )
 		? tm_can_edit_vendor_profile( $vendor_id )
 		: ( $current_user_id && $current_user_id == $vendor_id );
 
+	$sections = ecomcine_profile_get_dynamic_category_sections( $vendor_id, $is_owner );
+	if ( empty( $sections ) ) {
+		return;
+	}
+
 	echo '<div class="vendor-custom-attributes-wrapper" data-is-owner="' . ( $is_owner ? '1' : '0' ) . '">';
 
-	// ========== PHYSICAL ATTRIBUTES SECTION ==========
-	$physical_attributes = [
-		'height'     => [ 'label' => 'Height',     'icon' => '📏', 'value' => get_user_meta( $vendor_id, 'talent_height', true ) ],
-		'weight'     => [ 'label' => 'Weight',     'icon' => '⚖️', 'value' => get_user_meta( $vendor_id, 'talent_weight', true ) ],
-		'waist'      => [ 'label' => 'Waist',      'icon' => '📐', 'value' => get_user_meta( $vendor_id, 'talent_waist', true ) ],
-		'hip'        => [ 'label' => 'Hip',        'icon' => '📐', 'value' => get_user_meta( $vendor_id, 'talent_hip', true ) ],
-		'chest'      => [ 'label' => 'Chest',      'icon' => '📐', 'value' => get_user_meta( $vendor_id, 'talent_chest', true ) ],
-		'shoe_size'  => [ 'label' => 'Shoe Size',  'icon' => '👟', 'value' => get_user_meta( $vendor_id, 'talent_shoe_size', true ) ],
-		'eye_color'  => [ 'label' => 'Eye Color',  'icon' => '👁️', 'value' => get_user_meta( $vendor_id, 'talent_eye_color', true ) ],
-		'hair_color' => [ 'label' => 'Hair Color', 'icon' => '💇', 'value' => get_user_meta( $vendor_id, 'talent_hair_color', true ) ],
-	];
-
-	$has_physical = false;
-	foreach ( $physical_attributes as $attr ) {
-		if ( ! empty( $attr['value'] ) ) { $has_physical = true; break; }
-	}
-
-	if ( $has_physical_category && ( $has_physical || $is_owner ) ) {
-		$options = get_talent_physical_attributes_options();
-		$attribute_fields = [
-			'talent_height'     => [ 'label' => 'Height',     'icon' => '📏', 'options' => $options['height']     ?? [] ],
-			'talent_weight'     => [ 'label' => 'Weight',     'icon' => '⚖️', 'options' => $options['weight']     ?? [] ],
-			'talent_waist'      => [ 'label' => 'Waist',      'icon' => '📐', 'options' => $options['waist']      ?? [] ],
-			'talent_hip'        => [ 'label' => 'Hip',        'icon' => '📐', 'options' => $options['hip']        ?? [] ],
-			'talent_chest'      => [ 'label' => 'Chest',      'icon' => '📐', 'options' => $options['chest']      ?? [] ],
-			'talent_shoe_size'  => [ 'label' => 'Shoe Size',  'icon' => '👟', 'options' => $options['shoe_size']  ?? [] ],
-			'talent_eye_color'  => [ 'label' => 'Eye Color',  'icon' => '👁️', 'options' => $options['eye_color']  ?? [] ],
-			'talent_hair_color' => [ 'label' => 'Hair Color', 'icon' => '💇', 'options' => $options['hair_color'] ?? [] ],
-		];
+	foreach ( $sections as $section ) {
+		$section_id = isset( $section['section_id'] ) ? (string) $section['section_id'] : '';
+		$label      = isset( $section['label'] ) ? (string) $section['label'] : '';
+		$fields     = isset( $section['fields'] ) && is_array( $section['fields'] ) ? $section['fields'] : array();
+		if ( '' === $section_id || '' === $label || empty( $fields ) ) {
+			continue;
+		}
 		?>
-		<div id="physical-section" class="talent-physical-attributes attribute-slide-section">
+		<div id="<?php echo esc_attr( $section_id ); ?>" class="talent-physical-attributes attribute-slide-section ecomcine-dynamic-category-section">
 			<h3 class="section-title">
-				<i class="fas fa-ruler section-title-icon"></i> Physical Attributes
-				<?php if ( $is_owner ) : ?>
-					<span class="owner-edit-hint">(Click pencil to edit)</span>
-				<?php endif; ?>
-			</h3>
-			<div class="attributes-grid">
 				<?php
-				foreach ( $attribute_fields as $field_name => $field_config ) {
-					render_editable_attribute([
-						'name'    => $field_name,
-						'label'   => $field_config['label'],
-						'icon'    => $field_config['icon'],
-						'user_id' => $vendor_id,
-						'is_owner'=> $is_owner,
-						'options' => $field_config['options'],
-					]);
+				if ( ! empty( $section['icon_markup'] ) ) {
+					echo wp_kses_post( (string) $section['icon_markup'] );
 				}
 				?>
-			</div>
-		</div>
-		<?php
-	}
-
-	// ========== CAMERAMAN EQUIPMENT & SKILLS SECTION ==========
-	$cameraman_options = get_cameraman_filter_options();
-
-	$cameraman_fields = [
-		'camera_type'        => [ 'label' => 'Camera Type',        'icon' => '📷', 'value' => get_user_meta( $vendor_id, 'camera_type', true ),        'options' => $cameraman_options['camera_type'] ],
-		'experience_level'   => [ 'label' => 'Experience Level',   'icon' => '⭐', 'value' => get_user_meta( $vendor_id, 'experience_level', true ),   'options' => $cameraman_options['experience_level'] ],
-		'editing_software'   => [ 'label' => 'Editing Software',   'icon' => '🎬', 'value' => get_user_meta( $vendor_id, 'editing_software', true ),   'options' => $cameraman_options['editing_software'] ],
-		'specialization'     => [ 'label' => 'Specialization',     'icon' => '🎯', 'value' => get_user_meta( $vendor_id, 'specialization', true ),     'options' => $cameraman_options['specialization'] ],
-		'years_experience'   => [ 'label' => 'Years of Experience','icon' => '📅', 'value' => get_user_meta( $vendor_id, 'years_experience', true ),   'options' => $cameraman_options['years_experience'] ],
-		'equipment_ownership'=> [ 'label' => 'Equipment Ownership','icon' => '🎥', 'value' => get_user_meta( $vendor_id, 'equipment_ownership', true ),'options' => $cameraman_options['equipment_ownership'] ],
-		'lighting_equipment' => [ 'label' => 'Lighting Equipment', 'icon' => '💡', 'value' => get_user_meta( $vendor_id, 'lighting_equipment', true ), 'options' => $cameraman_options['lighting_equipment'] ],
-		'audio_equipment'    => [ 'label' => 'Audio Equipment',    'icon' => '🎤', 'value' => get_user_meta( $vendor_id, 'audio_equipment', true ),    'options' => $cameraman_options['audio_equipment'] ],
-		'drone_capability'   => [ 'label' => 'Drone/Aerial',       'icon' => '🚁', 'value' => get_user_meta( $vendor_id, 'drone_capability', true ),   'options' => $cameraman_options['drone_capability'] ],
-	];
-
-	$has_cameraman_values = false;
-	foreach ( $cameraman_fields as $attr ) {
-		if ( ! empty( $attr['value'] ) ) { $has_cameraman_values = true; break; }
-	}
-
-	if ( $has_cameraman_category && ( $has_cameraman_values || $is_owner ) ) {
-		?>
-		<div id="cameraman-section" class="talent-physical-attributes cameraman-equipment attribute-slide-section">
-			<h3 class="section-title">
-				<i class="fas fa-video section-title-icon"></i> Equipment & Skills
+				<?php echo esc_html( $label ); ?>
 				<?php if ( $is_owner ) : ?>
 					<span class="owner-edit-hint">(Click pencil to edit)</span>
 				<?php endif; ?>
 			</h3>
 			<div class="attributes-grid">
-				<?php if ( ! $has_cameraman_values && ! $is_owner ) : ?>
-					<div class="stat-item">
-						<strong class="stat-value--gold">No equipment/skills data available yet.</strong>
-					</div>
-				<?php else : ?>
+				<?php foreach ( $fields as $field_row ) : ?>
 					<?php
-					foreach ( $cameraman_fields as $field_name => $field_config ) {
-						render_editable_attribute([
-							'name'    => $field_name,
-							'label'   => $field_config['label'],
-							'icon'    => $field_config['icon'],
-							'user_id' => $vendor_id,
-							'is_owner'=> $is_owner,
-							'options' => $field_config['options'],
-						]);
+					$field = isset( $field_row['definition'] ) && is_array( $field_row['definition'] ) ? $field_row['definition'] : array();
+					$value = $field_row['value'] ?? '';
+					$field_key = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+					$field_label = isset( $field['field_label'] ) ? (string) $field['field_label'] : $field_key;
+					$field_type = isset( $field['field_type'] ) ? sanitize_key( (string) $field['field_type'] ) : 'text';
+					$options_map = isset( $field['options_map'] ) && is_array( $field['options_map'] ) ? $field['options_map'] : array();
+					$icon_url = EcomCine_Person_Category_Registry::get_field_icon_url( $field );
+					$icon_value = '' !== $icon_url ? '<img class="stat-icon-image" src="' . esc_url( $icon_url ) . '" alt="' . esc_attr( $field_label ) . '" />' : ( isset( $field['field_icon'] ) ? (string) $field['field_icon'] : '•' );
+					$input_type = 'text';
+					$is_multi = false;
+
+					switch ( $field_type ) {
+						case 'number':
+							$input_type = 'number';
+							break;
+						case 'textarea':
+							$input_type = 'textarea';
+							break;
+						case 'checkbox':
+							$input_type = 'select';
+							$is_multi = true;
+							break;
+						case 'radio':
+						case 'select':
+							$input_type = 'select';
+							break;
+						default:
+							$input_type = 'text';
 					}
+
+					render_editable_attribute([
+						'name'       => $field_key,
+						'label'      => $field_label,
+						'edit_label' => $field_label,
+						'icon'       => $icon_value,
+						'user_id'    => $vendor_id,
+						'is_owner'   => $is_owner,
+						'options'    => $options_map,
+						'multi'      => $is_multi,
+						'type'       => $input_type,
+						'value'      => $value,
+						'raw_value'  => $value,
+					]);
 					?>
-				<?php endif; ?>
+				<?php endforeach; ?>
 			</div>
 		</div>
 		<?php
 	}
 
-	echo '</div>'; // .vendor-custom-attributes-wrapper
+	echo '</div>';
 }, 5, 2 );
 
 
@@ -455,6 +738,7 @@ add_action( 'ecomcine_person_profile_display', function( $store_user, $store_inf
  * Priority 5 = appears before category-specific attributes (priority 10)
  */
 add_action( 'ecomcine_person_settings_fields', function( $user_id, $profile_info ) {
+	$demo_fields = ecomcine_profile_get_demographic_field_definitions( false );
 	?>
 	<div class="ecomcine-form-group demographic-availability-section">
 		<div class="ecomcine-col-12">
@@ -464,190 +748,56 @@ add_action( 'ecomcine_person_settings_fields', function( $user_id, $profile_info
 			</h3>
 		</div>
 	</div>
+	<?php foreach ( $demo_fields as $field ) : ?>
+		<?php
+		$field_key   = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+		$field_label = isset( $field['field_label'] ) ? (string) $field['field_label'] : $field_key;
+		$options_map = isset( $field['options_map'] ) && is_array( $field['options_map'] ) ? $field['options_map'] : array();
+		$current_value = '' !== $field_key ? ecomcine_profile_normalize_demographic_field_value( get_user_meta( $user_id, $field_key, true ), $field ) : '';
+		$input_type  = isset( $field['input_type'] ) ? (string) $field['input_type'] : 'text';
+		$is_multi    = ! empty( $field['multi'] );
+		$help_text   = isset( $field['help_text'] ) ? (string) $field['help_text'] : '';
+		$field_icon  = isset( $field['field_icon'] ) ? (string) $field['field_icon'] : '•';
 
-	<!-- Birth Date -->
-	<div class="ecomcine-form-group">
-		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_birth_date">
-			<span class="dashicons dashicons-calendar-alt"></span>
-			<?php esc_html_e( 'Birth Date', 'ecomcine' ); ?>
-		</label>
-		<div class="ecomcine-col-5 ecomcine-text-left">
-			<?php $current_birth_date = get_user_meta( $user_id, 'demo_birth_date', true ); ?>
-			<input type="date" id="demo_birth_date" name="demo_birth_date" class="ecomcine-form-control" value="<?php echo esc_attr( $current_birth_date ); ?>">
-			<p class="description"><?php esc_html_e( 'Age will be calculated automatically', 'ecomcine' ); ?></p>
-		</div>
-	</div>
+		if ( $is_multi && ! is_array( $current_value ) ) {
+			$current_value = '' === (string) $current_value ? array() : array( (string) $current_value );
+		}
+		?>
+		<div class="ecomcine-form-group">
+			<label class="ecomcine-col-3 ecomcine-control-label" for="<?php echo esc_attr( $field_key ); ?>">
+				<span><?php echo esc_html( $field_icon ); ?></span>
+				<?php echo esc_html( $field_label ); ?>
+			</label>
+			<div class="ecomcine-col-5 ecomcine-text-left">
+				<?php if ( 'date' === $input_type ) : ?>
+					<input type="date" id="<?php echo esc_attr( $field_key ); ?>" name="<?php echo esc_attr( $field_key ); ?>" class="ecomcine-form-control" value="<?php echo esc_attr( is_array( $current_value ) ? '' : (string) $current_value ); ?>">
+				<?php elseif ( 'textarea' === $input_type ) : ?>
+					<textarea id="<?php echo esc_attr( $field_key ); ?>" name="<?php echo esc_attr( $field_key ); ?>" class="ecomcine-form-control" rows="4"><?php echo esc_textarea( is_array( $current_value ) ? '' : (string) $current_value ); ?></textarea>
+				<?php elseif ( 'number' === $input_type ) : ?>
+					<input type="number" id="<?php echo esc_attr( $field_key ); ?>" name="<?php echo esc_attr( $field_key ); ?>" class="ecomcine-form-control" value="<?php echo esc_attr( is_array( $current_value ) ? '' : (string) $current_value ); ?>">
+				<?php elseif ( 'select' === $input_type && $is_multi ) : ?>
+					<select id="<?php echo esc_attr( $field_key ); ?>" name="<?php echo esc_attr( $field_key ); ?>[]" class="ecomcine-form-control" multiple size="5">
+						<?php foreach ( $options_map as $option_key => $option_label ) : ?>
+							<option value="<?php echo esc_attr( $option_key ); ?>"<?php echo in_array( (string) $option_key, array_map( 'strval', (array) $current_value ), true ) ? ' selected' : ''; ?>><?php echo esc_html( $option_label ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				<?php elseif ( 'select' === $input_type ) : ?>
+					<select id="<?php echo esc_attr( $field_key ); ?>" name="<?php echo esc_attr( $field_key ); ?>" class="ecomcine-form-control">
+						<option value=""></option>
+						<?php foreach ( $options_map as $option_key => $option_label ) : ?>
+							<option value="<?php echo esc_attr( $option_key ); ?>"<?php selected( is_array( $current_value ) ? '' : (string) $current_value, (string) $option_key ); ?>><?php echo esc_html( $option_label ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				<?php else : ?>
+					<input type="text" id="<?php echo esc_attr( $field_key ); ?>" name="<?php echo esc_attr( $field_key ); ?>" class="ecomcine-form-control" value="<?php echo esc_attr( is_array( $current_value ) ? '' : (string) $current_value ); ?>">
+				<?php endif; ?>
 
-	<!-- Ethnicity -->
-	<div class="ecomcine-form-group">
-		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_ethnicity">
-			<span class="dashicons dashicons-admin-users"></span>
-			<?php esc_html_e( 'Ethnicity', 'ecomcine' ); ?>
-		</label>
-		<div class="ecomcine-col-5 ecomcine-text-left">
-			<select id="demo_ethnicity" name="demo_ethnicity[]" class="ecomcine-form-control" multiple size="5">
-				<?php
-				$ethnicities = [
-					'caucasian'        => 'Caucasian',
-					'african'          => 'African',
-					'asian'            => 'Asian',
-					'hispanic'         => 'Hispanic/Latino',
-					'middle_eastern'   => 'Middle Eastern',
-					'native_american'  => 'Native American',
-					'pacific_islander' => 'Pacific Islander',
-				];
-				$current_ethnicity = get_user_meta( $user_id, 'demo_ethnicity', true );
-				if ( ! is_array( $current_ethnicity ) ) {
-					$current_ethnicity = ! empty( $current_ethnicity ) ? [ $current_ethnicity ] : [];
-				}
-				foreach ( $ethnicities as $key => $label ) {
-					$selected = in_array( $key, $current_ethnicity, true ) ? ' selected' : '';
-					echo '<option value="' . esc_attr( $key ) . '"' . $selected . '>' . esc_html( $label ) . '</option>';
-				}
-				?>
-			</select>
-			<p class="description"><?php esc_html_e( 'Hold CTRL (Windows) or CMD (Mac) to select multiple', 'ecomcine' ); ?></p>
-		</div>
-	</div>
-
-	<!-- Languages -->
-	<div class="ecomcine-form-group">
-		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_languages">
-			<span class="dashicons dashicons-translation"></span>
-			<?php esc_html_e( 'Languages', 'ecomcine' ); ?>
-		</label>
-		<div class="ecomcine-col-5 ecomcine-text-left">
-			<select id="demo_languages" name="demo_languages[]" class="ecomcine-form-control" multiple size="5">
-				<?php
-				$languages = [
-					'english'    => 'English',
-					'spanish'    => 'Spanish',
-					'french'     => 'French',
-					'german'     => 'German',
-					'italian'    => 'Italian',
-					'portuguese' => 'Portuguese',
-					'arabic'     => 'Arabic',
-					'chinese'    => 'Chinese (Mandarin)',
-					'japanese'   => 'Japanese',
-					'korean'     => 'Korean',
-					'hindi'      => 'Hindi',
-					'russian'    => 'Russian',
-				];
-				$current_languages = get_user_meta( $user_id, 'demo_languages', true );
-				$current_languages = is_array( $current_languages ) ? $current_languages : [];
-				foreach ( $languages as $key => $label ) {
-					echo '<option value="' . esc_attr( $key ) . '"' . selected( in_array( $key, $current_languages ), true, false ) . '>' . esc_html( $label ) . '</option>';
-				}
-				?>
-			</select>
-			<p class="description"><?php esc_html_e( 'Hold Ctrl (Cmd on Mac) to select multiple languages', 'ecomcine' ); ?></p>
-		</div>
-	</div>
-
-	<!-- Availability -->
-	<div class="ecomcine-form-group">
-		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_availability">
-			<span class="dashicons dashicons-clock"></span>
-			<?php esc_html_e( 'Availability', 'ecomcine' ); ?>
-		</label>
-		<div class="ecomcine-col-5 ecomcine-text-left">
-			<select id="demo_availability" name="demo_availability" class="ecomcine-form-control">
-				<option value="">Select Availability</option>
-				<?php
-				$availability_options = [ 'part-time' => 'Part-time', 'full-time' => 'Full-time', 'on-demand' => 'On-demand' ];
-				$current_availability = get_user_meta( $user_id, 'demo_availability', true );
-				foreach ( $availability_options as $key => $label ) {
-					echo '<option value="' . esc_attr( $key ) . '"' . selected( $current_availability, $key, false ) . '>' . esc_html( $label ) . '</option>';
-				}
-				?>
-			</select>
-		</div>
-	</div>
-
-	<!-- Notice Time -->
-	<div class="ecomcine-form-group">
-		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_notice_time">
-			<span class="dashicons dashicons-bell"></span>
-			<?php esc_html_e( 'Notice Time', 'ecomcine' ); ?>
-		</label>
-		<div class="ecomcine-col-5 ecomcine-text-left">
-			<select id="demo_notice_time" name="demo_notice_time" class="ecomcine-form-control">
-				<option value="">Select Notice Time</option>
-				<?php
-				$notice_options = [ 'in_days' => 'in Days', 'in_weeks' => 'in Weeks', 'in_months' => 'in Months' ];
-				$current_notice = get_user_meta( $user_id, 'demo_notice_time', true );
-				foreach ( $notice_options as $key => $label ) {
-					echo '<option value="' . esc_attr( $key ) . '"' . selected( $current_notice, $key, false ) . '>' . esc_html( $label ) . '</option>';
-				}
-				?>
-			</select>
-		</div>
-	</div>
-
-	<!-- Can Travel -->
-	<div class="ecomcine-form-group">
-		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_can_travel">
-			<span class="dashicons dashicons-airplane"></span>
-			<?php esc_html_e( 'Can Travel', 'ecomcine' ); ?>
-		</label>
-		<div class="ecomcine-col-5 ecomcine-text-left">
-			<?php $can_travel = get_user_meta( $user_id, 'demo_can_travel', true ); ?>
-			<div class="checkbox">
-				<label>
-					<input type="hidden" name="demo_can_travel" value="no">
-					<input type="checkbox" id="demo_can_travel" name="demo_can_travel" value="yes" <?php checked( $can_travel, 'yes' ); ?>>
-					<?php esc_html_e( 'Yes, I can travel for work', 'ecomcine' ); ?>
-				</label>
+				<?php if ( '' !== $help_text ) : ?>
+					<p class="description"><?php echo esc_html( $help_text ); ?></p>
+				<?php endif; ?>
 			</div>
 		</div>
-	</div>
-
-	<!-- Daily Rate -->
-	<div class="ecomcine-form-group">
-		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_daily_rate">
-			<span class="dashicons dashicons-money-alt"></span>
-			<?php esc_html_e( 'Daily Rate', 'ecomcine' ); ?>
-		</label>
-		<div class="ecomcine-col-5 ecomcine-text-left">
-			<select id="demo_daily_rate" name="demo_daily_rate" class="ecomcine-form-control">
-				<option value="">Select Daily Rate</option>
-				<?php
-				$rate_options = [ 'under_1k' => '<$1K', '1k_to_2k' => '$1K to $2K', '3k_to_5k' => '$3K to $5K', 'over_5k' => '>$5K' ];
-				$current_rate = get_user_meta( $user_id, 'demo_daily_rate', true );
-				foreach ( $rate_options as $key => $label ) {
-					echo '<option value="' . esc_attr( $key ) . '"' . selected( $current_rate, $key, false ) . '>' . esc_html( $label ) . '</option>';
-				}
-				?>
-			</select>
-		</div>
-	</div>
-
-	<!-- Education -->
-	<div class="ecomcine-form-group">
-		<label class="ecomcine-col-3 ecomcine-control-label" for="demo_education">
-			<span class="dashicons dashicons-welcome-learn-more"></span>
-			<?php esc_html_e( 'Education', 'ecomcine' ); ?>
-		</label>
-		<div class="ecomcine-col-5 ecomcine-text-left">
-			<select id="demo_education" name="demo_education" class="ecomcine-form-control">
-				<option value="">Select Education</option>
-				<?php
-				$education_options = [
-					'doctorate'  => 'Doctorate',
-					'masters'    => 'Master\'s Degree',
-					'bachelors'  => 'Bachelor\'s Degree',
-					'associates' => 'Associate\'s Degree',
-					'diploma'    => 'Diploma',
-					'high_school'=> 'High School',
-				];
-				$current_education = get_user_meta( $user_id, 'demo_education', true );
-				foreach ( $education_options as $key => $label ) {
-					echo '<option value="' . esc_attr( $key ) . '"' . selected( $current_education, $key, false ) . '>' . esc_html( $label ) . '</option>';
-				}
-				?>
-			</select>
-		</div>
-	</div>
+	<?php endforeach; ?>
 	<?php
 }, 5, 2 ); // Priority 5 – appears before category-specific attributes (priority 10)
 
@@ -736,24 +886,36 @@ add_action( 'ecomcine_person_profile_saved', function ( $store_id, $dokan_settin
 		'years_experience', 'equipment_ownership', 'lighting_equipment', 'audio_equipment', 'drone_capability',
 	];
 
-	// Demographic & Availability fields
-	$demographic_fields = [
-		'demo_birth_date', 'demo_ethnicity', 'demo_availability',
-		'demo_notice_time', 'demo_can_travel', 'demo_daily_rate', 'demo_education',
-	];
+	$demographic_fields = ecomcine_profile_get_demographic_field_definitions( false );
 
-	foreach ( array_merge( $attributes, $cameraman_fields, $demographic_fields ) as $field ) {
+	foreach ( array_merge( $attributes, $cameraman_fields ) as $field ) {
 		if ( isset( $_POST[ $field ] ) ) {
 			$value = sanitize_text_field( wp_unslash( $_POST[ $field ] ) );
 			update_user_meta( $store_id, $field, $value );
 		}
 	}
 
-	// Languages (multi-select)
-	if ( isset( $_POST['demo_languages'] ) && is_array( $_POST['demo_languages'] ) ) {
-		$languages = array_map( 'sanitize_text_field', $_POST['demo_languages'] );
-		update_user_meta( $store_id, 'demo_languages', $languages );
-	} else {
-		delete_user_meta( $store_id, 'demo_languages' );
+	foreach ( $demographic_fields as $field ) {
+		$field_key  = isset( $field['field_key'] ) ? sanitize_key( (string) $field['field_key'] ) : '';
+		$is_multi   = ! empty( $field['multi'] );
+
+		if ( '' === $field_key ) {
+			continue;
+		}
+
+		if ( $is_multi ) {
+			if ( isset( $_POST[ $field_key ] ) && is_array( $_POST[ $field_key ] ) ) {
+				$values = array_values( array_filter( array_map( 'sanitize_text_field', wp_unslash( $_POST[ $field_key ] ) ), 'strlen' ) );
+				update_user_meta( $store_id, $field_key, $values );
+			} else {
+				delete_user_meta( $store_id, $field_key );
+			}
+			continue;
+		}
+
+		if ( isset( $_POST[ $field_key ] ) ) {
+			$value = sanitize_text_field( wp_unslash( $_POST[ $field_key ] ) );
+			update_user_meta( $store_id, $field_key, $value );
+		}
 	}
 }, 10, 2 );

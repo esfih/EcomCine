@@ -765,6 +765,10 @@ jQuery(document).ready(function($) {
 					}
 				}
 			});
+		} else if (inputType === 'textarea') {
+			var $textarea = $('<textarea class="edit-field-input" data-field="' + fieldName + '" rows="6"></textarea>');
+			$textarea.val(currentValue);
+			$body.append($textarea);
 		} else if (inputType === 'text' || inputType === 'url' || inputType === 'email' || inputType === 'number') {
 			var $textInput = $('<input type="' + inputType + '" class="edit-field-input" data-field="' + fieldName + '" />');
 			$textInput.val(currentValue);
@@ -1572,6 +1576,11 @@ jQuery(document).ready(function($) {
 	}
 
 	function getPlatformDisplayName(platform) {
+		var config = getSocialMetricConfig(platform);
+		if (config.label) {
+			return config.label;
+		}
+
 		switch (platform) {
 			case 'youtube':
 				return 'YouTube';
@@ -1584,6 +1593,23 @@ jQuery(document).ready(function($) {
 			default:
 				return platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : '';
 		}
+	}
+
+	function getSocialMetricConfig(platform) {
+		var config = (window.vendorStoreUiData && window.vendorStoreUiData.socialMetricConfig)
+			? window.vendorStoreUiData.socialMetricConfig
+			: {};
+		return (platform && Object.prototype.hasOwnProperty.call(config, platform) && config[platform])
+			? config[platform]
+			: {};
+	}
+
+	function getSocialMetricLabel(platform, key, fallback) {
+		var config = getSocialMetricConfig(platform);
+		if (config && config[key]) {
+			return config[key];
+		}
+		return fallback;
 	}
 
 	function getStatValueClass(color) {
@@ -1667,24 +1693,24 @@ jQuery(document).ready(function($) {
 		if (payload && payload.fetching) {
 			switch (platform) {
 				case 'youtube':
-					html += buildStatItem('fa-users', 'Subscribers', '...', '#D4AF37');
-					html += buildStatItem('fa-chart-bar', 'Avg Views', '...', '#FFD1BF');
-					html += buildStatItem('fa-heart', 'Avg Reactions', '...', '#FFD1BF');
+					html += buildStatItem('fa-users', getSocialMetricLabel(platform, 'followers_label', 'Subscribers'), '...', '#D4AF37');
+					html += buildStatItem('fa-chart-bar', getSocialMetricLabel(platform, 'views_label', 'Avg Views'), '...', '#FFD1BF');
+					html += buildStatItem('fa-heart', getSocialMetricLabel(platform, 'reactions_label', 'Avg Reactions'), '...', '#FFD1BF');
 					break;
 				case 'instagram':
-					html += buildStatItem('fa-users', 'Followers', '...', '#D4AF37');
-					html += buildStatItem('fa-heart', 'Avg Reactions', '...', '#FFD1BF');
-					html += buildStatItem('fa-comment-dots', 'Avg Comments', '...', '#FFD1BF');
+					html += buildStatItem('fa-users', getSocialMetricLabel(platform, 'followers_label', 'Followers'), '...', '#D4AF37');
+					html += buildStatItem('fa-heart', getSocialMetricLabel(platform, 'reactions_label', 'Avg Reactions'), '...', '#FFD1BF');
+					html += buildStatItem('fa-comment-dots', getSocialMetricLabel(platform, 'comments_label', 'Avg Comments'), '...', '#FFD1BF');
 					break;
 				case 'facebook':
-					html += buildStatItem('fa-users', 'Followers', '...', '#D4AF37');
-					html += buildStatItem('fa-eye', 'Avg Views', '...', '#FFD1BF');
-					html += buildStatItem('fa-thumbs-up', 'Avg Reactions', '...', '#FFD1BF');
+					html += buildStatItem('fa-users', getSocialMetricLabel(platform, 'followers_label', 'Followers'), '...', '#D4AF37');
+					html += buildStatItem('fa-eye', getSocialMetricLabel(platform, 'views_label', 'Avg Views'), '...', '#FFD1BF');
+					html += buildStatItem('fa-thumbs-up', getSocialMetricLabel(platform, 'reactions_label', 'Avg Reactions'), '...', '#FFD1BF');
 					break;
 				case 'linkedin':
-					html += buildStatItem('fa-users', 'Followers', '...', '#D4AF37');
-					html += buildStatItem('fa-heart', 'Avg Reactions', '...', '#FFD1BF');
-					html += buildStatItem('fa-user-friends', 'Connections', '...', '#FFD1BF');
+					html += buildStatItem('fa-users', getSocialMetricLabel(platform, 'followers_label', 'Followers'), '...', '#D4AF37');
+					html += buildStatItem('fa-heart', getSocialMetricLabel(platform, 'reactions_label', 'Avg Reactions'), '...', '#FFD1BF');
+					html += buildStatItem('fa-user-friends', getSocialMetricLabel(platform, 'connections_label', 'Connections'), '...', '#FFD1BF');
 					break;
 			}
 			$stats.html(html);
@@ -1699,9 +1725,9 @@ jQuery(document).ready(function($) {
 		if (payload && payload.stats_hidden) {
 			switch (platform) {
 				case 'facebook':
-					html += buildStatItem('fa-users', 'Followers', 'N/A', '#D4AF37');
-					html += buildStatItem('fa-eye', 'Avg Views', 'N/A', '#FFD1BF');
-					html += buildStatItem('fa-thumbs-up', 'Avg Reactions', 'N/A', '#FFD1BF');
+					html += buildStatItem('fa-users', getSocialMetricLabel(platform, 'followers_label', 'Followers'), 'N/A', '#D4AF37');
+					html += buildStatItem('fa-eye', getSocialMetricLabel(platform, 'views_label', 'Avg Views'), 'N/A', '#FFD1BF');
+					html += buildStatItem('fa-thumbs-up', getSocialMetricLabel(platform, 'reactions_label', 'Avg Reactions'), 'N/A', '#FFD1BF');
 					break;
 			}
 			$stats.html(html);
@@ -1711,46 +1737,46 @@ jQuery(document).ready(function($) {
 		switch (platform) {
 			case 'youtube':
 				if (metrics.subscribers !== null && typeof metrics.subscribers !== 'undefined') {
-					html += buildStatItem('fa-users', 'Subscribers', formatSocialNumber(metrics.subscribers), '#D4AF37');
+					html += buildStatItem('fa-users', getSocialMetricLabel(platform, 'followers_label', 'Subscribers'), formatSocialNumber(metrics.subscribers), '#D4AF37');
 				}
 				if (metrics.avg_views !== null && typeof metrics.avg_views !== 'undefined') {
-					html += buildStatItem('fa-chart-bar', 'Avg Views', formatSocialNumber(metrics.avg_views), '#FFD1BF');
+					html += buildStatItem('fa-chart-bar', getSocialMetricLabel(platform, 'views_label', 'Avg Views'), formatSocialNumber(metrics.avg_views), '#FFD1BF');
 				}
 				if (metrics.avg_reactions !== null && typeof metrics.avg_reactions !== 'undefined') {
-					html += buildStatItem('fa-heart', 'Avg Reactions', formatSocialNumber(metrics.avg_reactions), '#FFD1BF');
+					html += buildStatItem('fa-heart', getSocialMetricLabel(platform, 'reactions_label', 'Avg Reactions'), formatSocialNumber(metrics.avg_reactions), '#FFD1BF');
 				}
 				break;
 			case 'instagram':
 				if (metrics.followers !== null && typeof metrics.followers !== 'undefined') {
-					html += buildStatItem('fa-users', 'Followers', formatSocialNumber(metrics.followers), '#D4AF37');
+					html += buildStatItem('fa-users', getSocialMetricLabel(platform, 'followers_label', 'Followers'), formatSocialNumber(metrics.followers), '#D4AF37');
 				}
 				if (metrics.avg_reactions !== null && typeof metrics.avg_reactions !== 'undefined') {
-					html += buildStatItem('fa-heart', 'Avg Reactions', formatSocialNumber(metrics.avg_reactions), '#FFD1BF');
+					html += buildStatItem('fa-heart', getSocialMetricLabel(platform, 'reactions_label', 'Avg Reactions'), formatSocialNumber(metrics.avg_reactions), '#FFD1BF');
 				}
 				if (metrics.avg_comments !== null && typeof metrics.avg_comments !== 'undefined') {
-					html += buildStatItem('fa-comment-dots', 'Avg Comments', formatSocialNumber(metrics.avg_comments), '#FFD1BF');
+					html += buildStatItem('fa-comment-dots', getSocialMetricLabel(platform, 'comments_label', 'Avg Comments'), formatSocialNumber(metrics.avg_comments), '#FFD1BF');
 				}
 				break;
 			case 'facebook':
 				if (metrics.followers !== null && typeof metrics.followers !== 'undefined') {
-					html += buildStatItem('fa-users', 'Followers', formatSocialNumber(metrics.followers), '#D4AF37');
+					html += buildStatItem('fa-users', getSocialMetricLabel(platform, 'followers_label', 'Followers'), formatSocialNumber(metrics.followers), '#D4AF37');
 				}
 				if (metrics.avg_views !== null && typeof metrics.avg_views !== 'undefined') {
-					html += buildStatItem('fa-eye', 'Avg Views', formatSocialNumber(metrics.avg_views), '#FFD1BF');
+					html += buildStatItem('fa-eye', getSocialMetricLabel(platform, 'views_label', 'Avg Views'), formatSocialNumber(metrics.avg_views), '#FFD1BF');
 				}
 				if (metrics.avg_reactions !== null && typeof metrics.avg_reactions !== 'undefined') {
-					html += buildStatItem('fa-thumbs-up', 'Avg Reactions', formatSocialNumber(metrics.avg_reactions), '#FFD1BF');
+					html += buildStatItem('fa-thumbs-up', getSocialMetricLabel(platform, 'reactions_label', 'Avg Reactions'), formatSocialNumber(metrics.avg_reactions), '#FFD1BF');
 				}
 				break;
 			case 'linkedin':
 				if (metrics.followers !== null && typeof metrics.followers !== 'undefined') {
-					html += buildStatItem('fa-users', 'Followers', formatSocialNumber(metrics.followers), '#D4AF37');
+					html += buildStatItem('fa-users', getSocialMetricLabel(platform, 'followers_label', 'Followers'), formatSocialNumber(metrics.followers), '#D4AF37');
 				}
 				if (metrics.avg_reactions !== null && typeof metrics.avg_reactions !== 'undefined') {
-					html += buildStatItem('fa-heart', 'Avg Reactions', formatSocialNumber(metrics.avg_reactions), '#FFD1BF');
+					html += buildStatItem('fa-heart', getSocialMetricLabel(platform, 'reactions_label', 'Avg Reactions'), formatSocialNumber(metrics.avg_reactions), '#FFD1BF');
 				}
 				if (metrics.connections !== null && typeof metrics.connections !== 'undefined') {
-					html += buildStatItem('fa-user-friends', 'Connections', formatSocialNumber(metrics.connections), '#FFD1BF');
+					html += buildStatItem('fa-user-friends', getSocialMetricLabel(platform, 'connections_label', 'Connections'), formatSocialNumber(metrics.connections), '#FFD1BF');
 				}
 				break;
 		}

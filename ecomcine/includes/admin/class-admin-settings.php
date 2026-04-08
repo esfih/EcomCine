@@ -615,6 +615,7 @@ class EcomCine_Admin_Settings {
 				'talent_label' => 'Talent',
 				'location_label' => 'Location',
 			),
+			'drawer_sections' => self::default_profile_drawer_sections(),
 			'style_tokens' => array(
 				'accent_color'  => '#D4AF37',
 				'surface_color' => '#111111',
@@ -623,6 +624,9 @@ class EcomCine_Admin_Settings {
 			'socials' => array(
 				'label' => 'Follow us',
 				'items' => self::default_header_social_items(),
+			),
+			'social_metrics' => array(
+				'items' => self::default_profile_social_metric_items(),
 			),
 		);
 	}
@@ -664,12 +668,20 @@ class EcomCine_Admin_Settings {
 			isset( $stored['labels'] ) && is_array( $stored['labels'] ) ? $stored['labels'] : array(),
 			$defaults['labels']
 		);
+		$settings['drawer_sections'] = self::normalize_profile_drawer_sections(
+			isset( $stored['drawer_sections'] ) && is_array( $stored['drawer_sections'] ) ? $stored['drawer_sections'] : array()
+		);
 		$settings['socials'] = array(
 			'label' => isset( $stored['socials']['label'] ) && is_string( $stored['socials']['label'] ) && '' !== trim( $stored['socials']['label'] )
 				? sanitize_text_field( $stored['socials']['label'] )
 				: $defaults['socials']['label'],
 			'items' => self::normalize_header_social_items(
 				isset( $stored['socials']['items'] ) && is_array( $stored['socials']['items'] ) ? array_values( $stored['socials']['items'] ) : array()
+			),
+		);
+		$settings['social_metrics'] = array(
+			'items' => self::normalize_profile_social_metric_items(
+				isset( $stored['social_metrics']['items'] ) && is_array( $stored['social_metrics']['items'] ) ? $stored['social_metrics']['items'] : array()
 			),
 		);
 
@@ -714,6 +726,147 @@ class EcomCine_Admin_Settings {
 				'url'     => 'https://www.linkedin.com/company/castingagencyco',
 			),
 		);
+	}
+
+	/**
+	 * Default guaranteed profile drawer sections.
+	 *
+	 * @return array<string,array<string,string>>
+	 */
+	private static function default_profile_drawer_sections(): array {
+		return array(
+			'demographics' => array(
+				'label' => 'Demographic & Availability',
+			),
+			'social_metrics' => array(
+				'label' => 'Social Influence Metrics',
+			),
+		);
+	}
+
+	/**
+	 * Normalize guaranteed profile drawer section labels.
+	 *
+	 * @param array<string,mixed> $sections Raw section payload.
+	 * @return array<string,array<string,string>>
+	 */
+	private static function normalize_profile_drawer_sections( array $sections ): array {
+		$defaults = self::default_profile_drawer_sections();
+		$output   = array();
+
+		foreach ( $defaults as $section_key => $default_section ) {
+			$raw_section = isset( $sections[ $section_key ] ) && is_array( $sections[ $section_key ] ) ? $sections[ $section_key ] : array();
+			$label       = isset( $raw_section['label'] ) ? sanitize_text_field( (string) $raw_section['label'] ) : '';
+
+			$output[ $section_key ] = array(
+				'label' => '' !== $label ? $label : (string) $default_section['label'],
+			);
+		}
+
+		return $output;
+	}
+
+	/**
+	 * Default profile social metric platform configuration.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	private static function default_profile_social_metric_items(): array {
+		return array(
+			array(
+				'platform'          => 'youtube',
+				'enabled'           => true,
+				'label'             => 'YouTube',
+				'followers_label'   => 'Subscribers',
+				'views_label'       => 'Avg Views',
+				'reactions_label'   => 'Avg Reactions',
+				'comments_label'    => 'Avg Comments',
+				'connections_label' => 'Connections',
+			),
+			array(
+				'platform'          => 'instagram',
+				'enabled'           => true,
+				'label'             => 'Instagram',
+				'followers_label'   => 'Followers',
+				'views_label'       => 'Avg Views',
+				'reactions_label'   => 'Avg Reactions',
+				'comments_label'    => 'Avg Comments',
+				'connections_label' => 'Connections',
+			),
+			array(
+				'platform'          => 'facebook',
+				'enabled'           => true,
+				'label'             => 'Facebook',
+				'followers_label'   => 'Followers',
+				'views_label'       => 'Avg Views',
+				'reactions_label'   => 'Avg Reactions',
+				'comments_label'    => 'Avg Comments',
+				'connections_label' => 'Connections',
+			),
+			array(
+				'platform'          => 'linkedin',
+				'enabled'           => true,
+				'label'             => 'LinkedIn',
+				'followers_label'   => 'Followers',
+				'views_label'       => 'Avg Views',
+				'reactions_label'   => 'Avg Reactions',
+				'comments_label'    => 'Avg Comments',
+				'connections_label' => 'Connections',
+			),
+		);
+	}
+
+	/**
+	 * Normalize profile social metric platform configuration.
+	 *
+	 * @param array<string|int,mixed> $items Raw platform items.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private static function normalize_profile_social_metric_items( array $items ): array {
+		$defaults = self::default_profile_social_metric_items();
+		$output   = array();
+
+		foreach ( $defaults as $default_item ) {
+			$platform = (string) $default_item['platform'];
+			$raw_item = array();
+
+			if ( isset( $items[ $platform ] ) && is_array( $items[ $platform ] ) ) {
+				$raw_item = $items[ $platform ];
+			} else {
+				foreach ( $items as $candidate ) {
+					if ( is_array( $candidate ) && isset( $candidate['platform'] ) && sanitize_key( (string) $candidate['platform'] ) === $platform ) {
+						$raw_item = $candidate;
+						break;
+					}
+				}
+			}
+
+			$output[] = array(
+				'platform'          => $platform,
+				'enabled'           => array_key_exists( 'enabled', $raw_item ) ? ! empty( $raw_item['enabled'] ) : ! empty( $default_item['enabled'] ),
+				'label'             => self::sanitize_profile_social_metric_label( $raw_item, 'label', (string) $default_item['label'] ),
+				'followers_label'   => self::sanitize_profile_social_metric_label( $raw_item, 'followers_label', (string) $default_item['followers_label'] ),
+				'views_label'       => self::sanitize_profile_social_metric_label( $raw_item, 'views_label', (string) $default_item['views_label'] ),
+				'reactions_label'   => self::sanitize_profile_social_metric_label( $raw_item, 'reactions_label', (string) $default_item['reactions_label'] ),
+				'comments_label'    => self::sanitize_profile_social_metric_label( $raw_item, 'comments_label', (string) $default_item['comments_label'] ),
+				'connections_label' => self::sanitize_profile_social_metric_label( $raw_item, 'connections_label', (string) $default_item['connections_label'] ),
+			);
+		}
+
+		return $output;
+	}
+
+	/**
+	 * Sanitize profile social metric label values.
+	 *
+	 * @param array<string,mixed> $item     Raw config item.
+	 * @param string              $key      Label key.
+	 * @param string              $fallback Default label.
+	 * @return string
+	 */
+	private static function sanitize_profile_social_metric_label( array $item, string $key, string $fallback ): string {
+		$label = isset( $item[ $key ] ) ? sanitize_text_field( (string) $item[ $key ] ) : '';
+		return '' !== $label ? $label : $fallback;
 	}
 
 	/**
@@ -1303,6 +1456,50 @@ class EcomCine_Admin_Settings {
 	}
 
 	/**
+	 * Get guaranteed profile drawer section labels.
+	 *
+	 * @return array<string,array<string,string>>
+	 */
+	public static function get_profile_drawer_sections(): array {
+		$settings = self::get_settings();
+		return isset( $settings['drawer_sections'] ) && is_array( $settings['drawer_sections'] )
+			? $settings['drawer_sections']
+			: self::default_profile_drawer_sections();
+	}
+
+	/**
+	 * Get profile social metric platform configuration.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function get_profile_social_metrics(): array {
+		$settings = self::get_settings();
+		if ( isset( $settings['social_metrics']['items'] ) && is_array( $settings['social_metrics']['items'] ) ) {
+			return $settings['social_metrics']['items'];
+		}
+
+		return self::default_profile_social_metric_items();
+	}
+
+	/**
+	 * Get profile social metric configuration indexed by platform key.
+	 *
+	 * @return array<string,array<string,mixed>>
+	 */
+	public static function get_profile_social_metric_map(): array {
+		$map = array();
+		foreach ( self::get_profile_social_metrics() as $item ) {
+			$platform = isset( $item['platform'] ) ? sanitize_key( (string) $item['platform'] ) : '';
+			if ( '' === $platform ) {
+				continue;
+			}
+			$map[ $platform ] = $item;
+		}
+
+		return $map;
+	}
+
+	/**
 	 * Get category grid settings.
 	 *
 	 * @return array<string,mixed>
@@ -1451,6 +1648,18 @@ class EcomCine_Admin_Settings {
 			);
 		}
 
+		if ( isset( $input['drawer_sections'] ) && is_array( $input['drawer_sections'] ) ) {
+			$sanitized['drawer_sections'] = self::normalize_profile_drawer_sections( $input['drawer_sections'] );
+		}
+
+		if ( isset( $input['social_metrics'] ) && is_array( $input['social_metrics'] ) ) {
+			$sanitized['social_metrics'] = array(
+				'items' => self::normalize_profile_social_metric_items(
+					isset( $input['social_metrics']['items'] ) && is_array( $input['social_metrics']['items'] ) ? $input['social_metrics']['items'] : array()
+				),
+			);
+		}
+
 		// Mapbox token — store as-is; only public tokens (pk.*) allowed at this boundary.
 		if ( array_key_exists( 'mapbox_token', $input ) ) {
 			$mapbox_raw = sanitize_text_field( (string) $input['mapbox_token'] );
@@ -1548,7 +1757,9 @@ class EcomCine_Admin_Settings {
 		$persons_grid = isset( $settings['persons_grid'] ) && is_array( $settings['persons_grid'] ) ? $settings['persons_grid'] : self::defaults()['persons_grid'];
 		$tokens     = $settings['style_tokens'];
 		$labels     = $settings['labels'];
+		$drawer_sections = isset( $settings['drawer_sections'] ) && is_array( $settings['drawer_sections'] ) ? $settings['drawer_sections'] : self::default_profile_drawer_sections();
 		$socials    = isset( $settings['socials'] ) && is_array( $settings['socials'] ) ? $settings['socials'] : self::defaults()['socials'];
+		$profile_social_metrics = isset( $settings['social_metrics']['items'] ) && is_array( $settings['social_metrics']['items'] ) ? $settings['social_metrics']['items'] : self::default_profile_social_metric_items();
 		$created_pages = isset( $_GET['ecomcine_created'] ) ? absint( $_GET['ecomcine_created'] ) : 0;
 		$updated_pages = isset( $_GET['ecomcine_updated'] ) ? absint( $_GET['ecomcine_updated'] ) : 0;
 		$theme_slug = isset( $_GET['ecomcine_theme_slug'] ) ? sanitize_key( wp_unslash( $_GET['ecomcine_theme_slug'] ) ) : '';
@@ -1641,6 +1852,8 @@ class EcomCine_Admin_Settings {
 			$social_items  = isset( $socials['items'] ) && is_array( $socials['items'] ) ? $socials['items'] : self::default_header_social_items();
 			$icon_choices  = self::get_header_social_icon_choices();
 			$social_label  = isset( $socials['label'] ) ? (string) $socials['label'] : self::defaults()['socials']['label'];
+			$demographic_label = isset( $drawer_sections['demographics']['label'] ) ? (string) $drawer_sections['demographics']['label'] : self::default_profile_drawer_sections()['demographics']['label'];
+			$social_metrics_label = isset( $drawer_sections['social_metrics']['label'] ) ? (string) $drawer_sections['social_metrics']['label'] : self::default_profile_drawer_sections()['social_metrics']['label'];
 			?>
 			<div style="margin-top:16px; max-width:980px; background:#fff; border:1px solid #ccd0d4; border-radius:3px; padding:18px 20px; box-shadow:0 1px 1px rgba(0,0,0,.04);">
 				<h2 style="margin-top:0;">Header Socials</h2>
@@ -1695,6 +1908,68 @@ class EcomCine_Admin_Settings {
 					</table>
 					<p class="description" style="margin-top:12px;">Rows render in the order shown above. Leave a URL blank or disable a row to hide it from the header.</p>
 					<?php submit_button( 'Save Social Settings' ); ?>
+				</form>
+			</div>
+
+			<div style="margin-top:16px; max-width:1100px; background:#fff; border:1px solid #ccd0d4; border-radius:3px; padding:18px 20px; box-shadow:0 1px 1px rgba(0,0,0,.04);">
+				<h2 style="margin-top:0;">Profile Drawer Sections</h2>
+				<p class="description" style="margin-bottom:16px;">Manage the guaranteed bottom drawer section labels and the social metrics platforms shown on vendor profiles.</p>
+
+				<form method="post" action="options.php">
+					<?php settings_fields( 'ecomcine_settings_group' ); ?>
+					<table class="form-table" role="presentation" style="max-width:680px; margin-bottom:20px;">
+						<tr>
+							<th scope="row"><label for="ecomcine-drawer-demographics-label">Demographics Label</label></th>
+							<td>
+								<input id="ecomcine-drawer-demographics-label" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[drawer_sections][demographics][label]" value="<?php echo esc_attr( $demographic_label ); ?>" class="regular-text" />
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="ecomcine-drawer-social-metrics-label">Social Metrics Label</label></th>
+							<td>
+								<input id="ecomcine-drawer-social-metrics-label" type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[drawer_sections][social_metrics][label]" value="<?php echo esc_attr( $social_metrics_label ); ?>" class="regular-text" />
+							</td>
+						</tr>
+					</table>
+
+					<table class="widefat striped" style="max-width:100%;">
+						<thead>
+							<tr>
+								<th style="width:90px;">Enabled</th>
+								<th style="width:120px;">Platform</th>
+								<th style="width:160px;">Display Label</th>
+								<th style="width:140px;">Followers</th>
+								<th style="width:140px;">Views</th>
+								<th style="width:160px;">Reactions</th>
+								<th style="width:140px;">Comments</th>
+								<th style="width:150px;">Connections</th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ( $profile_social_metrics as $item ) : ?>
+								<?php $platform = isset( $item['platform'] ) ? sanitize_key( (string) $item['platform'] ) : ''; ?>
+								<?php if ( '' === $platform ) { continue; } ?>
+								<tr>
+									<td>
+										<label>
+											<input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[social_metrics][items][<?php echo esc_attr( $platform ); ?>][enabled]" value="1" <?php checked( ! empty( $item['enabled'] ) ); ?> />
+											Show
+										</label>
+										<input type="hidden" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[social_metrics][items][<?php echo esc_attr( $platform ); ?>][platform]" value="<?php echo esc_attr( $platform ); ?>" />
+									</td>
+									<td><strong><?php echo esc_html( ucfirst( $platform ) ); ?></strong></td>
+									<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[social_metrics][items][<?php echo esc_attr( $platform ); ?>][label]" value="<?php echo esc_attr( isset( $item['label'] ) ? (string) $item['label'] : '' ); ?>" /></td>
+									<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[social_metrics][items][<?php echo esc_attr( $platform ); ?>][followers_label]" value="<?php echo esc_attr( isset( $item['followers_label'] ) ? (string) $item['followers_label'] : '' ); ?>" /></td>
+									<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[social_metrics][items][<?php echo esc_attr( $platform ); ?>][views_label]" value="<?php echo esc_attr( isset( $item['views_label'] ) ? (string) $item['views_label'] : '' ); ?>" /></td>
+									<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[social_metrics][items][<?php echo esc_attr( $platform ); ?>][reactions_label]" value="<?php echo esc_attr( isset( $item['reactions_label'] ) ? (string) $item['reactions_label'] : '' ); ?>" /></td>
+									<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[social_metrics][items][<?php echo esc_attr( $platform ); ?>][comments_label]" value="<?php echo esc_attr( isset( $item['comments_label'] ) ? (string) $item['comments_label'] : '' ); ?>" /></td>
+									<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[social_metrics][items][<?php echo esc_attr( $platform ); ?>][connections_label]" value="<?php echo esc_attr( isset( $item['connections_label'] ) ? (string) $item['connections_label'] : '' ); ?>" /></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+					<p class="description" style="margin-top:12px;">Disable a platform to remove it from the profile drawer. Leave a label blank to fall back to the built-in text.</p>
+					<?php submit_button( 'Save Profile Drawer Settings' ); ?>
 				</form>
 			</div>
 
