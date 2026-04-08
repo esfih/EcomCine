@@ -349,13 +349,7 @@ class EcomCine_Admin_Settings {
 	/**
 	 * Admin action: create default onboarding pages.
 	 */
-	public static function handle_create_bootstrap_pages() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You are not allowed to perform this action.', 'ecomcine' ) );
-		}
-
-		check_admin_referer( 'ecomcine_bootstrap_pages' );
-
+	public static function ensure_bootstrap_pages() {
 		$pages = array(
 			array(
 				'title'     => 'Showcase',
@@ -399,7 +393,6 @@ class EcomCine_Admin_Settings {
 					);
 					$updated++;
 				}
-				// Always ensure the correct page template is set.
 				update_post_meta( (int) $post->ID, '_wp_page_template', $template );
 				continue;
 			}
@@ -420,13 +413,28 @@ class EcomCine_Admin_Settings {
 			}
 		}
 
+		return array(
+			'created' => $created,
+			'updated' => $updated,
+		);
+	}
+
+	public static function handle_create_bootstrap_pages() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to perform this action.', 'ecomcine' ) );
+		}
+
+		check_admin_referer( 'ecomcine_bootstrap_pages' );
+
+		$page_result = self::ensure_bootstrap_pages();
+
 		$redirect = add_query_arg(
 			array(
 				'page'                => 'ecomcine-settings',
 				'tab'                 => 'settings',
 				'ecomcine_pages_done' => 1,
-				'ecomcine_created'    => $created,
-				'ecomcine_updated'    => $updated,
+				'ecomcine_created'    => (int) $page_result['created'],
+				'ecomcine_updated'    => (int) $page_result['updated'],
 			),
 			admin_url( 'admin.php' )
 		);
@@ -436,21 +444,32 @@ class EcomCine_Admin_Settings {
 	}
 
 	/**
-	 * Admin action: install (if needed) and activate the bundled EcomCine Base Theme.
+	 * Admin action: install (if needed) and activate the EcomCine Base Theme.
 	 *
-	 * The theme files ship inside the plugin at bundled-theme/ and are always
+	 * The theme files ship inside the plugin at ecomcine-base/ and are always
 	 * synced to the WP themes directory on each button click, so plugin updates
 	 * also update the installed theme files. No external network request needed.
 	 */
-	public static function handle_install_activate_theme() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You are not allowed to perform this action.', 'ecomcine' ) );
+	private static function paths_reference_same_inode( $source, $target ) {
+		if ( ! is_string( $source ) || ! is_string( $target ) || ! file_exists( $source ) || ! file_exists( $target ) ) {
+			return false;
 		}
 
-		check_admin_referer( 'ecomcine_bootstrap_theme' );
+		$source_stat = @stat( $source ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$target_stat = @stat( $target ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 
+		if ( ! is_array( $source_stat ) || ! is_array( $target_stat ) ) {
+			return false;
+		}
+
+		return isset( $source_stat['dev'], $source_stat['ino'], $target_stat['dev'], $target_stat['ino'] )
+			&& (int) $source_stat['dev'] === (int) $target_stat['dev']
+			&& (int) $source_stat['ino'] === (int) $target_stat['ino'];
+	}
+
+	public static function sync_bundled_theme( $activate_theme = true ) {
 		$theme_slug  = 'ecomcine-base';
-		$bundled_src = rtrim( ECOMCINE_DIR, '/\\' ) . DIRECTORY_SEPARATOR . 'bundled-theme';
+		$bundled_src = rtrim( ECOMCINE_DIR, '/\\' ) . DIRECTORY_SEPARATOR . 'ecomcine-base';
 		$themes_root = get_theme_root();
 		$dest_dir    = trailingslashit( $themes_root ) . $theme_slug;
 
@@ -460,9 +479,9 @@ class EcomCine_Admin_Settings {
 			$error_code = 'bundled_missing';
 		} elseif ( ! wp_mkdir_p( $dest_dir ) ) {
 			$error_code = 'dest_mkdir';
+		} elseif ( self::paths_reference_same_inode( $bundled_src, $dest_dir ) ) {
+			$error_code = '';
 		} else {
-			// Always sync the full bundled theme tree so plugin updates apply to
-			// all theme assets, templates, and helper directories.
 			$copy_ok  = true;
 			$iterator = new RecursiveIteratorIterator(
 				new RecursiveDirectoryIterator( $bundled_src, FilesystemIterator::SKIP_DOTS ),
@@ -473,11 +492,19 @@ class EcomCine_Admin_Settings {
 				$target   = $dest_dir . DIRECTORY_SEPARATOR . $relative;
 
 				if ( $file_info->isDir() ) {
+					if ( self::paths_reference_same_inode( $file_info->getPathname(), $target ) ) {
+						continue;
+					}
+
 					if ( ! wp_mkdir_p( $target ) ) {
 						$copy_ok    = false;
 						$error_code = 'dest_mkdir';
 						break;
 					}
+					continue;
+				}
+
+				if ( self::paths_reference_same_inode( $file_info->getPathname(), $target ) ) {
 					continue;
 				}
 
@@ -489,7 +516,6 @@ class EcomCine_Admin_Settings {
 			}
 
 			if ( $copy_ok ) {
-				// Clear WP theme caches so any newly added template files are discovered.
 				if ( function_exists( 'wp_clean_themes_cache' ) ) {
 					wp_clean_themes_cache();
 				}
@@ -498,20 +524,38 @@ class EcomCine_Admin_Settings {
 				$installed = wp_get_theme( $theme_slug );
 				if ( ! $installed->exists() ) {
 					$error_code = 'verify_fail';
-				} else {
+				} elseif ( $activate_theme ) {
 					switch_theme( $theme_slug );
 				}
 			}
 		}
 
+		return array(
+			'theme_slug'  => $theme_slug,
+			'error_code'  => $error_code,
+			'activated'   => '' === $error_code && $activate_theme,
+			'is_synced'   => '' === $error_code,
+			'stylesheet'  => wp_get_theme()->get_stylesheet(),
+		);
+	}
+
+	public static function handle_install_activate_theme() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to perform this action.', 'ecomcine' ) );
+		}
+
+		check_admin_referer( 'ecomcine_bootstrap_theme' );
+
+		$theme_result = self::sync_bundled_theme( true );
+
 		$args = array(
 			'page'                => 'ecomcine-settings',
 			'tab'                 => 'settings',
 			'ecomcine_theme_done' => 1,
-			'ecomcine_theme_slug' => '' === $error_code ? $theme_slug : wp_get_theme()->get_stylesheet(),
+			'ecomcine_theme_slug' => '' === $theme_result['error_code'] ? $theme_result['theme_slug'] : $theme_result['stylesheet'],
 		);
-		if ( '' !== $error_code ) {
-			$args['ecomcine_theme_error'] = $error_code;
+		if ( '' !== $theme_result['error_code'] ) {
+			$args['ecomcine_theme_error'] = $theme_result['error_code'];
 		}
 
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );

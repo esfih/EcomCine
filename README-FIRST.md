@@ -32,7 +32,7 @@ WooCommerce, Dokan, and WooCommerce Bookings are legacy compatibility layers for
 | Folder | What it is | Committed? |
 |---|---|---|
 | `ecomcine/` | Single unified plugin — contains all modules under `ecomcine/modules/` | Yes |
-| `ecomcine/bundled-theme/` | Canonical minimal `ecomcine-base` theme shipped by the plugin | Yes |
+| `ecomcine/ecomcine-base/` | Canonical minimal `ecomcine-base` theme shipped by the plugin | Yes |
 | `ecomcine/modules/tm-media-player/` | Cinematic media player + showcase module | Yes |
 | `ecomcine/modules/tm-account-panel/` | Front-end login/registration + talent onboarding module | Yes |
 | `ecomcine/modules/tm-vendor-booking-modal/` | Frictionless booking/checkout modal module | Yes |
@@ -276,7 +276,7 @@ Forbidden states (hard fail):
 
 The following runtime sources must resolve to Linux paths under `/home/<user>/dev/EcomCine`:
 
-- `ecomcine/bundled-theme/` -> `/var/www/html/wp-content/themes/ecomcine-base`
+- `ecomcine/ecomcine-base/` -> `/var/www/html/wp-content/themes/ecomcine-base`
 - `ecomcine/` -> `/var/www/html/wp-content/plugins/ecomcine`
 - `dokan-category-attributes/` -> `/var/www/html/wp-content/plugins/dokan-category-attributes`
 - `deps/dokan-lite/` -> `/var/www/html/wp-content/plugins/dokan-lite`

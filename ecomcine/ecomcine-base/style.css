@@ -79,6 +79,50 @@ img {
     display: block;
 }
 
+.tm-header-platforms {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.88);
+    min-width: 0;
+    z-index: 110;
+    pointer-events: auto;
+}
+
+.tm-header-platforms__label {
+    opacity: 0.7;
+}
+
+.tm-header-platforms__icons {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tm-header-platforms__icons .social-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 20px;
+    text-decoration: none;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.tm-header-platforms__icons .social-icon:hover {
+    color: #ffffff;
+    transform: scale(1.15);
+    text-decoration: none;
+}
+
+.tm-header-platforms__icons .social-icon-svg {
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    fill: currentColor;
+}
+
 .ecomcine-site-title-link {
     font-size: 1.2rem;
     font-weight: 700;

@@ -35,7 +35,7 @@
     {
       "id": "ecomcine-base-theme",
       "name": "EcomCine Base Theme",
-      "folder": "ecomcine/bundled-theme",
+      "folder": "ecomcine/ecomcine-base",
       "status": "active",
       "description": "Canonical minimal theme shell: document structure, hook points, and base theme supports for standalone EcomCine runtime."
     },

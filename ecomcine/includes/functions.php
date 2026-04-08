@@ -873,7 +873,7 @@ if ( ! function_exists( 'ecomcine_load_template' ) ) {
 	 * Load a template file from (in priority order):
 	 *   1. Active theme:               ecomcine/{$name}.php
 	 *   2. EcomCine plugin templates:  ecomcine/templates/{$name}.php
-	 *   3. Bundled-theme templates:    ecomcine/bundled-theme/templates/{$name}.php
+	 *   3. EcomCine Base templates:    ecomcine/ecomcine-base/templates/{$name}.php
 	 *
 	 * @param string $name  Template slug (no extension, no leading slash).
 	 * @param array  $args  Variables to extract into template scope.
@@ -889,7 +889,7 @@ if ( ! function_exists( 'ecomcine_load_template' ) ) {
 
 		if ( defined( 'ECOMCINE_DIR' ) ) {
 			$candidates[] = ECOMCINE_DIR . 'templates/' . $file_name;
-			$candidates[] = ECOMCINE_DIR . 'bundled-theme/templates/' . $file_name;
+			$candidates[] = ECOMCINE_DIR . 'ecomcine-base/templates/' . $file_name;
 		}
 
 		foreach ( $candidates as $path ) {

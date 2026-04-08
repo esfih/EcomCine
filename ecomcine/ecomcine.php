@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.72
+ * Version: 0.1.73
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.72' );
+define( 'ECOMCINE_VERSION', '0.1.73' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -227,6 +227,10 @@ add_action( 'init', function() {
 	// Always re-deploy debug infrastructure on every version bump so that
 	// plugin updates (which skip the activation hook) also provision the files.
 	ecomcine_deploy_debug_infrastructure();
+	if ( class_exists( 'EcomCine_Admin_Settings', false ) ) {
+		EcomCine_Admin_Settings::ensure_bootstrap_pages();
+		EcomCine_Admin_Settings::sync_bundled_theme( 'ecomcine-base' === wp_get_theme()->get_stylesheet() );
+	}
 
 	// v0.1.32 — Backfill ecomcine_geo_lat/lng from dokan_profile_settings.geolocation
 	// for vendors that have DPS geo but not the canonical flat meta keys.
@@ -477,6 +481,10 @@ register_activation_hook( ECOMCINE_FILE, function() {
 		EcomCine_Person_Category_Registry::install();
 		EcomCine_Person_Category_Registry::seed_defaults();
 		EcomCine_Person_Category_Registry::migrate_from_store_category();
+	}
+	if ( class_exists( 'EcomCine_Admin_Settings', false ) ) {
+		EcomCine_Admin_Settings::ensure_bootstrap_pages();
+		EcomCine_Admin_Settings::sync_bundled_theme( true );
 	}
 } );
 

@@ -11,7 +11,7 @@ Read `README-FIRST.md` at the start of every meaningful response before taking a
 EcomCiné is a productized WordPress-native cinematic marketplace suite.
 Phase 1 is live at `castingagency.co`.
 
-Custom artifacts: `ecomcine/` (single unified plugin containing all modules), `ecomcine/bundled-theme/` (`ecomcine-base` minimal theme), `dokan-category-attributes/`.
+Custom artifacts: `ecomcine/` (single unified plugin containing all modules), `ecomcine/ecomcine-base/` (`ecomcine-base` minimal theme), `dokan-category-attributes/`.
 
 All feature modules live under `ecomcine/modules/` — there are no separate standalone plugin folders.
 
@@ -23,7 +23,7 @@ All feature modules live under `ecomcine/modules/` — there are no separate sta
 |---|---|
 | Project structure, goals, setup steps | `README-FIRST.md` |
 | Feature specs and product intent | `specs/` and `specs/app-features/` |
-| Theme PHP / template logic | `ecomcine/bundled-theme/` |
+| Theme PHP / template logic | `ecomcine/ecomcine-base/` |
 | Plugin logic | `ecomcine/modules/` or `dokan-category-attributes/` |
 | Docker / WP-CLI / container ops | `foundation/wp/` |
 | Shared workflow and AI-context rules | `foundation/core/` |

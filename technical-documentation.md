@@ -109,11 +109,11 @@ The canonical theme is a minimal shell. The plugin stack orchestrates the custom
 
 | File / Directory | Description |
 | :--- | :--- |
-| **`ecomcine/bundled-theme/functions.php`** | Registers the `ecomcine-base-css` handle, menu locations, and essential theme supports only. |
-| **`ecomcine/bundled-theme/style.css`** | Contains only minimal base typography and document-level styling. |
-| **`ecomcine/bundled-theme/header.php`** | Outputs the document head, body wrapper, and lightweight site header shell. |
-| **`ecomcine/bundled-theme/footer.php`** | Outputs `wp_footer()` and closes the document. |
-| **`ecomcine/bundled-theme/template-talent-showcase-full.php`** | A plugin-shipped showcase template used by the immersive showcase flow. |
+| **`ecomcine/ecomcine-base/functions.php`** | Registers the `ecomcine-base-css` handle, menu locations, and essential theme supports only. |
+| **`ecomcine/ecomcine-base/style.css`** | Contains only minimal base typography and document-level styling. |
+| **`ecomcine/ecomcine-base/header.php`** | Outputs the document head, body wrapper, and lightweight site header shell. |
+| **`ecomcine/ecomcine-base/footer.php`** | Outputs `wp_footer()` and closes the document. |
+| **`ecomcine/ecomcine-base/template-talent-showcase-full.php`** | A plugin-shipped showcase template used by the immersive showcase flow. |
 | **`tm-store-ui/` + `ecomcine/`** | Own the actual storefront behavior, CSS/JS, template routing, and runtime logic. |
 | **`/includes/`** | **Modular PHP Functions.** Organizes backend functionality into logical sub-directories. <br/>- `vendor-attributes/`: Manages the saving and display of custom talent data (e.g., physical attributes). <br/>- `social-metrics/`: The engine for fetching and displaying social media statistics. <br/>- `vendor-profile/`: The "Profile Completeness" engine and AJAX handlers for inline editing. <br/>- `admin/`: Tools for administrators, including vendor edit logs. |
 

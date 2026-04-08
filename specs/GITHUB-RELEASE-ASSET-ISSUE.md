@@ -49,7 +49,7 @@ The zip file must have this structure for WordPress compatibility:
 ecomcine-0.1.54.zip
 └── ecomcine/
     ├── ecomcine.php          ← Main plugin file (required)
-    ├── bundled-theme/
+    ├── ecomcine-base/
     ├── modules/
     ├── includes/
     ├── mu-plugins/

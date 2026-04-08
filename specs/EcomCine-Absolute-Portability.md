@@ -35,7 +35,7 @@ Items are grouped by dependency **domain**. Each entry states the current coupli
 16. [Booking / Checkout — WooCommerce + WC Bookings](#16-booking--checkout--woocommerce--wc-bookings)
 17. [WooCommerce Product Taxonomy — `product_cat`](#17-woocommerce-product-taxonomy--product_cat)
 18. [Astra Theme Filters](#18-astra-theme-filters)
-19. [Bundled Theme — Canonical Minimal Theme](#19-bundled-theme--canonical-minimal-theme)
+19. [EcomCine Base Theme — Canonical Minimal Theme](#19-ecomcine-base-theme--canonical-minimal-theme)
 20. [Dokan Template Parts — `dokan_get_template_part()`](#20-dokan-template-parts--dokan_get_template_part)
 21. [WooCommerce Thank-You Page Template Override](#21-woocommerce-thank-you-page-template-override)
 22. [Demo Importer — Dokan-specific setup](#22-demo-importer--dokan-specific-setup)
@@ -264,7 +264,7 @@ Items are grouped by dependency **domain**. Each entry states the current coupli
 **Current coupling:** Several templates and PHP files emit `dokan-*` CSS class names directly into rendered HTML (`.dokan-store-wrap`, `#dokan-primary`, `.dokan-table`, `.dokan-btn`, `.dokan-form-group`, etc.). This means our CSS and JS depend on Dokan's classnames being present.
 
 **Affected files:**
-- `ecomcine/bundled-theme/template-talent-showcase-full.php`
+- `ecomcine/ecomcine-base/template-talent-showcase-full.php`
 - `ecomcine/includes/core/adapters/class-commerce-adapter-fluentcart.php`
 - `tm-store-ui/includes/vendor-attributes/vendor-attributes-hooks.php` (the entire vendor-settings form)
 - `tm-media-player/tm-media-player.php`
@@ -365,17 +365,17 @@ Items are grouped by dependency **domain**. Each entry states the current coupli
 
 ## 19. Bundled Theme — Canonical Minimal Theme
 
-**Current canonical model:** `ecomcine-base` (`ecomcine/bundled-theme/`) is the only required theme for standalone operation. It is a minimal shell theme with no parent dependency and exists specifically so EcomCine can own the runtime without fighting third-party theme behavior.
+**Current canonical model:** `ecomcine-base` (`ecomcine/ecomcine-base/`) is the only required theme for standalone operation. It is a minimal shell theme with no parent dependency and exists specifically so EcomCine can own the runtime without fighting third-party theme behavior.
 
 **Affected files:**
-- `ecomcine/bundled-theme/functions.php` — base style handle and essential theme supports
-- `ecomcine/bundled-theme/style.css` — minimal base styling only
-- `ecomcine/bundled-theme/header.php` / `footer.php` — document shell and hook points
+- `ecomcine/ecomcine-base/functions.php` — base style handle and essential theme supports
+- `ecomcine/ecomcine-base/style.css` — minimal base styling only
+- `ecomcine/ecomcine-base/header.php` / `footer.php` — document shell and hook points
 
 **Portable rule:**
 - `ecomcine-base` remains the canonical theme for standalone installs.
 - Third-party themes may still be supported through compatibility layers, but are not required by product design.
-- **Action:** Audit `tm-media-player` and `ecomcine` core to ensure no code path does `locate_template('dokan/store-header.php')` without a fallback to the bundled-theme path. (One instance confirmed in `tm-media-player.php` line 213.)
+- **Action:** Audit `tm-media-player` and `ecomcine` core to ensure no code path does `locate_template('dokan/store-header.php')` without a fallback to the canonical `ecomcine-base` path. (One instance confirmed in `tm-media-player.php` line 213.)
 
 ---
 
@@ -384,7 +384,7 @@ Items are grouped by dependency **domain**. Each entry states the current coupli
 **Current coupling:** Several places call `dokan_get_template_part()` to render Dokan vendor templates (store header, order details). These hard-fail or silently output nothing on bare WP.
 
 **Affected files:**
-- `ecomcine/bundled-theme/template-talent-showcase-full.php` — `dokan_get_template_part('store-header')`
+- `ecomcine/ecomcine-base/template-talent-showcase-full.php` — `dokan_get_template_part('store-header')`
 - `tm-media-player/tm-media-player.php` — `dokan_get_template_part('store-header')`
 - `tm-account-panel/tm-account-panel.php` — `dokan_get_template_part('orders/details', ...)`
 
