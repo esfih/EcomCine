@@ -28,11 +28,11 @@ test.describe('Doctor terminology routing', () => {
   });
 
   test('Doctors listing and Doctor profile routes work', async ({ page, baseURL }) => {
-    const listingResponse = await page.goto(new URL('/doctor/', baseURL || 'http://localhost:8180').toString(), {
+    const listingResponse = await page.goto(new URL('/doctors/', baseURL || 'http://localhost:8180').toString(), {
       waitUntil: 'domcontentloaded',
     });
 
-    expect(listingResponse, 'Expected HTTP response for /doctor/').not.toBeNull();
+    expect(listingResponse, 'Expected HTTP response for /doctors/').not.toBeNull();
     expect(listingResponse?.ok(), `Listing page returned ${listingResponse?.status()}`).toBeTruthy();
 
     await expect(page.locator('#ecomcine-person-listing-filter-form')).toBeVisible();
@@ -43,6 +43,16 @@ test.describe('Doctor terminology routing', () => {
     await expect(profileLink).toBeVisible();
     await profileLink.click();
     await expect(page).toHaveURL(/\/doctor\/[^/]+\/?$/);
+  });
+
+  test('legacy talents listing redirects to canonical doctors listing', async ({ page, baseURL }) => {
+    const response = await page.goto(new URL('/talents/?tm_order=name_az', baseURL || 'http://localhost:8180').toString(), {
+      waitUntil: 'domcontentloaded',
+    });
+
+    expect(response, 'Expected HTTP response for /talents/').not.toBeNull();
+    expect(response?.ok(), `Legacy listing returned ${response?.status()}`).toBeTruthy();
+    await expect(page).toHaveURL(/\/doctors\/\?tm_order=name_az$/);
   });
 
   test('Doctor terms page resolves', async ({ page, baseURL }) => {

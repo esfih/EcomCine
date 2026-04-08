@@ -965,8 +965,19 @@ class EcomCine_Admin_Settings {
 	 * @return string
 	 */
 	private static function person_listing_slug_from_settings( array $settings ): string {
-		$slug = sanitize_title( self::person_label_from_settings( $settings ) );
+		$slug = sanitize_title( self::person_listing_title_from_settings( $settings ) );
 		return '' !== $slug ? $slug : 'talents';
+	}
+
+	/**
+	 * Resolve the public singular profile base from a settings payload.
+	 *
+	 * @param array $settings Settings payload.
+	 * @return string
+	 */
+	private static function person_profile_base_from_settings( array $settings ): string {
+		$slug = sanitize_title( self::person_label_from_settings( $settings ) );
+		return '' !== $slug ? $slug : 'person';
 	}
 
 	/**
@@ -986,7 +997,7 @@ class EcomCine_Admin_Settings {
 	 * @return string
 	 */
 	private static function person_terms_slug_from_settings( array $settings ): string {
-		return self::person_listing_slug_from_settings( $settings ) . '-terms';
+		return self::person_profile_base_from_settings( $settings ) . '-terms';
 	}
 
 	/**
@@ -1018,6 +1029,50 @@ class EcomCine_Admin_Settings {
 	}
 
 	/**
+	 * Locate a shortcode-backed page, preferring the canonical slug when present.
+	 *
+	 * @param string $shortcode Shortcode marker used by the page.
+	 * @param array  $candidate_slugs Candidate slugs to probe.
+	 * @param string $option_key Optional option holding a page ID.
+	 * @return WP_Post|null
+	 */
+	private static function find_shortcode_page( string $shortcode, array $candidate_slugs, string $option_key = '' ) {
+		foreach ( array_values( array_unique( array_filter( $candidate_slugs ) ) ) as $candidate_slug ) {
+			$page = get_page_by_path( (string) $candidate_slug, OBJECT, 'page' );
+			if ( $page instanceof WP_Post && false !== strpos( (string) $page->post_content, $shortcode ) ) {
+				return $page;
+			}
+		}
+
+		if ( '' !== $option_key ) {
+			$page_id = (int) get_option( $option_key, 0 );
+			if ( $page_id > 0 ) {
+				$page = get_post( $page_id );
+				if ( $page instanceof WP_Post && 'page' === $page->post_type && false !== strpos( (string) $page->post_content, $shortcode ) ) {
+					return $page;
+				}
+			}
+		}
+
+		$page_query = get_posts(
+			array(
+				'post_type'      => 'page',
+				'post_status'    => array( 'publish', 'draft', 'private' ),
+				'posts_per_page' => 10,
+				's'              => $shortcode,
+			)
+		);
+
+		foreach ( $page_query as $candidate_page ) {
+			if ( $candidate_page instanceof WP_Post && false !== strpos( (string) $candidate_page->post_content, $shortcode ) ) {
+				return $candidate_page;
+			}
+		}
+
+		return self::find_public_page( $option_key, $candidate_slugs );
+	}
+
+	/**
 	 * Synchronize the public listing page title/slug with current terminology.
 	 *
 	 * @param array $current Existing settings.
@@ -1027,14 +1082,17 @@ class EcomCine_Admin_Settings {
 	private static function sync_person_listing_page( array $current, array $sanitized ): void {
 		$new_title = self::person_listing_title_from_settings( $sanitized );
 		$new_slug  = self::person_listing_slug_from_settings( $sanitized );
-		$page      = self::find_public_page(
-			'ecomcine_listing_page_id',
+		$page      = self::find_shortcode_page(
+			'[ecomcine-stores]',
 			array(
 				$new_slug,
 				self::person_listing_slug_from_settings( $current ),
+				self::person_profile_base_from_settings( $current ),
+				self::person_profile_base_from_settings( $sanitized ),
 				sanitize_title( self::person_listing_title_from_settings( $current ) ),
 				'talents',
-			)
+			),
+			'ecomcine_listing_page_id'
 		);
 
 		$payload = array(
@@ -1077,6 +1135,7 @@ class EcomCine_Admin_Settings {
 			array(
 				$new_slug,
 				self::person_terms_slug_from_settings( $current ),
+				self::person_listing_slug_from_settings( $current ) . '-terms',
 				'talent-terms',
 			)
 		);
@@ -1104,25 +1163,7 @@ class EcomCine_Admin_Settings {
 	 * @return void
 	 */
 	private static function sync_shortcode_page( array $candidate_slugs, string $shortcode, string $new_title, string $new_slug ): void {
-		$page = self::find_public_page( '', array_merge( array( $new_slug ), $candidate_slugs ) );
-
-		if ( ! $page instanceof WP_Post && '' !== $shortcode ) {
-			$page_query = get_posts(
-				array(
-					'post_type'      => 'page',
-					'post_status'    => array( 'publish', 'draft', 'private' ),
-					'posts_per_page' => 10,
-					's'              => $shortcode,
-				)
-			);
-
-			foreach ( $page_query as $candidate_page ) {
-				if ( $candidate_page instanceof WP_Post && false !== strpos( (string) $candidate_page->post_content, $shortcode ) ) {
-					$page = $candidate_page;
-					break;
-				}
-			}
-		}
+		$page = self::find_shortcode_page( $shortcode, array_merge( array( $new_slug ), $candidate_slugs ) );
 
 		$payload = array(
 			'post_title'   => $new_title,
@@ -1155,12 +1196,12 @@ class EcomCine_Admin_Settings {
 	 * @return void
 	 */
 	private static function sync_person_categories_page( array $current, array $sanitized ): void {
-		$new_slug  = self::person_listing_slug_from_settings( $sanitized ) . '-categories';
+		$new_slug  = self::person_profile_base_from_settings( $sanitized ) . '-categories';
 		$new_title = self::person_label_from_settings( $sanitized ) . ' Categories';
 
 		self::sync_shortcode_page(
 			array(
-				self::person_listing_slug_from_settings( $current ) . '-categories',
+				self::person_profile_base_from_settings( $current ) . '-categories',
 				sanitize_title( self::person_listing_title_from_settings( $current ) ) . '-categories',
 				'talents-categories',
 				'categories',
@@ -1179,12 +1220,12 @@ class EcomCine_Admin_Settings {
 	 * @return void
 	 */
 	private static function sync_person_locations_page( array $current, array $sanitized ): void {
-		$new_slug  = self::person_listing_slug_from_settings( $sanitized ) . '-locations';
+		$new_slug  = self::person_profile_base_from_settings( $sanitized ) . '-locations';
 		$new_title = self::person_label_from_settings( $sanitized ) . ' Locations';
 
 		self::sync_shortcode_page(
 			array(
-				self::person_listing_slug_from_settings( $current ) . '-locations',
+				self::person_profile_base_from_settings( $current ) . '-locations',
 				sanitize_title( self::person_listing_title_from_settings( $current ) ) . '-locations',
 				'talents-locations',
 				'locations',
@@ -1208,13 +1249,23 @@ class EcomCine_Admin_Settings {
 		self::sync_person_locations_page( $current, $sanitized );
 		self::sync_person_terms_page( $current, $sanitized );
 
-		$new_profile_base = self::person_listing_slug_from_settings( $sanitized );
-		$current_base     = trim( (string) get_option( 'ecomcine_person_base', self::person_listing_slug_from_settings( $current ) ), '/' );
+		$new_profile_base = self::person_profile_base_from_settings( $sanitized );
+		$current_base     = trim( (string) get_option( 'ecomcine_person_base', self::person_profile_base_from_settings( $current ) ), '/' );
 
 		if ( $current_base !== $new_profile_base ) {
 			update_option( 'ecomcine_person_base', $new_profile_base, false );
 			delete_option( 'ecomcine_person_rewrite_flushed' );
 		}
+	}
+
+	/**
+	 * Synchronize public terminology from currently saved settings.
+	 *
+	 * @return void
+	 */
+	public static function sync_public_terminology_from_saved_settings(): void {
+		$settings = self::get_settings();
+		self::sync_public_terminology( $settings, $settings );
 	}
 
 	/**

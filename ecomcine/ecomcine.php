@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.74
+ * Version: 0.1.75
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.74' );
+define( 'ECOMCINE_VERSION', '0.1.75' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -267,6 +267,13 @@ add_action( 'init', function() {
 		if ( $geo_backfilled > 0 ) {
 			error_log( "[EcomCine 0.1.32] ecomcine_geo_lat/lng backfill: set {$geo_backfilled} vendors." );
 		}
+	}
+
+	// v0.1.75 — Reconcile public person terminology routes so plural listing
+	//            pages and singular profile/terms routes stay in sync on
+	//            upgraded installs without requiring a manual settings resave.
+	if ( version_compare( $stored, '0.1.75', '<' ) && class_exists( 'EcomCine_Admin_Settings', false ) ) {
+		EcomCine_Admin_Settings::sync_public_terminology_from_saved_settings();
 	}
 
 	// v0.1.48 — Migrate Dokan-era vendor meta to EcomCine canonical keys,

@@ -616,8 +616,18 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	 * @return string
 	 */
 	function ecomcine_get_person_directory_slug(): string {
-		$slug = sanitize_title( ecomcine_get_person_public_label_singular() );
+		$slug = sanitize_title( ecomcine_get_person_public_label_plural() );
 		return '' !== $slug ? $slug : 'talents';
+	}
+
+	/**
+	 * Return the canonical singular public base fragment for people.
+	 *
+	 * @return string
+	 */
+	function ecomcine_get_person_public_base_singular(): string {
+		$slug = sanitize_title( ecomcine_get_person_public_label_singular() );
+		return '' !== $slug ? $slug : 'person';
 	}
 
 	/**
@@ -626,7 +636,7 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	 * @return string
 	 */
 	function ecomcine_get_person_profile_base(): string {
-		$default_base = ecomcine_get_person_directory_slug();
+		$default_base = ecomcine_get_person_public_base_singular();
 		$base         = trim( (string) get_option( 'ecomcine_person_base', $default_base ), '/' );
 
 		if ( '' === $base ) {
@@ -642,7 +652,7 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	 * @return string
 	 */
 	function ecomcine_get_person_terms_slug(): string {
-		return ecomcine_get_person_directory_slug() . '-terms';
+		return ecomcine_get_person_public_base_singular() . '-terms';
 	}
 
 	/**
@@ -673,6 +683,7 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 				array_filter(
 					array(
 						ecomcine_get_person_directory_slug(),
+						ecomcine_get_person_public_base_singular(),
 						sanitize_title( ecomcine_get_person_public_label_plural() ),
 						'talents',
 					)
@@ -710,7 +721,7 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	 * @return string
 	 */
 	function ecomcine_get_person_categories_page_slug(): string {
-		return ecomcine_get_person_directory_slug() . '-categories';
+		return ecomcine_get_person_public_base_singular() . '-categories';
 	}
 
 	/**
@@ -771,7 +782,7 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	 * @return string
 	 */
 	function ecomcine_get_person_locations_page_slug(): string {
-		return ecomcine_get_person_directory_slug() . '-locations';
+		return ecomcine_get_person_public_base_singular() . '-locations';
 	}
 
 	/**
@@ -837,6 +848,7 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 				array_filter(
 					array(
 						ecomcine_get_person_terms_slug(),
+						sanitize_title( ecomcine_get_person_public_label_plural() ) . '-terms',
 						'talent-terms',
 					)
 				)
@@ -984,6 +996,42 @@ add_filter( 'redirect_canonical', function( $redirect_url, $requested_url ) {
 
 	return $redirect_url;
 }, 10, 2 );
+
+add_action( 'template_redirect', function() {
+	if ( is_admin() || wp_doing_ajax() ) {
+		return;
+	}
+
+	$listing_page = ecomcine_get_person_listing_page();
+	if ( $listing_page instanceof WP_Post && is_page() ) {
+		$queried_page = get_queried_object();
+		if ( $queried_page instanceof WP_Post && 'page' === $queried_page->post_type && (int) $queried_page->ID !== (int) $listing_page->ID && false !== strpos( (string) $queried_page->post_content, '[ecomcine-stores]' ) ) {
+			$target_url = ecomcine_get_person_listing_url();
+			if ( ! empty( $_GET ) ) {
+				$target_url = add_query_arg( wp_unslash( $_GET ), $target_url );
+			}
+
+			wp_safe_redirect( $target_url, 301, 'EcomCine' );
+			exit;
+		}
+	}
+
+	$requested_path = trim( (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : '', PHP_URL_PATH ), '/' );
+	$legacy_slugs   = array_values( array_unique( array_filter( array( 'talents', ecomcine_get_person_public_base_singular() ) ) ) );
+	$canonical_path = trim( (string) wp_parse_url( ecomcine_get_person_listing_url(), PHP_URL_PATH ), '/' );
+
+	if ( '' === $requested_path || ! in_array( $requested_path, $legacy_slugs, true ) || $requested_path === $canonical_path ) {
+		return;
+	}
+
+	$target_url = ecomcine_get_person_listing_url();
+	if ( ! empty( $_GET ) ) {
+		$target_url = add_query_arg( wp_unslash( $_GET ), $target_url );
+	}
+
+	wp_safe_redirect( $target_url, 301, 'EcomCine' );
+	exit;
+}, 5 );
 
 // Route single person pages to the standalone profile template.
 add_filter( 'template_include', function( string $template ): string {
