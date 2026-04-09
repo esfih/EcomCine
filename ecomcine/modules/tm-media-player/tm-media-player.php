@@ -530,7 +530,7 @@ function tm_render_showcase_shell( $vendor_id, $vendor_ids = array() ) {
 		.tm-showcase-takeover .dokan-store-wrap { width: 100%; margin: 0; }
 		.tm-showcase-takeover #dokan-primary { width: 100%; }
 		.tm-showcase-takeover .dokan-single-store { width: 100%; }
-		.tm-showcase-takeover .profile-frame { min-height: 100vh; }
+		.tm-showcase-takeover .profile-frame { min-height: var(--tm-visible-viewport-height, 100dvh); }
 	</style>
 	<div class="tm-showcase-takeover">
 		<?php if ( function_exists( 'tm_store_ui_render_cinematic_header' ) ) { tm_store_ui_render_cinematic_header( true ); } ?>
@@ -648,6 +648,17 @@ class TM_Media_Player_Assets {
 	/** CDN URLs for Mapbox (loaded on-demand for editable profile pages). */
 	const MAPBOX_VERSION   = '2.15.0';
 	const GEOCODER_VERSION = '4.7.2';
+
+	private static function asset_version( $relative_path, $fallback_version ) {
+		$absolute_path = TM_MEDIA_PLAYER_DIR . ltrim( $relative_path, '/' );
+		$file_mtime    = file_exists( $absolute_path ) ? filemtime( $absolute_path ) : false;
+
+		if ( false === $file_mtime ) {
+			return $fallback_version;
+		}
+
+		return (string) $file_mtime;
+	}
 
 	/**
 	 * Register WordPress hooks.
@@ -770,7 +781,7 @@ class TM_Media_Player_Assets {
 			'tm-player-css',
 			TM_MEDIA_PLAYER_URL . 'assets/css/player.css',
 			array( 'tm-store-ui-responsive', 'tm-store-ui-css' ),
-			self::CSS_VERSION
+			self::asset_version( 'assets/css/player.css', self::CSS_VERSION )
 		);
 	}
 
@@ -779,7 +790,7 @@ class TM_Media_Player_Assets {
 			'tm-player-js',
 			TM_MEDIA_PLAYER_URL . 'assets/js/player.js',
 			$deps,
-			self::JS_VERSION,
+			self::asset_version( 'assets/js/player.js', self::JS_VERSION ),
 			false
 		);
 	}

@@ -48,6 +48,19 @@ if ( ! function_exists( 'tm_store_ui_resolve_vendor_context' ) ) {
 	}
 }
 
+if ( ! function_exists( 'tm_store_ui_asset_version' ) ) {
+	function tm_store_ui_asset_version( string $relative_path, string $fallback_version ): string {
+		$absolute_path = TM_STORE_UI_DIR . ltrim( $relative_path, '/' );
+		$file_mtime    = file_exists( $absolute_path ) ? filemtime( $absolute_path ) : false;
+
+		if ( false === $file_mtime ) {
+			return $fallback_version;
+		}
+
+		return (string) $file_mtime;
+	}
+}
+
 /**
  * Enqueue plugin CSS + JS on the frontend.
  * Priority 15 — same as the original child theme callback, so existing
@@ -68,7 +81,7 @@ function tm_store_ui_enqueue_assets() {
 		'tm-store-ui-responsive',
 		TM_STORE_UI_URL . 'assets/css/responsive-config.css',
 		array( 'ecomcine-base-css' ),
-		TM_STORE_UI_VERSION,
+		tm_store_ui_asset_version( 'assets/css/responsive-config.css', TM_STORE_UI_VERSION ),
 		'all'
 	);
 
@@ -77,7 +90,7 @@ function tm_store_ui_enqueue_assets() {
 		'tm-fontawesome',
 		TM_STORE_UI_URL . 'assets/css/tm-fontawesome.css',
 		array(),
-		TM_STORE_UI_VERSION,
+		tm_store_ui_asset_version( 'assets/css/tm-fontawesome.css', TM_STORE_UI_VERSION ),
 		'all'
 	);
 
@@ -86,7 +99,7 @@ function tm_store_ui_enqueue_assets() {
 		'tm-store-ui-css',
 		TM_STORE_UI_URL . 'assets/css/vendor-store.css',
 		array( 'tm-store-ui-responsive', 'tm-fontawesome' ),
-		TM_STORE_UI_VERSION,
+		tm_store_ui_asset_version( 'assets/css/vendor-store.css', TM_STORE_UI_VERSION ),
 		'all'
 	);
 
@@ -96,7 +109,7 @@ function tm_store_ui_enqueue_assets() {
 		'tm-store-ui-js',
 		TM_STORE_UI_URL . 'assets/js/vendor-store.js',
 		array( 'jquery' ),
-		TM_STORE_UI_VERSION,
+		tm_store_ui_asset_version( 'assets/js/vendor-store.js', TM_STORE_UI_VERSION ),
 		true
 	);
 

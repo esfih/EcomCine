@@ -425,10 +425,12 @@ if ( ! function_exists( 'tm_store_ui_render_cinematic_header' ) ) {
 		'echo'           => false,
 		'depth'          => 1,
 	] );
+	$menu_toggle_icon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="tm-header-toggle-icon" aria-hidden="true" focusable="false"><path d="M0 96C0 78.3 14.3 64 32 64l384 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L32 128C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32l384 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L32 288C14.3 288 0 273.7 0 256zM448 416c0 17.7-14.3 32-32 32L32 448c-17.7 0-32-14.3-32-32s14.3-32 32-32l384 0c17.7 0 32 14.3 32 32z"/></svg>';
 	$account_icon = class_exists( 'TM_Icons' )
 		? TM_Icons::svg( 'user', 'tm-header-account-icon' )
 		: '<i class="fas fa-user tm-header-account-icon" aria-hidden="true"></i>';
 	$header_account_html = '';
+	$header_menu_toggle_html = '';
 
 	if ( $menu_html ) {
 		$home_icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>';
@@ -448,6 +450,9 @@ if ( ! function_exists( 'tm_store_ui_render_cinematic_header' ) ) {
 			1
 		);
 		$menu_html = tm_store_ui_convert_menu_fa_to_svg( $menu_html );
+		$header_menu_toggle_html = '<button class="tm-header-toggle tm-header-icon" type="button" aria-expanded="false" aria-controls="tm-primary-header-nav" aria-label="Toggle navigation">'
+			. $menu_toggle_icon
+			. '</button>';
 	}
 
 	if ( ! is_user_logged_in() ) {
@@ -551,9 +556,10 @@ if ( ! function_exists( 'tm_store_ui_render_cinematic_header' ) ) {
 				<?php echo $header_socials_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			</div>
 			<?php if ( $menu_html ) { ?>
-				<nav class="tm-header-nav" aria-label="Primary"><?php echo $menu_html; ?></nav>
+				<nav id="tm-primary-header-nav" class="tm-header-nav" aria-label="Primary"><?php echo $menu_html; ?></nav>
 			<?php } ?>
 			<div class="tm-header-actions" aria-label="Header actions">
+				<?php echo $header_menu_toggle_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 				<?php echo $header_account_html; ?>
 			</div>
 		</div>

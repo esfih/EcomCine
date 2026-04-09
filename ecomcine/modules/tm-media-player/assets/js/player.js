@@ -658,8 +658,17 @@ jQuery(document).ready(function($) {
 		$(document.body).toggleClass("tm-talent-panel-open", Boolean((isMobileLandscape || isMobilePortrait) && isExpanded));
 	}
 
+	function shouldKeepTalentPanelCollapsedOnHandheld() {
+		return isHandheldViewport();
+	}
+
 
 	function setPanelHoldUntil(holdMs) {
+		if (shouldKeepTalentPanelCollapsedOnHandheld()) {
+			$(".profile-info-head").addClass("is-collapsed");
+			updateTalentPanelOpenState();
+			return;
+		}
 		if (!holdMs || holdMs <= 0) return;
 		panelHoldUntil = Date.now() + holdMs;
 		if (panelHoldTimer) {
@@ -2058,11 +2067,13 @@ jQuery(document).ready(function($) {
 			var $overlay = $(".tm-showcase-play-overlay");
 			var isMobile = $(document.body).hasClass("tm-mobile-portrait")
 				|| $(document.body).hasClass("tm-mobile-landscape");
-			if ($overlay.length && !$overlay.hasClass("is-hidden") && !(isMobile && userPausedMedia)) return;
+			var allowOverlayRemote = isMobile && (userPausedMedia || $(document.body).hasClass("tm-mobile-landscape"));
+			if ($overlay.length && !$overlay.hasClass("is-hidden") && !allowOverlayRemote) return;
 			$heroRemote.addClass("is-visible");
 		} else {
 			$heroRemote.removeClass("is-visible");
 		}
+		updateMobileLandscapePlaybackFocusState();
 	}
 
 	function showImage(active, src) {
@@ -2330,6 +2341,16 @@ jQuery(document).ready(function($) {
 		$(".tm-unmute-strip").addClass("is-hidden");
 	}
 
+	function updateMobileLandscapePlaybackFocusState() {
+		var $body = $(document.body);
+		var isLandscape = $body.hasClass("tm-mobile-landscape");
+		var overlayVisible = $(".tm-showcase-play-overlay").length > 0 && !$(".tm-showcase-play-overlay").hasClass("is-hidden");
+		var remoteVisible = $(".hero-remote").hasClass("is-visible") || $(".hero-remote").hasClass("is-audio-mode");
+		var blockedByOtherFocus = $body.hasClass("tm-talent-panel-open") || $body.hasClass("tm-mobile-drawer-open");
+		var shouldFocus = isLandscape && !blockedByOtherFocus && overlayVisible && remoteVisible;
+		$body.toggleClass("tm-mobile-landscape-play-focus", shouldFocus);
+	}
+
 	function syncPlayOverlay() {
 		var $overlay = $(".tm-showcase-play-overlay");
 		if (!$overlay.length) return;
@@ -2347,6 +2368,7 @@ jQuery(document).ready(function($) {
 			// Don't auto-show hero-remote - it should only appear on hover
 			console.log('[TM PLAYER DEBUG] syncPlayOverlay | Video PLAYING - Hide overlay, remote on hover only');
 		}
+		updateMobileLandscapePlaybackFocusState();
 	}
 
 	function disableBackgroundMedia() {
@@ -3419,7 +3441,7 @@ jQuery(document).ready(function($) {
 			if (transitionState.collapsedName) {
 				$(".collapsed-tab-name").text(transitionState.collapsedName);
 			}
-			if (!transitionState.wasCollapsed) {
+			if (!transitionState.wasCollapsed && !shouldKeepTalentPanelCollapsedOnHandheld()) {
 				$(".profile-info-head").removeClass("is-collapsed");
 				updateTalentPanelOpenState();
 			}
@@ -3540,7 +3562,7 @@ jQuery(document).ready(function($) {
 				setPanelHoldUntil(options.holdAutoplayMs
 					? (options.holdAutoplayMs + options.expandDelayMs)
 					: options.expandDelayMs);
-			} else if (!transitionState.wasCollapsed && !options.keepCollapsed) {
+			} else if (!transitionState.wasCollapsed && !options.keepCollapsed && !shouldKeepTalentPanelCollapsedOnHandheld()) {
 				$(".profile-info-head").removeClass("is-collapsed");
 				updateTalentPanelOpenState();
 			} else if (!transitionState.wasCollapsed && options.expandDelayMs) {
@@ -3897,6 +3919,13 @@ jQuery(document).ready(function($) {
 		closeResolutionMenu();
 	});
 
+	$(document).on("click", function(e) {
+		if (!$(document.body).hasClass("tm-mobile-landscape-play-focus")) return;
+		if ($(e.target).closest(".hero-remote, .tm-showcase-play-overlay, .hero-global-controls").length) return;
+		toggleHeroRemote(false);
+		updateMobileLandscapePlaybackFocusState();
+	});
+
 	// Global keyboard event listeners
 	$(document).on("keydown", function(e) {
 		// Hardware keyboard shortcuts must remain active regardless of responsive
@@ -3985,11 +4014,41 @@ jQuery(document).ready(function($) {
 	initStorePageControls();
 
 	// Mobile cinematic header menu toggle
+	function closeHeaderMenu() {
+		var $header = $(".tm-cinematic-header").first();
+		if (!$header.length) return;
+		$header.removeClass("is-menu-open");
+		$(".tm-header-toggle").attr("aria-expanded", "false");
+	}
+
 	$(document).on("click", ".tm-header-toggle", function() {
 		var $header = $(".tm-cinematic-header").first();
 		var isOpen = $header.hasClass("is-menu-open");
 		$header.toggleClass("is-menu-open", !isOpen);
 		$(this).attr("aria-expanded", (!isOpen).toString());
+	});
+
+	$(document).on("click", ".tm-header-nav a", function() {
+		if (isHandheldViewport()) {
+			closeHeaderMenu();
+		}
+	});
+
+	$(document).on("click", function(event) {
+		var $header = $(".tm-cinematic-header").first();
+		if (!$header.length || !$header.hasClass("is-menu-open")) {
+			return;
+		}
+		if ($(event.target).closest(".tm-cinematic-header").length) {
+			return;
+		}
+		closeHeaderMenu();
+	});
+
+	$(window).on("resize.tm-header-toggle", function() {
+		if (!isHandheldViewport()) {
+			closeHeaderMenu();
+		}
 	});
 
 	// ==========================================

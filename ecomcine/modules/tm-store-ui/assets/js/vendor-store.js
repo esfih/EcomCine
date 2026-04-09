@@ -845,6 +845,16 @@ jQuery(document).ready(function($) {
 			localStorage.setItem(key, value ? "true" : "false");
 		} catch (e) {}
 	}
+	function syncViewportMetrics() {
+		var visualViewport = window.visualViewport;
+		var viewportHeight = visualViewport ? visualViewport.height : window.innerHeight;
+		var viewportWidth = visualViewport ? visualViewport.width : window.innerWidth;
+		var browserOffset = Math.max(0, window.innerHeight - viewportHeight);
+
+		document.documentElement.style.setProperty('--tm-visible-viewport-height', viewportHeight + 'px');
+		document.documentElement.style.setProperty('--tm-visible-viewport-width', viewportWidth + 'px');
+		document.documentElement.style.setProperty('--tm-browser-ui-offset', browserOffset + 'px');
+	}
 
 
 	// ==========================================
@@ -912,6 +922,38 @@ jQuery(document).ready(function($) {
 				}
 			}
 
+			function closeTalentPanel() {
+				var $panel = $(".profile-info-head");
+				if (!$panel.length || $panel.hasClass("is-collapsed")) {
+					return false;
+				}
+				clearCollapseTimer();
+				$panel.addClass("is-collapsed");
+				writeStoredBool(STORAGE_KEYS.collapsed, true);
+				infoPanelOpen = false;
+				updateInteractionPause();
+				updateMobileLandscapePanel();
+				updateMobilePortraitHeader();
+				return true;
+			}
+
+			function closeDrawerPanel() {
+				if (!$(".attribute-slide-section.slide-up").length && !$(".bottom-tab-item.active-panel").length) {
+					return false;
+				}
+				$(".attribute-slide-section").removeClass("slide-up");
+				$(".bottom-tab-item").removeClass("active-panel");
+				currentPanel = null;
+				drawerPanelOpen = false;
+				updateInteractionPause();
+				updateMobileDrawerFocusState();
+				return true;
+			}
+
+			function isDismissExemptTarget($target) {
+				return $target.closest("a, button, input, select, textarea, label, summary, [role='button'], .attribute-edit, .help-icon-wrapper, .editable-field, .field-edit, .store-categories-wrapper, .tm-field-editor-modal, .tm-field-editor-backdrop, .tm-location-modal__dialog, .tm-location-modal__backdrop, .tm-account-modal, .help-tooltip, .mapboxgl-map, .mapboxgl-canvas-container, .mapboxgl-ctrl, .vendor-cta-btn, .contact-channel-icon, .inline-mapbox-panel").length > 0;
+			}
+
 		// Profile panel collapse/expand on click
 		$(".profile-info-head, .collapsed-tab-label").on("click", function(e) {
 			if ($(".profile-info-head").hasClass("is-editing")) {
@@ -944,7 +986,7 @@ jQuery(document).ready(function($) {
 			} catch (e) {
 				storedCollapsed = null;
 			}
-			var isCollapsed = storedCollapsed === null ? false : storedCollapsed === "true";
+			var isCollapsed = isMobile ? true : (storedCollapsed === null ? false : storedCollapsed === "true");
 			if (!isMobile) {
 				isCollapsed = true;
 				clearCollapseTimer();
@@ -956,14 +998,8 @@ jQuery(document).ready(function($) {
 			}
 		$(".profile-info-head").toggleClass("is-collapsed", isCollapsed);
 
-			if (isMobile && storedCollapsed === null) {
-				collapseTimer = setTimeout(function() {
-					if (!$(".profile-info-head").hasClass("is-editing")) {
-						$(".profile-info-head").addClass("is-collapsed");
-						writeStoredBool(STORAGE_KEYS.collapsed, true);
-					}
-					collapseTimer = null;
-				}, 3000);
+			if (isMobile) {
+				writeStoredBool(STORAGE_KEYS.collapsed, true);
 			}
 
 		// Bottom tabs click-based slide-up interaction
@@ -1004,7 +1040,7 @@ jQuery(document).ready(function($) {
 		}
 
 		function updateMobilePortraitHeader() {
-			var maxPortraitWidth = getBreakpointValue("--bp-phone-portrait-max", 480);
+			var maxPortraitWidth = getBreakpointValue("--bp-mobile", 600);
 			var isPortrait = window.matchMedia ? window.matchMedia("(orientation: portrait)").matches : window.innerHeight >= window.innerWidth;
 			var isMobilePortrait = window.innerWidth <= maxPortraitWidth && isPortrait;
 			$(document.body).toggleClass("tm-mobile-portrait", isMobilePortrait);
@@ -1014,18 +1050,41 @@ jQuery(document).ready(function($) {
 		function updateMobileTalentPanelState(isMobileLandscape, isMobilePortrait) {
 			var isExpanded = !$(".profile-info-head").hasClass("is-collapsed");
 			$(document.body).toggleClass("tm-talent-panel-open", Boolean((isMobileLandscape || isMobilePortrait) && isExpanded));
+			updateMobileDrawerFocusState();
+		}
+
+		function updateMobileDrawerFocusState() {
+			var isMobile = $(document.body).hasClass("tm-mobile-landscape") || $(document.body).hasClass("tm-mobile-portrait");
+			var drawerOpen = isMobile && $(".attribute-slide-section.slide-up").length > 0;
+			$(document.body).toggleClass("tm-mobile-drawer-open", drawerOpen);
 		}
 
 		setDrawerTabHeight();
+		syncViewportMetrics();
 		updateBottomTabCompact();
 		updateMobileLandscapePanel();
 		updateMobilePortraitHeader();
+		updateMobileDrawerFocusState();
 		$(window).on("resize", function() {
+			setDrawerTabHeight();
+			syncViewportMetrics();
+			updateBottomTabCompact();
+			updateMobileLandscapePanel();
+			updateMobilePortraitHeader();
+			updateMobileDrawerFocusState();
+		});
+		$(window).on("orientationchange", function() {
+			syncViewportMetrics();
 			setDrawerTabHeight();
 			updateBottomTabCompact();
 			updateMobileLandscapePanel();
 			updateMobilePortraitHeader();
+			updateMobileDrawerFocusState();
 		});
+		if (window.visualViewport) {
+			window.visualViewport.addEventListener('resize', syncViewportMetrics);
+			window.visualViewport.addEventListener('scroll', syncViewportMetrics);
+		}
 		bindFullscreenListeners();
 		updateFullscreenButton();
 		updateTheatreButton();
@@ -1055,6 +1114,7 @@ jQuery(document).ready(function($) {
 				currentPanel = null;
 				drawerPanelOpen = false;
 				updateInteractionPause();
+				updateMobileDrawerFocusState();
 				return;
 			}
 
@@ -1064,20 +1124,32 @@ jQuery(document).ready(function($) {
 			currentPanel = targetSection;
 			drawerPanelOpen = true;
 			updateInteractionPause();
+			updateMobileDrawerFocusState();
+		});
+
+		$(document).off("click.tm-bottom-panel-inside").on("click.tm-bottom-panel-inside", ".attribute-slide-section.slide-up", function(e) {
+			var $target = $(e.target);
+			if (isDismissExemptTarget($target)) {
+				return;
+			}
+			if (closeDrawerPanel()) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
 		});
 
 		// Close panel when clicking outside (optional enhancement)
 		$(document).on("click", function(e) {
+			var $target = $(e.target);
 			// Don't close if clicking inside a panel or on a tab
-			if ($(e.target).closest(".tm-field-editor-modal, .tm-field-editor-backdrop, .tm-location-modal__dialog, .tm-location-modal__backdrop").length) {
+			if ($target.closest(".tm-field-editor-modal, .tm-field-editor-backdrop, .tm-location-modal__dialog, .tm-location-modal__backdrop").length) {
 				return;
 			}
-			if ($(e.target).closest(".attribute-slide-section, .bottom-tab-item").length === 0) {
-				$(".attribute-slide-section").removeClass("slide-up");
-				$(".bottom-tab-item").removeClass("active-panel");
-				currentPanel = null;
-				drawerPanelOpen = false;
-				updateInteractionPause();
+			if ($target.closest(".attribute-slide-section, .bottom-tab-item").length === 0) {
+				closeDrawerPanel();
+			}
+			if ($target.closest(".profile-info-head, .collapsed-tab-label").length === 0 && !isDismissExemptTarget($target)) {
+				closeTalentPanel();
 			}
 		});
 
