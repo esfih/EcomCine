@@ -2079,13 +2079,27 @@ function tm_handle_social_profile_update( $meta_id, $user_id, $meta_key, $meta_v
  */
 add_action( 'wp_ajax_tm_social_manual_fetch', function() {
 	check_ajax_referer( 'tm_social_fetch', 'nonce' );
-	$user_id = get_current_user_id();
-	if ( ! $user_id ) {
+	$current_user_id = get_current_user_id();
+	if ( ! $current_user_id ) {
 		wp_send_json_error( [ 'message' => 'Not authenticated.' ], 403 );
 	}
-	if ( function_exists( 'dokan_is_user_seller' ) && ! dokan_is_user_seller( $user_id ) ) {
+
+	// Support admin fetching on behalf of any vendor by passing vendor_id in the request.
+	// Falls back to current user for vendor self-service.
+	$vendor_id = isset( $_POST['vendor_id'] ) ? absint( $_POST['vendor_id'] ) : 0;
+	if ( ! $vendor_id ) {
+		$vendor_id = $current_user_id;
+	}
+
+	// Allow: profile owner, WP admin, or user with edit_users capability.
+	$can_fetch = ( $current_user_id === $vendor_id )
+		|| ( function_exists( 'tm_can_edit_vendor_profile' ) && tm_can_edit_vendor_profile( $vendor_id, $current_user_id ) );
+	if ( ! $can_fetch ) {
 		wp_send_json_error( [ 'message' => 'Not authorized.' ], 403 );
 	}
+
+	// Reuse $user_id as the target vendor for all downstream calls.
+	$user_id = $vendor_id;
 
 	$platform = isset( $_POST['platform'] ) ? sanitize_text_field( wp_unslash( $_POST['platform'] ) ) : '';
 	$url = isset( $_POST['url'] ) ? esc_url_raw( wp_unslash( $_POST['url'] ) ) : '';
@@ -3118,7 +3132,8 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 					$linkedin_fetching = $linkedin_state['fetching'];
 					$linkedin_error = $linkedin_state['error'];
 
-					function render_social_url_field( $platform, $icon_class, $current_url, $status_text = '' ) {
+					$_can_fetch_social = $is_owner || current_user_can( 'manage_options' ) || current_user_can( 'edit_users' );
+					function render_social_url_field( $platform, $icon_class, $current_url, $status_text = '', $show_fetch_btn = false, $fetch_vendor_id = 0 ) {
 						$field_name = 'social_' . strtolower( $platform );
 						$help_text = sprintf(
 							'Enter your full %s profile URL (e.g., https://%s.com/yourprofile)',
@@ -3134,29 +3149,40 @@ add_action( 'dokan_store_profile_bottom_drawer', function( $store_user, $store_i
 									<span class="social-url-status">(<?php echo esc_html( $status_text ); ?>)</span>
 								<?php endif; ?>
 							</label>
-							<input
-								type="url"
-								class="social-url-input"
-								data-field="<?php echo esc_attr( $field_name ); ?>"
-								data-original="<?php echo esc_attr( (string) $current_url ); ?>"
-								value="<?php echo esc_attr( (string) $current_url ); ?>"
-								placeholder="https://<?php echo esc_attr( strtolower( $platform ) ); ?>.com/yourprofile"
-							/>
+							<div class="social-url-input-row">
+								<input
+									type="url"
+									class="social-url-input"
+									data-field="<?php echo esc_attr( $field_name ); ?>"
+									data-original="<?php echo esc_attr( (string) $current_url ); ?>"
+									value="<?php echo esc_attr( (string) $current_url ); ?>"
+									placeholder="https://<?php echo esc_attr( strtolower( $platform ) ); ?>.com/yourprofile"
+								/>
+								<?php if ( $show_fetch_btn ) : ?>
+									<button
+										type="button"
+										class="tm-social-section-fetch-btn"
+										data-platform="<?php echo esc_attr( strtolower( $platform ) ); ?>"
+										data-vendor-id="<?php echo esc_attr( (string) $fetch_vendor_id ); ?>"
+										title="Fetch latest metrics from Bright Data"
+									>Fetch</button>
+								<?php endif; ?>
+							</div>
 						</div>
 						<?php
 					}
 					
 					if ( $is_social_metric_enabled( 'youtube' ) ) {
-						render_social_url_field( $youtube_label, 'fa-youtube', $youtube_url, $youtube_status );
+						render_social_url_field( $youtube_label, 'fa-youtube', $youtube_url, $youtube_status, $_can_fetch_social, $vendor_id );
 					}
 					if ( $is_social_metric_enabled( 'instagram' ) ) {
-						render_social_url_field( $instagram_label, 'fa-instagram', $instagram_url, $instagram_status );
+						render_social_url_field( $instagram_label, 'fa-instagram', $instagram_url, $instagram_status, $_can_fetch_social, $vendor_id );
 					}
 					if ( $is_social_metric_enabled( 'facebook' ) ) {
-						render_social_url_field( $facebook_label, 'fa-facebook-square', $facebook_url, $facebook_status );
+						render_social_url_field( $facebook_label, 'fa-facebook-square', $facebook_url, $facebook_status, $_can_fetch_social, $vendor_id );
 					}
 					if ( $is_social_metric_enabled( 'linkedin' ) ) {
-						render_social_url_field( $linkedin_label, 'fa-linkedin', $linkedin_url, $linkedin_status );
+						render_social_url_field( $linkedin_label, 'fa-linkedin', $linkedin_url, $linkedin_status, $_can_fetch_social, $vendor_id );
 					}
 					?>
 				</div>

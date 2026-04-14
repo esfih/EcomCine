@@ -2289,6 +2289,62 @@ jQuery(document).ready(function($) {
 		saveFieldToServer($wrapper, fieldName, normalizedValue, normalizedValue);
 	});
 
+	// Fetch button inside #social-section — visible to owner and WP admins.
+	$(document).on('click', '.tm-social-section-fetch-btn', function() {
+		var $btn = $(this);
+		if ($btn.prop('disabled')) return;
+		var platform = $btn.data('platform') || '';
+		var vendorId = $btn.data('vendorId') || 0;
+		if (!platform) return;
+
+		// Read the URL from the accompanying input inside the same field wrapper.
+		var $field = $btn.closest('.social-url-field');
+		var url = ($field.find('.social-url-input').val() || '').trim();
+		if (!url) {
+			showNotification('Enter a URL first', 'error');
+			return;
+		}
+
+		var nonce = (window.vendorStoreUiData && window.vendorStoreUiData.nonce) ? window.vendorStoreUiData.nonce : '';
+		var ajaxUrl = (window.vendorStoreUiData && window.vendorStoreUiData.ajaxurl) ? window.vendorStoreUiData.ajaxurl : '/wp-admin/admin-ajax.php';
+
+		$btn.prop('disabled', true).text('Fetching…');
+		updateSocialStatusLabel(platform, 'fetching data… may take few minutes');
+		renderSocialStats(platform, { fetching: true, error: false, has_url: true, metrics: {} });
+
+		var bodyData = new URLSearchParams();
+		bodyData.append('action', 'tm_social_manual_fetch');
+		bodyData.append('nonce', nonce);
+		bodyData.append('platform', platform);
+		bodyData.append('url', url);
+		if (vendorId) {
+			bodyData.append('vendor_id', vendorId);
+		}
+
+		fetch(ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+			body: bodyData.toString()
+		}).then(function(resp) { return resp.json(); }).then(function(data) {
+			if (data && data.success) {
+				showNotification('Fetch triggered for ' + getPlatformDisplayName(platform), 'success');
+				startSocialPolling(platform);
+			} else {
+				var msg = (data && data.data && data.data.message) ? data.data.message : 'Fetch failed.';
+				showNotification(msg, 'error');
+				updateSocialStatusLabel(platform, 'fetch failed: ' + msg);
+				renderSocialStats(platform, { fetching: false, error: true, has_url: true, metrics: {} });
+			}
+		}).catch(function() {
+			showNotification('Network error — fetch failed.', 'error');
+			updateSocialStatusLabel(platform, 'fetch failed: network error');
+			renderSocialStats(platform, { fetching: false, error: true, has_url: true, metrics: {} });
+		}).finally(function() {
+			$btn.prop('disabled', false).text('Fetch');
+		});
+	});
+
 	function openLocationModal($wrapper) {
 		var $modal = $('.tm-location-modal');
 		if (!$modal.length) return;
