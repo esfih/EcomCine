@@ -660,7 +660,6 @@ jQuery(document).ready(function($) {
 			})
 			.on("error.tmhero", function() {
 				clearAdvanceTimer();
-				showLoadingIndicator(false);
 				state.isPlaying = false;
 				syncRemotePlaying(false);
 			})
@@ -2342,25 +2341,8 @@ jQuery(document).ready(function($) {
 	}
 
 	// OPTIMIZATION: Loading indicator for slow/unstable connections
-	function showLoadingIndicator(show, percent) {
-		if (!show) {
-			if (loadingIndicator) {
-				loadingIndicator.remove();
-				loadingIndicator = null;
-			}
-			return;
-		}
-		
-		if (!loadingIndicator) {
-			loadingIndicator = $('<div class="tm-loading-indicator"><div class="tm-loading-spinner"></div></div>');
-			$('.profile-banner-video').first().parent().append(loadingIndicator);
-		}
-	}
-	
-	function updateLoadingIndicator(percent) {
-		showLoadingIndicator(true, percent);
-	}
-
+	function showLoadingIndicator() {}
+	function updateLoadingIndicator() {}
 	function unbindSlowLoadingEvents(videoEl) {
 		if (!videoEl || !videoEl.__tmSlowLoadingHandlers) return;
 		videoEl.removeEventListener('progress', videoEl.__tmSlowLoadingHandlers.progress);
@@ -2758,10 +2740,7 @@ jQuery(document).ready(function($) {
 					$(heroVideoActive).attr("preload", preloadValue);
 					
 					// Show loading indicator for slow connections
-					if (isSlowConnection) {
-						showLoadingIndicator(true);
-					}
-					
+				// (spinner removed — causes false positives when video is already playing)
 					heroVideoActive.loop = false;
 					heroVideoActive.removeAttribute("loop");
 					if (item.poster) { $(heroVideoActive).attr("poster", item.poster); }
@@ -2780,11 +2759,7 @@ jQuery(document).ready(function($) {
 						bindSlowLoadingEvents(heroVideoActive);
 					} else {
 						unbindSlowLoadingEvents(heroVideoActive);
-						showLoadingIndicator(false);
-					}
-					
-					updateMeta(item);
-					applyLoopMode(item);
+
 					if (canAutoplay()) {
 						attemptPlay(heroVideoActive, allowMuteFallbackForPlayback());
 						armAdvanceTimer(item);
