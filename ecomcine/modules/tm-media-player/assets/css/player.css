@@ -3412,6 +3412,39 @@ body.tm-mobile-portrait .profile-info-head.is-collapsed {
 	/* Social icons: no extra tweaks needed on touch devices */
 }
 
+/* OPTIMIZATION: Loading indicator for slow/unstable connections */
+.tm-loading-indicator {
+position: absolute !important;
+top: 50% !important;
+left: 50% !important;
+transform: translate(-50%, -50%) !important;
+display: flex !important;
+flex-direction: column !important;
+align-items: center !important;
+justify-content: center !important;
+gap: 12px !important;
+z-index: 1000 !important;
+pointer-events: none !important;
+color: #ffffff !important;
+text-align: center !important;
+font-size: 14px !important;
+font-weight: 500 !important;
+text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+}
+
+.tm-loading-spinner {
+width: 48px !important;
+height: 48px !important;
+border: 4px solid rgba(255, 255, 255, 0.3) !important;
+border-top-color: #ffffff !important;
+border-radius: 50% !important;
+animation: tm-spin 1s linear infinite !important;
+}
+
+@keyframes tm-spin {
+to { transform: rotate(360deg); }
+}
+
 /* ── YouTube player container ───────────────────────────────────────────── */
 .tm-yt-player {
 width: 100% !important;
