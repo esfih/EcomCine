@@ -3379,6 +3379,48 @@ background: #000;
 	left: 0 !important;
 }
 
+/* Cinematic overlay — sits above the iframe, blocks YouTube native UI interaction.
+ * Gradient fades at top (hides YouTube title bar) and bottom (hides end-cards/logo).
+ * pointer-events:auto is intentional: the overlay captures all taps so users
+ * interact only with our own player controls (hero-remote), not YouTube's. */
+.tm-yt-overlay {
+	position: absolute !important;
+	inset: 0 !important;
+	z-index: 15 !important;
+	cursor: pointer;
+	background: transparent;
+}
+
+/* Top gradient — visually masks the YouTube video title that appears at the top */
+.tm-yt-overlay::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 80px;
+	background: linear-gradient(to bottom,
+		rgba(0, 0, 0, 0.88) 0%,
+		rgba(0, 0, 0, 0.55) 50%,
+		transparent 100%);
+	pointer-events: none;
+}
+
+/* Bottom gradient — visually masks YouTube end-cards and any residual branding */
+.tm-yt-overlay::after {
+	content: "";
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 80px;
+	background: linear-gradient(to top,
+		rgba(0, 0, 0, 0.88) 0%,
+		rgba(0, 0, 0, 0.55) 50%,
+		transparent 100%);
+	pointer-events: none;
+}
+
 /* ── YouTube playlist editor overlay ───────────────────────────────────── */
 .tm-yt-editor-overlay {
 position: fixed;

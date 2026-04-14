@@ -2176,13 +2176,25 @@ jQuery(document).ready(function($) {
 		var w = $container[0].offsetWidth  || $(".profile-frame")[0].offsetWidth  || window.innerWidth;
 		var h = $container[0].offsetHeight || $(".profile-frame")[0].offsetHeight || window.innerHeight;
 		$container.css({ visibility: "" });
-		// Recreate a fresh inner div so YT.Player can replace it.
-		$container.html('<div id="tm-yt-player-inner"></div>');
+		// Recreate a fresh inner div + cinematic overlay so YT.Player can replace
+		// the inner div while the overlay stays as a sibling above the iframe.
+		// The overlay intercepts all pointer interaction with YouTube's native UI
+		// (title bar, end-cards, logo) — playback is driven via the JS API only.
+		$container.html('<div id="tm-yt-player-inner"></div><div class="tm-yt-overlay" aria-hidden="true"></div>');
 		ytPlayer = new YT.Player("tm-yt-player-inner", {
 			videoId: videoId,
 			width:  w,
 			height: h,
-			playerVars: { autoplay: 1, controls: 1, rel: 0, modestbranding: 1, playsinline: 1 },
+			playerVars: {
+				autoplay:       1,
+				controls:       0,   // hide YouTube's native control bar entirely
+				disablekb:      1,   // our player handles keyboard
+				fs:             0,   // our player handles fullscreen
+				iv_load_policy: 3,   // hide video annotations / info cards
+				rel:            0,   // related videos from same channel only
+				playsinline:    1,
+				origin:         window.location.origin
+			},
 			events: {
 				onReady: function(e) {
 					// Force the iframe to fill its container regardless of the pixel size
@@ -4859,6 +4871,18 @@ jQuery(document).ready(function($) {
 		e.preventDefault();
 		e.stopPropagation();
 		openYoutubePlaylistEditor();
+	});
+
+	// Cinematic overlay tap/click on YouTube player — toggle play/pause.
+	// The overlay covers the entire iframe and prevents any interaction with
+	// YouTube's native UI (title, end-cards, logo). All playback is JS-API-driven.
+	$(document).on('click', '.tm-yt-overlay', function(e) {
+		e.stopPropagation();
+		if (state.isPlaying) {
+			pauseCurrent(true);
+		} else {
+			playCurrent();
+		}
 	});
 	
 	// Store Name & Location Edit - Show/Hide Edit Form OR Open Modal
