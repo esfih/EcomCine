@@ -2128,7 +2128,21 @@ jQuery(document).ready(function($) {
 
 	// ── YouTube IFrame API helpers ────────────────────────────────────────────
 	function showYTPlayer(active) {
-		$("#tm-yt-player").css("display", active ? "block" : "none");
+		var $yt = $("#tm-yt-player");
+		$yt.css("display", active ? "block" : "none");
+		if (active) {
+			// Re-enforce iframe dimensions each time we show the player — the YT API
+			// may have initially created the iframe at 640×390 (default) if the
+			// container was hidden at construction time.
+			var iframe = $yt.find("iframe").first()[0];
+			if (iframe) {
+				iframe.style.width    = "100%";
+				iframe.style.height   = "100%";
+				iframe.style.position = "absolute";
+				iframe.style.top      = "0";
+				iframe.style.left     = "0";
+			}
+		}
 	}
 
 	function extractYoutubeId(url) {
@@ -2155,13 +2169,32 @@ jQuery(document).ready(function($) {
 		// YT.Player replaces the target element — recreate the div each time if needed.
 		var $container = $("#tm-yt-player");
 		if (!$container.length) { return; }
+		// Make visible briefly so the browser resolves layout dimensions before YT.Player
+		// reads the element size — otherwise it defaults to 640×390.
+		$container.css({ display: "block", visibility: "hidden" });
+		// Grab the resolved pixel dimensions from the containing block.
+		var w = $container[0].offsetWidth  || $(".profile-frame")[0].offsetWidth  || window.innerWidth;
+		var h = $container[0].offsetHeight || $(".profile-frame")[0].offsetHeight || window.innerHeight;
+		$container.css({ visibility: "" });
 		// Recreate a fresh inner div so YT.Player can replace it.
 		$container.html('<div id="tm-yt-player-inner"></div>');
 		ytPlayer = new YT.Player("tm-yt-player-inner", {
 			videoId: videoId,
+			width:  w,
+			height: h,
 			playerVars: { autoplay: 1, controls: 1, rel: 0, modestbranding: 1, playsinline: 1 },
 			events: {
 				onReady: function(e) {
+					// Force the iframe to fill its container regardless of the pixel size
+					// YT.Player set on the element — CSS then stretches it to 100%×100%.
+					var iframe = $container.find("iframe").first()[0];
+					if (iframe) {
+						iframe.style.width  = "100%";
+						iframe.style.height = "100%";
+						iframe.style.position = "absolute";
+						iframe.style.top  = "0";
+						iframe.style.left = "0";
+					}
 					if (!state.muted) { try { e.target.unMute(); } catch(ex) {} }
 					try { e.target.playVideo(); } catch(ex) {}
 				},

@@ -3365,8 +3365,18 @@ position: absolute !important;
 top: 0 !important;
 left: 0 !important;
 	z-index: 10;
-border: none;
-display: block;
+background: #000;
+}
+
+.tm-yt-player iframe,
+.tm-yt-player #tm-yt-player-inner {
+	width: 100% !important;
+	height: 100% !important;
+	border: none !important;
+	display: block !important;
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
 }
 
 /* ── YouTube playlist editor overlay ───────────────────────────────────── */
