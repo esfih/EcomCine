@@ -2352,15 +2352,8 @@ jQuery(document).ready(function($) {
 		}
 		
 		if (!loadingIndicator) {
-			loadingIndicator = $('<div class="tm-loading-indicator"><div class="tm-loading-spinner"></div><div class="tm-loading-text">Loading media...</div></div>');
+			loadingIndicator = $('<div class="tm-loading-indicator"><div class="tm-loading-spinner"></div></div>');
 			$('.profile-banner-video').first().parent().append(loadingIndicator);
-		}
-		
-		if (typeof percent === 'number') {
-			var $loadingText = loadingIndicator.find('.tm-loading-text');
-			if ($loadingText.length) {
-				$loadingText.text('Loading media... ' + Math.round(percent) + '%');
-			}
 		}
 	}
 	

@@ -3445,12 +3445,6 @@ animation: tm-spin 1s linear infinite !important;
 to { transform: rotate(360deg); }
 }
 
-.tm-loading-text {
-font-size: 14px !important;
-font-weight: 500 !important;
-opacity: 0.9 !important;
-}
-
 /* ── YouTube player container ───────────────────────────────────────────── */
 .tm-yt-player {
 width: 100% !important;
