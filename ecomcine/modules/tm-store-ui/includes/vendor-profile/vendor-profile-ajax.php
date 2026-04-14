@@ -1139,6 +1139,50 @@ add_action( 'wp_ajax_vendor_update_media_playlist', function() {
 } );
 
 /**
+ * AJAX Handler: Save YouTube URL Playlist
+ * Stores an ordered list of YouTube URLs as JSON in tm_youtube_urls user meta.
+ */
+add_action( 'wp_ajax_vendor_save_youtube_urls', function() {
+	check_ajax_referer( 'vendor_inline_edit', 'nonce' );
+
+	$user_id = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
+	if ( ! $user_id || ! tm_can_edit_vendor_profile( $user_id ) ) {
+		tm_ajax_send_json_error( [ 'message' => 'Unauthorized' ], 403 );
+	}
+	if ( ! tm_user_is_person( $user_id ) ) {
+		tm_ajax_send_json_error( [ 'message' => 'Not a person account' ], 403 );
+	}
+
+	$raw_urls = isset( $_POST['urls'] ) ? (array) $_POST['urls'] : [];
+	$items = [];
+	foreach ( $raw_urls as $url ) {
+		$url = sanitize_url( (string) $url );
+		if ( ! $url ) { continue; }
+		if ( ! preg_match( '/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i', $url, $m ) ) {
+			continue;
+		}
+		$items[] = [ 'url' => $url, 'title' => '' ];
+	}
+
+	if ( empty( $items ) ) {
+		// Allow clearing — store empty array
+		update_user_meta( $user_id, 'tm_youtube_urls', wp_json_encode( [] ) );
+		tm_ajax_send_json_success( [
+			'vendorMedia' => tm_get_vendor_media_playlist( $user_id ),
+			'message'     => 'YouTube playlist cleared',
+		] );
+		return;
+	}
+
+	update_user_meta( $user_id, 'tm_youtube_urls', wp_json_encode( $items ) );
+
+	tm_ajax_send_json_success( [
+		'vendorMedia' => tm_get_vendor_media_playlist( $user_id ),
+		'message'     => 'YouTube playlist updated',
+	] );
+} );
+
+/**
  * AJAX Handler: Update Vendor Store Name
  */
 add_action( 'wp_ajax_vendor_update_store_name', function() {

@@ -129,6 +129,24 @@ jQuery(document).ready(function($) {
 	var VENDOR_CONTENT_CACHE_KEY = "tm_vendor_content_cache_v1_";
 	var VENDOR_CONTENT_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
+	// YouTube IFrame API state
+	var ytPlayer     = null;   // YT.Player instance
+	var ytApiLoading = false;
+	var ytPendingId  = null;   // video ID waiting for API to become ready
+	// Chain onYouTubeIframeAPIReady so we don't clobber any earlier registration.
+	(function() {
+		var _prev = window.onYouTubeIframeAPIReady;
+		window.onYouTubeIframeAPIReady = function() {
+			if (typeof _prev === "function") { _prev(); }
+			ytApiLoading = false;
+			if (ytPendingId) {
+				var id = ytPendingId;
+				ytPendingId = null;
+				initYTPlayer(id);
+			}
+		};
+	})();
+
 	// ── URL parameter configuration ───────────────────────────────────────────
 	// Params: ?tm_ids=4,16,17 | ?minduration=12 | ?talentloop=on|off | ?medialoop=on|off
 	// URL params are read once at module load and override ALL other config sources
@@ -2010,7 +2028,7 @@ jQuery(document).ready(function($) {
 			}
 		}
 
-		var priority = { image: 0, video: 1, audio: 2 };
+		var priority = { image: 0, video: 1, youtube: 1, audio: 2 };
 		list.sort(function(a, b) {
 			return (priority[a.type] || 3) - (priority[b.type] || 3);
 		});
@@ -2106,6 +2124,69 @@ jQuery(document).ready(function($) {
 	function showVideo(active) {
 		if (!heroVideoActive) return;
 		$(heroVideoActive).css("display", active ? "block" : "none");
+	}
+
+	// ── YouTube IFrame API helpers ────────────────────────────────────────────
+	function showYTPlayer(active) {
+		$("#tm-yt-player").css("display", active ? "block" : "none");
+	}
+
+	function extractYoutubeId(url) {
+		if (!url) return null;
+		var m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+		return m ? m[1] : null;
+	}
+
+	function loadYouTubeAPI() {
+		if (window.YT && window.YT.Player) { return; }
+		if (ytApiLoading) { return; }
+		ytApiLoading = true;
+		var tag = document.createElement("script");
+		tag.src = "https://www.youtube.com/iframe_api";
+		document.head.appendChild(tag);
+	}
+
+	function initYTPlayer(videoId) {
+		if (!videoId) return;
+		if (ytPlayer && typeof ytPlayer.loadVideoById === "function") {
+			try { ytPlayer.loadVideoById(videoId); } catch(e) {}
+			return;
+		}
+		// YT.Player replaces the target element — recreate the div each time if needed.
+		var $container = $("#tm-yt-player");
+		if (!$container.length) { return; }
+		// Recreate a fresh inner div so YT.Player can replace it.
+		$container.html('<div id="tm-yt-player-inner"></div>');
+		ytPlayer = new YT.Player("tm-yt-player-inner", {
+			videoId: videoId,
+			playerVars: { autoplay: 1, controls: 1, rel: 0, modestbranding: 1, playsinline: 1 },
+			events: {
+				onReady: function(e) {
+					if (!state.muted) { try { e.target.unMute(); } catch(ex) {} }
+					try { e.target.playVideo(); } catch(ex) {}
+				},
+				onStateChange: function(e) {
+					/* global YT */
+					if (typeof YT !== "undefined" && e.data === YT.PlayerState.ENDED) {
+						if (state.loopMode) {
+							try { e.target.seekTo(0); e.target.playVideo(); } catch(ex) {}
+						} else {
+							state.isPlaying = true;
+							loadNext();
+						}
+					}
+				}
+			}
+		});
+	}
+
+	function playYoutubeId(videoId) {
+		if (window.YT && window.YT.Player) {
+			initYTPlayer(videoId);
+		} else {
+			ytPendingId = videoId;
+			loadYouTubeAPI();
+		}
 	}
 
 	// OPTIMIZATION: Loading indicator for slow/unstable connections
@@ -2433,6 +2514,8 @@ jQuery(document).ready(function($) {
 		clearAdvanceTimer();
 		if (heroVideoActive) { heroVideoActive.pause(); }
 		if ($heroAudio.length) { $heroAudio[0].pause(); }
+		if (ytPlayer && typeof ytPlayer.pauseVideo === "function") { try { ytPlayer.pauseVideo(); } catch(e) {} }
+		showYTPlayer(false);
 		showEq(false);
 	}
 
@@ -2576,6 +2659,16 @@ jQuery(document).ready(function($) {
 				armAdvanceTimer(item);
 			}
 			syncRemotePlaying(state.isPlaying);
+		}
+		else if (state.type === "youtube") {
+			showVideo(false);
+			showImage(false);
+			showEq(false);
+			showYTPlayer(true);
+			var ytId = item.youtube_id || extractYoutubeId(item.src);
+			if (ytId) { playYoutubeId(ytId); }
+			updateMeta(item);
+			syncRemotePlaying(true);
 		}
 		else { // audio
 			showVideo(false);
@@ -4431,6 +4524,96 @@ jQuery(document).ready(function($) {
 	mediaFrame.open();
 }
 
+	function saveYoutubePlaylist(urls) {
+		$.ajax({
+			url: vendorStoreData.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'vendor_save_youtube_urls',
+				nonce: vendorStoreData.nonce,
+				user_id: vendorStoreData.userId,
+				urls: urls
+			},
+			success: function(response) {
+				if (response.success && response.data && response.data.vendorMedia) {
+					window.vendorMedia = response.data.vendorMedia;
+					playlist = buildPlaylist();
+					state.index = 0;
+					loadItem(0);
+					showNotification(response.data.message || 'YouTube playlist updated', 'success');
+				} else {
+					showNotification(response.data && response.data.message ? response.data.message : 'Failed to update YouTube playlist', 'error');
+				}
+			},
+			error: function() {
+				showNotification('Network error', 'error');
+			}
+		});
+	}
+
+	function openYoutubePlaylistEditor() {
+		// Build current URLs list from vendorMedia items
+		var currentUrls = [];
+		if (window.vendorMedia && Array.isArray(window.vendorMedia.items)) {
+			window.vendorMedia.items.forEach(function(item) {
+				if (item && item.type === 'youtube' && item.src) {
+					currentUrls.push(item.src);
+				}
+			});
+		}
+		var currentText = currentUrls.join('\n');
+
+		var $overlay = $('<div class="tm-yt-editor-overlay" role="dialog" aria-modal="true" aria-label="Edit YouTube Playlist"></div>');
+		var $modal = $('<div class="tm-yt-editor-modal"></div>');
+		$modal.html(
+			'<div class="tm-yt-editor-header">' +
+				'<h2 class="tm-yt-editor-title">YouTube Playlist</h2>' +
+				'<button type="button" class="tm-yt-editor-close" aria-label="Close">&times;</button>' +
+			'</div>' +
+			'<div class="tm-yt-editor-body">' +
+				'<p class="tm-yt-editor-help">Paste one YouTube URL per line. Supports youtube.com/watch?v=..., youtu.be/..., and shorts URLs.</p>' +
+				'<textarea class="tm-yt-urls-textarea" rows="8" placeholder="https://www.youtube.com/watch?v=...">' + $('<div>').text(currentText).html() + '</textarea>' +
+			'</div>' +
+			'<div class="tm-yt-editor-footer">' +
+				'<button type="button" class="button tm-yt-clear-btn">Clear All</button>' +
+				'<div class="tm-yt-editor-actions">' +
+					'<button type="button" class="button tm-yt-cancel-btn">Cancel</button>' +
+					'<button type="button" class="button button-primary tm-yt-save-btn">Save Playlist</button>' +
+				'</div>' +
+			'</div>'
+		);
+		$overlay.append($modal);
+		$('body').append($overlay);
+		suspendBackgroundForEditing();
+		$modal.find('.tm-yt-urls-textarea').focus();
+
+		function closeEditor() {
+			$overlay.remove();
+			resumeBackgroundAfterEditing();
+		}
+
+		$overlay.on('click', '.tm-yt-editor-close, .tm-yt-cancel-btn', closeEditor);
+		$overlay.on('click', function(e) {
+			if ($(e.target).is($overlay)) { closeEditor(); }
+		});
+		$overlay.on('click', '.tm-yt-clear-btn', function() {
+			if (window.confirm('Clear all YouTube videos from this playlist?')) {
+				saveYoutubePlaylist([]);
+				closeEditor();
+			}
+		});
+		$overlay.on('click', '.tm-yt-save-btn', function() {
+			var lines = $modal.find('.tm-yt-urls-textarea').val().split('\n');
+			var urls = lines.map(function(s) { return s.trim(); }).filter(Boolean);
+			saveYoutubePlaylist(urls);
+			closeEditor();
+		});
+		// Close on Escape key
+		$(document).one('keydown.tmyteditor', function(e) {
+			if (e.key === 'Escape') { closeEditor(); $(document).off('keydown.tmyteditor'); }
+		});
+	}
+
 // Avatar Edit - WordPress Media Library
 	$(document).on('click', '.edit-avatar-btn', function(e) {
 		e.preventDefault();
@@ -4618,6 +4801,12 @@ jQuery(document).ready(function($) {
 		e.preventDefault();
 		e.stopPropagation();
 		openMediaPlaylistEditor('audio');
+	});
+
+	$(document).on('click', '.edit-media-youtube-btn', function(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		openYoutubePlaylistEditor();
 	});
 	
 	// Store Name & Location Edit - Show/Hide Edit Form OR Open Modal

@@ -143,6 +143,35 @@ function tm_get_vendor_media_playlist( $vendor_id ) {
 		}
 	}
 
+	// YouTube URL items — stored as JSON array in tm_youtube_urls user meta.
+	$yt_raw = get_user_meta( $vendor_id, 'tm_youtube_urls', true );
+	if ( $yt_raw && is_string( $yt_raw ) ) {
+		$yt_items = json_decode( $yt_raw, true );
+		if ( is_array( $yt_items ) ) {
+			foreach ( $yt_items as $yt ) {
+				$yt_url   = isset( $yt['url'] ) ? (string) $yt['url'] : '';
+				$yt_title = isset( $yt['title'] ) ? (string) $yt['title'] : '';
+				if ( ! $yt_url ) { continue; }
+				// Extract video ID from standard YouTube URL formats.
+				$yt_id = '';
+				if ( preg_match( '/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i', $yt_url, $yt_m ) ) {
+					$yt_id = $yt_m[1];
+				}
+				if ( ! $yt_id ) { continue; }
+				$payload['items'][] = array(
+					'id'         => 'yt_' . $yt_id,
+					'type'       => 'youtube',
+					'src'        => 'https://www.youtube.com/watch?v=' . $yt_id,
+					'youtube_id' => $yt_id,
+					'poster'     => 'https://img.youtube.com/vi/' . $yt_id . '/maxresdefault.jpg',
+					'title'      => $yt_title !== '' ? $yt_title : 'YouTube Video',
+					'duration'   => null,
+					'mime'       => '',
+				);
+			}
+		}
+	}
+
 	$payload['fallbackVideo'] = $source->get_banner_video_url( $vendor_id );
 	$payload['fallbackImage'] = $source->get_banner_image_url( $vendor_id );
 	$payload['isFeatured']    = ( get_user_meta( $vendor_id, 'dokan_feature_seller', true ) === 'yes' );
