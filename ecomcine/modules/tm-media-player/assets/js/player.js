@@ -2287,8 +2287,10 @@ jQuery(document).ready(function($) {
 			var $remote = $(".hero-remote");
 			if (!$remote.length) return;
 			var pct = dur > 0 ? (cur / dur) * 1000 : 0;
+			var fillPct = dur > 0 ? (cur / dur * 100) : 0;
 			$remote.find(".hero-yt-seek").val(pct);
-			$remote.find(".hero-yt-progress-fill").css("width", (dur > 0 ? (cur / dur * 100) : 0) + "%");
+			$remote.find(".hero-yt-progress-fill").css("width", fillPct + "%");
+			$remote.find(".hero-yt-seek-thumb").css("left", fillPct + "%");
 			$remote.find(".hero-yt-time-current").text(formatYTTime(cur));
 			$remote.find(".hero-yt-time-duration").text(formatYTTime(dur));
 		} catch(e) {}
@@ -4980,7 +4982,7 @@ jQuery(document).ready(function($) {
 		stopYTProgressPolling(); // pause polling so getCurrentTime() doesn't fight the drag
 	});
 
-	// Visual-only updates while dragging — move the fill bar and time label without seeking
+	// Visual-only updates while dragging — move the fill bar, thumb dot and time label without seeking
 	$(document).on('input', '.hero-yt-seek', function(e) {
 		e.stopPropagation();
 		if (!ytPlayer) return;
@@ -4988,7 +4990,9 @@ jQuery(document).ready(function($) {
 			var durV = ytPlayer.getDuration() || 0;
 			if (durV <= 0) return;
 			var pct = parseFloat($(this).val()) / 1000;
-			$(".hero-yt-progress-fill").css("width", (pct * 100) + "%");
+			var fillPctV = pct * 100;
+			$(".hero-yt-progress-fill").css("width", fillPctV + "%");
+			$(".hero-yt-seek-thumb").css("left", fillPctV + "%");
 			$(".hero-yt-time-current").text(formatYTTime(pct * durV));
 		} catch(exV) {}
 	});

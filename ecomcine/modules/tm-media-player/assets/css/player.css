@@ -1283,6 +1283,29 @@ img.profile-img,
 	transition: width 0.15s linear !important;
 }
 
+/* Playhead dot — sits at the end of the fill bar */
+.hero-yt-seek-thumb {
+	position: absolute !important;
+	top: 50% !important;
+	left: 0% !important;
+	width: 11px !important;
+	height: 11px !important;
+	background: #fff !important;
+	border-radius: 50% !important;
+	transform: translate(-50%, -50%) !important;
+	pointer-events: none !important;
+	box-shadow: 0 0 3px rgba(0, 0, 0, 0.5) !important;
+	transition: left 0.15s linear, width 0.1s ease, height 0.1s ease !important;
+	z-index: 1 !important;
+}
+
+/* Slightly larger dot on hover for better affordance */
+.hero-yt-progress-track:hover .hero-yt-seek-thumb {
+	width: 14px !important;
+	height: 14px !important;
+	transition: left 0s linear, width 0.1s ease, height 0.1s ease !important;
+}
+
 /* Range input — transparent, sits above the fill track for click/drag */
 .hero-yt-seek {
 	position: absolute !important;
@@ -1309,7 +1332,6 @@ img.profile-img,
 .hero-yt-progress-track:hover .hero-yt-progress-fill {
 	transition: none !important;
 }
-
 .hero-toggle {
 	display: inline-flex !important;
 	align-items: center !important;

@@ -293,6 +293,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                         <span class="hero-yt-time hero-yt-time-current" aria-label="Current time">0:00</span>
                         <div class="hero-yt-progress-track" role="presentation">
                             <div class="hero-yt-progress-fill"></div>
+                            <div class="hero-yt-seek-thumb" aria-hidden="true"></div>
                             <input type="range" class="hero-yt-seek" min="0" max="1000" value="0" step="1" aria-label="Seek video">
                         </div>
                         <span class="hero-yt-time hero-yt-time-duration" aria-label="Total duration">0:00</span>
