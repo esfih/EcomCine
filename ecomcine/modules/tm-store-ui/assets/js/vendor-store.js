@@ -1981,7 +1981,7 @@ jQuery(document).ready(function($) {
 		var vendorId = $('.profile-img').data('vendor-id');
 		var ajaxData = {
 			action: 'vendor_update_contact_info',
-			nonce: window.vendorStoreUiData ? window.vendorStoreUiData.nonce : '',
+			nonce: window.vendorStoreUiData ? window.vendorStoreUiData.editNonce : '',
 			user_id: vendorId
 		};
 		

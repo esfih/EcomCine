@@ -27,6 +27,8 @@ rsync -a --delete \
   --exclude '.DS_Store' \
   --exclude 'node_modules/' \
   --exclude 'dist/' \
+  --exclude 'modules/tm-video-tools/assets/ffmpeg/*.wasm' \
+  --exclude 'modules/tm-video-tools/assets/ffmpeg/ffmpeg-core.js' \
   "$PLUGIN_DIR/" "$STAGE_DIR/"
 
 VERSION="$(grep -E '^ \* Version:' "$PLUGIN_DIR/ecomcine.php" | head -n1 | sed -E 's/^ \* Version:[[:space:]]*//')"

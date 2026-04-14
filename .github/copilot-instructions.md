@@ -117,13 +117,34 @@ See `New-Migrate-WP-Local-Setup.md` → "EcomCine — Re-Setup on a New Computer
    - Both `* Version: <version>` header AND `define( 'ECOMCINE_VERSION', '<version>' )` constant in `ecomcine/ecomcine.php` must match before committing.
    - Commit the version bump. Get SHA: `git rev-parse HEAD`. The tag must point to THIS commit.
 1. Verify auth: `gh auth status`
-2. Create tag on the version-bumped commit: `gh api /repos/esfih/EcomCine/git/refs --method POST -f ref="refs/tags/v<version>" -f sha=<commit-sha>`
-3. Build the distribution zip: `./scripts/build-ecomcine-release.sh`
-4. Create release WITH zip attached in one command: `gh release create v<version> dist/ecomcine-<version>.zip --title "Release v<version>" --notes "<release-notes>"`
+2. Push the branch first: `git push origin <branch>` (tag creation requires the commit to exist on GitHub)
+3. Create tag on the version-bumped commit: `gh api /repos/esfih/EcomCine/git/refs --method POST -f ref="refs/tags/v<version>" -f sha=<full-40-char-commit-sha>`
+4. Build the distribution zip: `./scripts/build-ecomcine-release.sh`
+5. Create release WITH zip attached in one command: `gh release create v<version> dist/ecomcine-<version>.zip --title "Release v<version>" --notes "<release-notes>"`
    - **Never** call `gh release create` without the zip path — WordPress auto-update will fail with "The package could not be installed".
-5. Verify: `gh release view v<version> --json assets` must show the zip asset and `./scripts/verify-updater-package.sh` must exit 0.
+6. Verify: `gh release view v<version> --json assets` must show the zip asset and `./scripts/verify-updater-package.sh` must exit 0.
 
 **Note**: Local `git push origin v<version>` may fail due to repository validation hooks checking old commit hashes. Use GitHub API or `gh` CLI directly as fallback.
+
+## Two Separate Release Pipelines (Mandatory — NEVER mix)
+
+There are two completely independent release types. **Do not combine them.**
+
+### 1. EcomCine Plugin Release (`ecomcine/`)
+- **Script**: `./scripts/build-ecomcine-release.sh`
+- **Output**: `dist/ecomcine-<version>.zip`
+- **Target size**: must remain **under 2 MB**. If the zip exceeds 2 MB, stop and diagnose before releasing.
+- **Contains**: PHP, JS, CSS, templates from `ecomcine/` only — no demo data, no vendor dumps, no large binary assets
+- **Excluded from zip** (enforced in build script): `node_modules/`, `.wasm` files, `ffmpeg-core.js`, `.git/`, `dist/`
+- **Version bump**: `ecomcine/ecomcine.php` — both the `* Version:` header and `ECOMCINE_VERSION` constant
+- **GitHub tag**: `v<semver>` e.g. `v0.1.80`
+
+### 2. Demo Data Release (`demos/`)
+- **Script**: `./scripts/build-demos-release.sh` (or catalog command `demos.release`)
+- **Output**: separate zip/asset attached under a `demo-data-<version>` release tag
+- **Contains**: vendor JSON exports, media packages, demo fixtures
+- **Never attached to the plugin release tag** — always its own separate GitHub release
+- **Does not bump** `ecomcine/ecomcine.php` version
 
 ## IDE AI Command Contract Policy (Mandatory)
 
