@@ -23,6 +23,7 @@ class EcomCine_Admin_Settings {
 		add_action( 'init', array( __CLASS__, 'register_bootstrap_shortcodes' ) );
 		add_action( 'admin_post_ecomcine_create_bootstrap_pages', array( __CLASS__, 'handle_create_bootstrap_pages' ) );
 		add_action( 'admin_post_ecomcine_install_activate_theme', array( __CLASS__, 'handle_install_activate_theme' ) );
+		add_action( 'admin_post_ecomcine_update_wave1_authority', array( __CLASS__, 'handle_update_wave1_authority' ) );
 	}
 
 	/**
@@ -1768,10 +1769,29 @@ class EcomCine_Admin_Settings {
 		<div class="wrap">
 			<h1>EcomCine</h1>
 
+			<?php settings_errors( self::OPTION_KEY ); ?>
+
 			<?php if ( isset( $_GET['ecomcine_pages_done'] ) ) : ?>
 				<div class="notice notice-success is-dismissible"><p>
 					<?php echo esc_html( sprintf( 'Bootstrap pages processed. Created: %d, Updated: %d.', $created_pages, $updated_pages ) ); ?>
 				</p></div>
+			<?php endif; ?>
+
+			<?php if ( isset( $_GET['ecomcine_authority_saved'] ) ) : ?>
+				<div class="notice notice-success is-dismissible"><p>Wave 1 authority flags updated.</p></div>
+			<?php endif; ?>
+
+			<?php if ( isset( $_GET['ecomcine_authority_error'] ) ) : ?>
+				<div class="notice notice-error is-dismissible"><p>Wave 1 authority flags could not be updated. Check submitted values and try again.</p></div>
+			<?php endif; ?>
+
+			<?php
+			$wave1_notice = get_transient( 'ecomcine_wave1_authority_notice' );
+			if ( is_array( $wave1_notice ) && ! empty( $wave1_notice['message'] ) ) :
+				$notice_class = ! empty( $wave1_notice['type'] ) && 'error' === $wave1_notice['type'] ? 'notice-error' : 'notice-success';
+				delete_transient( 'ecomcine_wave1_authority_notice' );
+			?>
+				<div class="notice <?php echo esc_attr( $notice_class ); ?> is-dismissible"><p><?php echo esc_html( (string) $wave1_notice['message'] ); ?></p></div>
 			<?php endif; ?>
 
 			<?php if ( isset( $_GET['ecomcine_theme_done'] ) && '' === $theme_error ) : ?>
@@ -2052,6 +2072,41 @@ class EcomCine_Admin_Settings {
 					<p class="description">Creates baseline pages: Showcase [tm_talent_showcase], <?php echo esc_html( function_exists( 'ecomcine_get_person_public_label_plural' ) ? ecomcine_get_person_public_label_plural() : 'Talents' ); ?> [ecomcine-stores], <?php echo esc_html( function_exists( 'ecomcine_get_person_categories_page_title' ) ? ecomcine_get_person_categories_page_title() : 'Talent Categories' ); ?> [ecomcine_categories], <?php echo esc_html( function_exists( 'ecomcine_get_person_locations_page_title' ) ? ecomcine_get_person_locations_page_title() : 'Talent Locations' ); ?> [ecomcine_locations]. To import demo vendor profiles, use <a href="<?php echo esc_url( admin_url( 'admin.php?page=ecomcine-demo-data' ) ); ?>">EcomCine &rarr; Demo Data</a>.</p>
 				</div>
 
+				<div class="ecomcine-bootstrap-actions">
+					<h2>Wave 1 Authority Controls</h2>
+					<p>Manual controls for the new Wave 1 route, Listing, and query authority gates. Keep these at <strong>legacy</strong> unless you are intentionally testing Packet 2+ rollout behavior.</p>
+					<?php $authority = class_exists( 'EcomCine_Wave1_Authority', false ) ? EcomCine_Wave1_Authority::snapshot() : array( 'route' => 'legacy', 'listing' => 'legacy', 'query' => 'legacy', 'observe_only' => false ); ?>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<?php wp_nonce_field( 'ecomcine_update_wave1_authority' ); ?>
+						<input type="hidden" name="action" value="ecomcine_update_wave1_authority" />
+						<table class="form-table" role="presentation" style="max-width:760px; margin-bottom:8px;">
+							<tr>
+								<th scope="row"><label for="ecomcine-route-authority">Route Authority</label></th>
+								<td><?php self::render_wave1_authority_select( 'route', 'ecomcine-route-authority', (string) $authority['route'] ); ?></td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="ecomcine-listing-authority">Listing Authority</label></th>
+								<td><?php self::render_wave1_authority_select( 'listing', 'ecomcine-listing-authority', (string) $authority['listing'] ); ?></td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="ecomcine-query-authority">Query Authority</label></th>
+								<td><?php self::render_wave1_authority_select( 'query', 'ecomcine-query-authority', (string) $authority['query'] ); ?></td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="ecomcine-observe-only">Observe Only</label></th>
+								<td>
+									<label>
+										<input id="ecomcine-observe-only" type="checkbox" name="observe_only" value="1" <?php checked( ! empty( $authority['observe_only'] ) ); ?> />
+										Enable comparison-only mode without making user-visible authority changes.
+									</label>
+								</td>
+							</tr>
+						</table>
+						<?php submit_button( 'Save Wave 1 Authority State', 'secondary', 'submit', false ); ?>
+					</form>
+					<p class="description">WP-CLI equivalents: <code>./scripts/wp.sh wp ecomcine authority list</code>, <code>./scripts/wp.sh wp ecomcine authority set route shadow</code>, <code>./scripts/wp.sh wp ecomcine authority observe on</code>.</p>
+				</div>
+
 				<form method="post" action="options.php">
 					<?php settings_fields( 'ecomcine_settings_group' ); ?>
 
@@ -2200,5 +2255,61 @@ class EcomCine_Admin_Settings {
 			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	private static function render_wave1_authority_select( string $surface, string $field_id, string $selected ): void {
+		$labels = array(
+			'legacy' => 'Legacy',
+			'shadow' => 'Shadow',
+			'core'   => 'Core',
+		);
+		?>
+		<select id="<?php echo esc_attr( $field_id ); ?>" name="authority[<?php echo esc_attr( $surface ); ?>]">
+			<?php foreach ( $labels as $value => $label ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $selected, $value ); ?>><?php echo esc_html( $label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
+	public static function handle_update_wave1_authority() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to manage EcomCine settings.', 'ecomcine' ) );
+		}
+
+		check_admin_referer( 'ecomcine_update_wave1_authority' );
+
+		$authority_input = isset( $_POST['authority'] ) && is_array( $_POST['authority'] ) ? wp_unslash( $_POST['authority'] ) : array();
+		$observe_only    = ! empty( $_POST['observe_only'] );
+		$valid           = class_exists( 'EcomCine_Wave1_Authority', false );
+
+		if ( $valid ) {
+			foreach ( array( 'route', 'listing', 'query' ) as $surface ) {
+				$state = isset( $authority_input[ $surface ] ) ? sanitize_key( (string) $authority_input[ $surface ] ) : 'legacy';
+				if ( ! EcomCine_Wave1_Authority::set_state( $surface, $state ) ) {
+					$valid = false;
+					break;
+				}
+			}
+		}
+
+		if ( $valid && class_exists( 'EcomCine_Wave1_Authority', false ) ) {
+			EcomCine_Wave1_Authority::set_observe_only( $observe_only );
+		}
+
+		set_transient(
+			'ecomcine_wave1_authority_notice',
+			array(
+				'type'    => $valid ? 'success' : 'error',
+				'message' => $valid ? 'Wave 1 authority flags updated.' : 'Wave 1 authority flags could not be updated. Check submitted values and try again.',
+			),
+			60
+		);
+
+		$redirect_url = admin_url( 'admin.php?page=ecomcine-settings&tab=settings' );
+		$redirect_url = add_query_arg( $valid ? 'ecomcine_authority_saved' : 'ecomcine_authority_error', 1, $redirect_url );
+
+		wp_safe_redirect( $redirect_url );
+		exit;
 	}
 }

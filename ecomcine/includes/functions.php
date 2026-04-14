@@ -476,6 +476,10 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 			return false;
 		}
 
+		if ( class_exists( 'EcomCine_Listing_Service', false ) ) {
+			return EcomCine_Listing_Service::has_public_profile_for_user( $user_id );
+		}
+
 		// When the tm_vendor CPT is not registered (e.g. media-player module is
 		// disabled or not yet initialised), there is no profile-artifact system
 		// active on this site.  Treat every enabled person as having a public
@@ -516,6 +520,10 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	 * @return int
 	 */
 	function ecomcine_find_person_user_id_by_slug( string $slug ): int {
+		if ( class_exists( 'EcomCine_Listing_Service', false ) ) {
+			return EcomCine_Listing_Service::resolve_owner_user_id_by_profile_slug( $slug );
+		}
+
 		$slug = sanitize_title( $slug );
 		if ( '' === $slug ) {
 			return 0;
@@ -636,6 +644,10 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	 * @return string
 	 */
 	function ecomcine_get_person_profile_base(): string {
+		if ( class_exists( 'EcomCine_Listing_Service', false ) ) {
+			return EcomCine_Listing_Service::get_active_profile_base();
+		}
+
 		$default_base = ecomcine_get_person_public_base_singular();
 		$base         = trim( (string) get_option( 'ecomcine_person_base', $default_base ), '/' );
 
@@ -655,8 +667,13 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	 * @return string[]
 	 */
 	function ecomcine_get_person_profile_base_aliases(): array {
+		if ( class_exists( 'EcomCine_Listing_Service', false ) ) {
+			return EcomCine_Listing_Service::get_profile_base_aliases();
+		}
+
 		$aliases = array(
 			ecomcine_get_person_profile_base(),
+			'profile',
 			ecomcine_get_person_public_base_singular(),
 			'person',
 			'talent',
@@ -918,6 +935,10 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 			return '';
 		}
 
+		if ( class_exists( 'EcomCine_Listing_Service', false ) ) {
+			return EcomCine_Listing_Service::build_public_url_for_user( $user_id );
+		}
+
 		$user = get_userdata( $user_id );
 		if ( ! $user || empty( $user->user_nicename ) ) {
 			return '';
@@ -973,183 +994,6 @@ if ( ! function_exists( 'ecomcine_get_person_url' ) ) {
 	}
 }
 
-// Register /{configured-person-base}/{nicename}/ routing and map it to ecomcine_person query var.
-add_action( 'init', function() {
-	$rewrite_bases = function_exists( 'ecomcine_get_person_profile_base_aliases' )
-		? ecomcine_get_person_profile_base_aliases()
-		: array( trim( (string) get_option( 'ecomcine_person_base', 'person' ), '/' ) );
-	$rewrite_bases = array_values( array_unique( array_filter( array_map( 'sanitize_title', $rewrite_bases ) ) ) );
-	if ( empty( $rewrite_bases ) ) {
-		$rewrite_bases = array( 'person' );
-	}
-
-	add_rewrite_tag( '%ecomcine_person%', '([^&]+)' );
-	foreach ( $rewrite_bases as $rewrite_base ) {
-		add_rewrite_rule( '^' . preg_quote( $rewrite_base, '/' ) . '/([^/]+)/?$', 'index.php?ecomcine_person=$matches[1]', 'top' );
-	}
-
-	$flush_key      = 'ecomcine_person_rewrite_flushed';
-	$flush_expected = '2|' . implode( ',', $rewrite_bases );
-	$flush_state    = (string) get_option( $flush_key, '' );
-	if ( $flush_expected !== $flush_state ) {
-		flush_rewrite_rules( false );
-		update_option( $flush_key, $flush_expected, false );
-	}
-}, 20 );
-
-add_filter( 'query_vars', function( array $vars ): array {
-	if ( ! in_array( 'ecomcine_person', $vars, true ) ) {
-		$vars[] = 'ecomcine_person';
-	}
-
-	return $vars;
-} );
-
-// Set dynamic document title for standalone person profile pages.
-add_filter( 'pre_get_document_title', function( string $title ): string {
-	$slug = (string) get_query_var( 'ecomcine_person', '' );
-	if ( '' === $slug ) {
-		return $title;
-	}
-
-	$user_id = function_exists( 'ecomcine_find_person_user_id_by_slug' )
-		? ecomcine_find_person_user_id_by_slug( $slug )
-		: 0;
-	if ( $user_id <= 0 ) {
-		return $title;
-	}
-
-	$full_name = trim( (string) get_the_author_meta( 'display_name', $user_id ) );
-	if ( '' === $full_name ) {
-		$user = get_userdata( $user_id );
-		if ( $user ) {
-			$full_name = trim( (string) $user->display_name );
-		}
-	}
-	if ( '' === $full_name ) {
-		$full_name = function_exists( 'ecomcine_get_person_public_label_singular' )
-			? ecomcine_get_person_public_label_singular()
-			: 'Person';
-	}
-
-	$site_name = trim( (string) get_bloginfo( 'name' ) );
-	if ( '' === $site_name ) {
-		$site_name = 'EcomCine';
-	}
-
-	return sprintf( '%s profile page on %s', $full_name, $site_name );
-}, 20 );
-
-// Prevent core canonical redirects from hijacking person routes when slugs collide with attachments.
-add_filter( 'redirect_canonical', function( $redirect_url, $requested_url ) {
-	$slug = (string) get_query_var( 'ecomcine_person', '' );
-	if ( '' !== $slug ) {
-		return false;
-	}
-
-	return $redirect_url;
-}, 10, 2 );
-
-add_action( 'template_redirect', function() {
-	if ( is_admin() || wp_doing_ajax() ) {
-		return;
-	}
-
-	$person_slug = (string) get_query_var( 'ecomcine_person', '' );
-	if ( '' !== $person_slug ) {
-		$requested_path = trim( (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : '', PHP_URL_PATH ), '/' );
-		$request_parts  = '' === $requested_path ? array() : explode( '/', $requested_path );
-		$requested_base = sanitize_title( $request_parts[0] ?? '' );
-		$canonical_base = ecomcine_get_person_profile_base();
-
-		if ( $requested_base && $requested_base !== $canonical_base && in_array( $requested_base, ecomcine_get_person_profile_base_aliases(), true ) ) {
-			$user_id = function_exists( 'ecomcine_find_person_user_id_by_slug' )
-				? ecomcine_find_person_user_id_by_slug( $person_slug )
-				: 0;
-
-			if ( $user_id > 0 ) {
-				$target_url = ecomcine_get_person_url( $user_id );
-				if ( ! empty( $_GET ) ) {
-					$target_url = add_query_arg( wp_unslash( $_GET ), $target_url );
-				}
-
-				wp_safe_redirect( $target_url, 301, 'EcomCine' );
-				exit;
-			}
-		}
-	}
-
-	$listing_page = ecomcine_get_person_listing_page();
-	if ( $listing_page instanceof WP_Post && is_page() ) {
-		$queried_page = get_queried_object();
-		if ( $queried_page instanceof WP_Post && 'page' === $queried_page->post_type && (int) $queried_page->ID !== (int) $listing_page->ID && false !== strpos( (string) $queried_page->post_content, '[ecomcine-stores]' ) ) {
-			$target_url = ecomcine_get_person_listing_url();
-			if ( ! empty( $_GET ) ) {
-				$target_url = add_query_arg( wp_unslash( $_GET ), $target_url );
-			}
-
-			wp_safe_redirect( $target_url, 301, 'EcomCine' );
-			exit;
-		}
-	}
-
-	$requested_path = trim( (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : '', PHP_URL_PATH ), '/' );
-	$legacy_slugs   = array_values( array_unique( array_filter( array( 'talents', ecomcine_get_person_public_base_singular() ) ) ) );
-	$canonical_path = trim( (string) wp_parse_url( ecomcine_get_person_listing_url(), PHP_URL_PATH ), '/' );
-
-	if ( '' === $requested_path || ! in_array( $requested_path, $legacy_slugs, true ) || $requested_path === $canonical_path ) {
-		return;
-	}
-
-	$target_url = ecomcine_get_person_listing_url();
-	if ( ! empty( $_GET ) ) {
-		$target_url = add_query_arg( wp_unslash( $_GET ), $target_url );
-	}
-
-	wp_safe_redirect( $target_url, 301, 'EcomCine' );
-	exit;
-}, 5 );
-
-// Route single person pages to the standalone profile template.
-add_filter( 'template_include', function( string $template ): string {
-	$slug = (string) get_query_var( 'ecomcine_person', '' );
-	if ( '' === $slug ) {
-		return $template;
-	}
-
-	$user_id = function_exists( 'ecomcine_find_person_user_id_by_slug' )
-		? ecomcine_find_person_user_id_by_slug( $slug )
-		: 0;
-	if ( $user_id <= 0 ) {
-		global $wp_query;
-		if ( $wp_query instanceof WP_Query ) {
-			$wp_query->set_404();
-		}
-		status_header( 404 );
-		nocache_headers();
-		$not_found = get_404_template();
-		return $not_found ? $not_found : $template;
-	}
-
-	set_query_var( 'author', $user_id );
-	set_query_var(
-		'ecomcine_person_publicly_available',
-		( function_exists( 'ecomcine_is_person_enabled' ) ? ecomcine_is_person_enabled( $user_id ) : false )
-		&& ( function_exists( 'ecomcine_has_public_person_profile' ) ? ecomcine_has_public_person_profile( $user_id ) : false )
-	);
-	$GLOBALS['tm_showcase_page'] = true;
-
-	$person_template = defined( 'TM_STORE_UI_DIR' )
-		? TM_STORE_UI_DIR . 'templates/page-templates/template-person-profile.php'
-		: '';
-
-	if ( $person_template && file_exists( $person_template ) ) {
-		return $person_template;
-	}
-
-	return $template;
-}, 91 );
-
 if ( ! function_exists( 'ecomcine_is_person_page' ) ) {
 	/**
 	 * Return true when the current request is a single-person profile page.
@@ -1158,7 +1002,7 @@ if ( ! function_exists( 'ecomcine_is_person_page' ) ) {
 	 */
 	function ecomcine_is_person_page(): bool {
 		// EcomCine native query var.
-		if ( get_query_var( 'ecomcine_person' ) ) {
+		if ( class_exists( 'EcomCine_Route_Service', false ) ? EcomCine_Route_Service::get_person_slug() : get_query_var( 'ecomcine_person' ) ) {
 			return true;
 		}
 

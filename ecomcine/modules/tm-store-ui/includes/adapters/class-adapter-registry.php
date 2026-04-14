@@ -27,6 +27,14 @@ class THO_Adapter_Registry {
 	private function __construct() {
 		$forced = defined( 'THO_ADAPTER' ) ? THO_ADAPTER : null;
 
+		// Wave 1: when listing authority is 'core' or 'shadow', always prefer the
+		// WP-native adapter regardless of Dokan presence or runtime mode setting.
+		$wave1_prefers_default = false;
+		if ( class_exists( 'EcomCine_Wave1_Authority', false ) ) {
+			$listing_state         = EcomCine_Wave1_Authority::get_listing_state();
+			$wave1_prefers_default = ( 'core' === $listing_state || 'shadow' === $listing_state );
+		}
+
 		$settings_baseline = class_exists( 'EcomCine_Admin_Settings', false )
 			&& ! in_array(
 				EcomCine_Admin_Settings::get_runtime_mode(),
@@ -34,6 +42,7 @@ class THO_Adapter_Registry {
 				true
 			);
 		$this->use_default = ( 'default-wp' === $forced )
+			|| $wave1_prefers_default
 			|| $settings_baseline
 			|| ( null === $forced && ! function_exists( 'dokan_is_store_page' ) );
 	}

@@ -56,7 +56,14 @@ $current_user_id = get_current_user_id();
 $is_owner = function_exists( 'tm_can_edit_vendor_profile' ) 
 	? tm_can_edit_vendor_profile( $vendor_id, $current_user_id )
 	: ( $current_user_id && $current_user_id == $vendor_id );
-$is_admin_editing = $is_owner && $current_user_id != $vendor_id && current_user_can( 'manage_options' );
+$is_showcase_context = function_exists( 'tm_is_showcase_takeover_page' )
+	? tm_is_showcase_takeover_page()
+	: ( ! empty( $GLOBALS['tm_showcase_page'] )
+		&& ! ( function_exists( 'ecomcine_is_person_page' ) && ecomcine_is_person_page() ) );
+$is_admin_editing = $current_user_id && $current_user_id != $vendor_id && current_user_can( 'manage_options' );
+$allow_inline_editing = ( $is_owner || $is_admin_editing ) && ! $is_showcase_context;
+$profile_edit_url = function_exists( 'ecomcine_get_person_url' ) ? (string) ecomcine_get_person_url( $vendor_id ) : '';
+$show_showcase_edit_cta = $is_showcase_context && ( $is_owner || $is_admin_editing ) && '' !== trim( $profile_edit_url );
 $is_featured = ! empty( $status_flags['featured'] );
 $is_verified = ! empty( $status_flags['verified'] );
 $is_preonboard = (bool) get_user_meta( $vendor_id, 'tm_preonboard', true );
@@ -314,7 +321,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
 
             <div class="profile-info-summery-wrapper dokan-clearfix">
                 <div class="profile-info-summery">
-                    <?php if ( $is_owner ) : ?>
+                    <?php if ( $allow_inline_editing ) : ?>
                         <div class="banner-edit-actions" role="group" aria-label="Media editors">
                             <button class="edit-banner-btn" type="button" title="Change Banner" aria-label="Change Banner">
                                 <?php echo TM_Icons::svg( 'image' ); ?>
@@ -333,6 +340,13 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 <?php echo TM_Icons::svg( 'pen', 'edit-banner-btn__pen' ); ?>
                             </button>
                         </div>
+                    <?php elseif ( $show_showcase_edit_cta ) : ?>
+                        <div class="banner-edit-actions banner-edit-actions--showcase" role="group" aria-label="Profile actions">
+                            <a class="showcase-edit-profile-btn" href="<?php echo esc_url( $profile_edit_url ); ?>" aria-label="Edit this profile">
+                                <?php echo TM_Icons::svg( 'pencil-alt' ); ?>
+                                <span>Edit this profile</span>
+                            </a>
+                        </div>
                     <?php endif; ?>
                     <?php
                     $profile_head_class = 'profile-info-head';
@@ -347,12 +361,12 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 <?php echo esc_html( $store_user->get_shop_name() ); ?>
                             </span>
                         </span>
-                        <div class="profile-img <?php echo esc_attr( $profile_img_class ); ?><?php echo $is_owner ? ' editable-avatar' : ''; ?>" data-vendor-id="<?php echo esc_attr( $store_user->get_id() ); ?>">
+                        <div class="profile-img <?php echo esc_attr( $profile_img_class ); ?><?php echo $allow_inline_editing ? ' editable-avatar' : ''; ?>" data-vendor-id="<?php echo esc_attr( $store_user->get_id() ); ?>">
                             <img src="<?php echo esc_url( $store_user->get_avatar() ); ?>"
                                 alt="<?php echo esc_attr( $store_user->get_shop_name() ); ?>"
                                 size="150"
                                 class="avatar-image">
-                            <?php if ( $is_owner ) : ?>
+                            <?php if ( $allow_inline_editing ) : ?>
                                 <button class="edit-avatar-btn" type="button" title="Change Avatar">
                                     <?php echo TM_Icons::svg( 'camera' ); ?>
                                 </button>
@@ -370,7 +384,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                             </div>
                         <?php endif; ?>
 
-                    <div class="profile-info-content<?php echo $is_owner ? ' has-contact-card' : ''; ?>">
+                    <div class="profile-info-content<?php echo $allow_inline_editing ? ' has-contact-card' : ''; ?>">
 
                         <?php if ( $onboard_error && ! $is_owner ) : ?>
                             <div class="tm-onboard-notice tm-onboard-error">We could not complete onboarding. Please try again or contact support.</div>
@@ -386,7 +400,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                     </button>
                                 </div>
                             <?php endif; ?>
-                                <?php if ( $is_admin_editing && $is_preonboard ) : ?>
+                                <?php if ( $allow_inline_editing && $is_admin_editing && $is_preonboard ) : ?>
                                     <div class="tm-onboard-actions tm-onboard-actions--rail">
                                         <button class="tm-onboard-share-btn" type="button" data-vendor-id="<?php echo esc_attr( $vendor_id ); ?>">Share Onboarding Link</button>
                                     </div>
@@ -395,19 +409,19 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                 $store_name_value = $store_user->get_shop_name();
                                 $store_name_display = $store_name_value ? $store_name_value : $public_person_singular . ' Name';
                                 ?>
-                            <div class="store-name-wrapper<?php echo $is_owner ? ' editable-field' : ''; ?>" data-field="store_name" data-help="You can display your real name or a stage name.">
+                            <div class="store-name-wrapper<?php echo $allow_inline_editing ? ' editable-field' : ''; ?>" data-field="store_name" data-help="You can display your real name or a stage name.">
                                 <div class="field-display">
                                     <h1 class="store-name">
                                             <span class="field-value<?php echo $store_name_value ? '' : ' is-empty'; ?>"><?php echo esc_html( $store_name_display ); ?></span>
                                         <?php do_action( 'dokan_store_header_after_store_name', $store_user ); ?>
                                     </h1>
-                                    <?php if ( $is_owner ) : ?>
+                                    <?php if ( $allow_inline_editing ) : ?>
                                         <button class="edit-field-btn profile-edit-btn" type="button" title="Edit Name">
                                             <?php echo TM_Icons::svg( 'pencil-alt' ); ?>
                                         </button>
                                     <?php endif; ?>
                                 </div>
-                                <?php if ( $is_owner ) : ?>
+                                <?php if ( $allow_inline_editing ) : ?>
                                     <div class="field-edit">
                                         <label><?php echo esc_html( 'EDIT ' . $public_person_singular . ' Name' ); ?></label>
                                         <input type="text" name="store_name" class="edit-field-input" value="<?php echo esc_attr( $store_user->get_shop_name() ); ?>">
@@ -421,13 +435,13 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
 
                             <?php // Store categories (inline editable) ?>
                             <?php if ( ! empty( $store_category_display ) || $is_owner || $is_preonboard || $is_admin_editing ) : ?>
-				                        <div class="store-categories-wrapper<?php echo $is_owner ? ' editable-field' : ''; ?>" data-field="store_categories" data-help="Use CTRL + click to select multiple options">
+                                        <div class="store-categories-wrapper<?php echo $allow_inline_editing ? ' editable-field' : ''; ?>" data-field="store_categories" data-help="Use CTRL + click to select multiple options">
                                     <div class="field-display">
                                         <div class="store-categories-display-group<?php echo $_tm_level_tier ? ' tm-combo-pill--' . esc_attr( $_tm_level_tier ) : ''; ?>">
                                             <div class="store-categories-display tm-combo-pill">
                                                 <span class="tm-combo-pill__cats-row">
                                                     <span class="tm-combo-pill__cats field-value" title="<?php echo esc_attr( $store_category_display_full ); ?>"><?php echo esc_html( $store_category_display ? $store_category_display : 'Categories' ); ?></span>
-                                                    <?php if ( $is_owner ) : ?>
+                                                    <?php if ( $allow_inline_editing ) : ?>
                                                         <button class="edit-field-btn profile-edit-btn" type="button" title="Edit Categories">
                                                             <?php echo TM_Icons::svg( 'pencil-alt' ); ?>
                                                         </button>
@@ -441,7 +455,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                             <?php endif; ?>
                                         </div>
                                     </div>
-                                    <?php if ( $is_owner ) : ?>
+                                    <?php if ( $allow_inline_editing ) : ?>
                                         <div class="field-edit" data-is-multi="true">
                                             <label>
                                                 EDIT Categories
@@ -477,18 +491,18 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                             ?>
                             <?php if ( ! dokan_is_vendor_info_hidden( 'address' ) && ( ! empty( $geo_location_display ) || $is_owner || $is_preonboard || $is_admin_editing ) ) { ?>
                                 <?php $geo_location_display_text = $geo_location_display ? $geo_location_display : 'Location'; ?>
-                                <div class="location-wrapper<?php echo $is_owner ? ' editable-field' : ''; ?>" data-field="geo_location" data-help="Start typing to search for your location. Select from the dropdown to autocomplete.">
+                                <div class="location-wrapper<?php echo $allow_inline_editing ? ' editable-field' : ''; ?>" data-field="geo_location" data-help="Start typing to search for your location. Select from the dropdown to autocomplete.">
                                     <div class="field-display">
                                         <div class="dokan-store-address-head">
                                             <span class="field-value"><?php echo wp_kses_post( $geo_location_display_text ); ?></span>
                                         </div>
-                                        <?php if ( $is_owner ) : ?>
+                                        <?php if ( $allow_inline_editing ) : ?>
                                             <button class="edit-field-btn profile-edit-btn" type="button" title="Edit Location">
                                                 <?php echo TM_Icons::svg( 'pencil-alt' ); ?>
                                             </button>
                                         <?php endif; ?>
                                     </div>
-                                    <?php if ( $is_owner ) : ?>
+                                    <?php if ( $allow_inline_editing ) : ?>
                                         <div class="field-edit">
                                             <label>
                                                 EDIT Location
@@ -514,7 +528,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                             <?php } ?>
 								</div>
                             
-                            <?php if ( $is_owner ) : ?>
+                            <?php if ( $allow_inline_editing ) : ?>
                                 <div class="contact-info-section overlay-section" data-section="contact-info">
                                     <div class="contact-info-title">Contact Details</div>
                                     <div class="contact-email-wrapper editable-field" data-field="contact_emails" data-help="Enter up to 3 emails and mark 1 of them as main">
@@ -621,7 +635,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                                     </div>
                                 </div>
                             <?php else : ?>
-                                <?php if ( $is_owner ) : ?>
+                                <?php if ( $allow_inline_editing ) : ?>
                                     <div class="contact-info-section">
                                         <div class="contact-info-title">Contact Details</div>
                                         <div class="contact-email-wrapper editable-field" data-field="contact_emails">
@@ -806,18 +820,18 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
 			    
                             <?php // Store categories (inline editable) ?>
                             <?php if ( ! empty( $store_category_display ) || $is_owner || $is_preonboard || $is_admin_editing ) : ?>
-                                <div class="store-categories-wrapper<?php echo $is_owner ? ' editable-field' : ''; ?>" data-field="store_categories" data-help="Use CTRL + click to select multiple options">
+                                <div class="store-categories-wrapper<?php echo $allow_inline_editing ? ' editable-field' : ''; ?>" data-field="store_categories" data-help="Use CTRL + click to select multiple options">
                                     <div class="field-display">
                                         <div class="store-categories-display">
                                             <span class="field-value" title="<?php echo esc_attr( $store_category_display_full ); ?>"><?php echo esc_html( $store_category_display ? $store_category_display : 'Categories' ); ?></span>
-                                            <?php if ( $is_owner ) : ?>
+                                            <?php if ( $allow_inline_editing ) : ?>
                                                 <button class="edit-field-btn profile-edit-btn" type="button" title="Edit Categories">
                                                     <?php echo TM_Icons::svg( 'pencil-alt' ); ?>
                                                 </button>
                                             <?php endif; ?>
                                         </div>
                                     </div>
-                                    <?php if ( $is_owner ) : ?>
+                                    <?php if ( $allow_inline_editing ) : ?>
                                         <div class="field-edit" data-is-multi="true">
                                             <label>
                                                 EDIT Categories
@@ -851,18 +865,18 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                             ?>
                             <?php if ( ! dokan_is_vendor_info_hidden( 'address' ) && ( ! empty( $geo_location_display ) || $is_owner || $is_preonboard || $is_admin_editing ) ) { ?>
                                 <?php $geo_location_display_text = $geo_location_display ? $geo_location_display : 'Location'; ?>
-                                <div class="location-wrapper<?php echo $is_owner ? ' editable-field' : ''; ?>" data-field="geo_location" data-help="Start typing to search for your location. Select from the dropdown to autocomplete.">
+                                <div class="location-wrapper<?php echo $allow_inline_editing ? ' editable-field' : ''; ?>" data-field="geo_location" data-help="Start typing to search for your location. Select from the dropdown to autocomplete.">
                                     <div class="field-display">
                                         <div class="dokan-store-address-head">
                                             <span class="field-value"><?php echo wp_kses_post( $geo_location_display_text ); ?></span>
                                         </div>
-                                        <?php if ( $is_owner ) : ?>
+                                        <?php if ( $allow_inline_editing ) : ?>
                                             <button class="edit-field-btn profile-edit-btn" type="button" title="Edit Location">
                                                 <?php echo TM_Icons::svg( 'pencil-alt' ); ?>
                                             </button>
                                         <?php endif; ?>
                                     </div>
-                                    <?php if ( $is_owner ) : ?>
+                                    <?php if ( $allow_inline_editing ) : ?>
                                         <div class="field-edit">
                                             <label>
                                                 EDIT Location
@@ -1178,7 +1192,7 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
             // Shown to the vendor owner (or admin editing) for ALL vendors — published
             // or not — so every vendor sees their current level and what's needed next.
             // Calls tm_vendor_completeness() from includes/vendor-profile/vendor-completeness.php.
-            if ( ( $is_owner || $is_admin_editing ) && function_exists( 'tm_vendor_completeness' ) ) :
+            if ( ( $is_owner || $is_admin_editing ) && ! $is_showcase_context && function_exists( 'tm_vendor_completeness' ) ) :
                 // Reuse the pre-computed completeness data from the top of this template.
                 $_c = $_tm_completeness;
                 if ( $_c ) :
@@ -1507,20 +1521,20 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                 return TM_Icons::svg( $default_icon, '', $label );
             };
             ?>
-            <div class="profile-bottom-drawer<?php echo $is_owner ? ' owner-viewing' : ''; ?>">
+            <div class="profile-bottom-drawer<?php echo $allow_inline_editing ? ' owner-viewing' : ''; ?>">
                 <div class="profile-bottom-tabs">
                     <div class="bottom-tab-item" data-target="demographic-section">
                         <span class="bottom-tab-label">
                             <span class="bottom-tab-icon" aria-hidden="true"><?php echo $drawer_tab_icon( 'id-card', $drawer_demographic_label ); ?></span>
                             <?php echo $drawer_label_markup( $drawer_demographic_label ); ?>
-                            <?php if ( $is_owner ) : ?><span class="tab-edit-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'pencil-alt' ); ?></span><?php endif; ?>
+                            <?php if ( $allow_inline_editing ) : ?><span class="tab-edit-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'pencil-alt' ); ?></span><?php endif; ?>
                         </span>
                     </div>
                     <div class="bottom-tab-item" data-target="social-section">
                         <span class="bottom-tab-label">
                             <span class="bottom-tab-icon" aria-hidden="true"><?php echo $drawer_tab_icon( 'chart-line', $drawer_social_label ); ?></span>
                             <?php echo $drawer_label_markup( $drawer_social_label ); ?>
-                            <?php if ( $is_owner ) : ?><span class="tab-edit-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'pencil-alt' ); ?></span><?php endif; ?>
+                            <?php if ( $allow_inline_editing ) : ?><span class="tab-edit-icon" aria-hidden="true"><?php echo TM_Icons::svg( 'pencil-alt' ); ?></span><?php endif; ?>
                         </span>
                     </div>
                     <?php foreach ( $drawer_dynamic_sections as $drawer_section ) : ?>

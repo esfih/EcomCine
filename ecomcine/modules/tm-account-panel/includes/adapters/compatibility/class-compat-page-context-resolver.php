@@ -18,6 +18,11 @@ class TAP_Compat_Page_Context_Resolver implements TAP_Page_Context_Resolver {
 		if ( function_exists( 'tm_is_showcase_page' ) && tm_is_showcase_page() ) {
 			return true;
 		}
+		// Route service delegation: ecomcine_is_person_page() consults
+		// EcomCine_Route_Service first, then falls back to Dokan.
+		if ( function_exists( 'ecomcine_is_person_page' ) && ecomcine_is_person_page() ) {
+			return true;
+		}
 		if ( function_exists( 'dokan_is_store_page' ) && dokan_is_store_page() ) {
 			return true;
 		}

@@ -1890,6 +1890,62 @@ body.tm-mobile-landscape.tm-talent-panel-open .banner-edit-actions {
 	box-shadow: 0 4px 14px rgba(212, 175, 55, 0.5);
 }
 
+.banner-edit-actions--showcase {
+	width: auto !important;
+	max-width: none !important;
+	padding-inline: 12px;
+}
+
+.showcase-edit-profile-btn {
+	position: relative;
+	top: auto;
+	left: auto;
+	transform: none;
+	min-height: 44px;
+	border-radius: 999px;
+	background: rgba(212, 175, 55, 0.95);
+	border: 2px solid #D4AF37;
+	color: #000;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	padding: 0 16px;
+	text-decoration: none;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	pointer-events: auto;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.showcase-edit-profile-btn:hover,
+.showcase-edit-profile-btn:focus-visible {
+	transform: scale(1.03);
+	box-shadow: 0 4px 14px rgba(212, 175, 55, 0.5);
+	color: #000;
+	text-decoration: none;
+}
+
+/* Safety fallback: suppress any leaking edit UI on actual Showcase takeover pages.
+ * IMPORTANT: Use page-template-template-talent-showcase (WP template body class) NOT
+ * tm-showcase-page, because person profile pages also get tm-showcase-page due to
+ * their queried object being the showcase home page. */
+body.page-template-template-talent-showcase .editable-field,
+body.page-template-template-talent-showcase .editable-avatar,
+body.page-template-template-talent-showcase .edit-avatar-btn,
+body.page-template-template-talent-showcase .edit-banner-btn,
+body.page-template-template-talent-showcase .edit-media-btn,
+body.page-template-template-talent-showcase .edit-field-btn,
+body.page-template-template-talent-showcase .tab-edit-icon,
+body.page-template-template-talent-showcase .edit-attr-btn,
+body.page-template-template-talent-showcase .tm-onboard-actions {
+	display: none !important;
+}
+
 .edit-banner-btn__pen {
 	position: absolute;
 	bottom: 6px;
@@ -6275,12 +6331,13 @@ body.tm-listing-page.dokan-store .tm-cinematic-header {
 	transform: translateX(-50%) !important;
 	width: calc(100% - 40px) !important;
 	max-width: 1920px !important;
-	bottom: max(6px, calc(env(safe-area-inset-bottom, 0px) + var(--tm-browser-ui-offset, 0px))) !important;
 	z-index: 110 !important;
 	pointer-events: none !important;
 	display: block !important;
 }
 
+	body.tm-listing-page .tm-cinematic-header__inner,
+	body.tm-listing-page.dokan-store .tm-cinematic-header__inner {
 	bottom: max(6px, calc(env(safe-area-inset-bottom, 0px) + var(--tm-browser-ui-offset, 0px))) !important;
 	position: relative !important;
 	display: grid !important;

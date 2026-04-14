@@ -34,6 +34,14 @@ class TAP_Adapter_Registry {
 		if ( defined( 'TAP_ADAPTER' ) && TAP_ADAPTER === 'default-wp' ) {
 			return true;
 		}
+		// Wave 1: when listing authority is 'core' or 'shadow', always prefer the
+		// WP-native adapter regardless of Dokan presence or runtime mode setting.
+		if ( class_exists( 'EcomCine_Wave1_Authority', false ) ) {
+			$listing_state = EcomCine_Wave1_Authority::get_listing_state();
+			if ( 'core' === $listing_state || 'shadow' === $listing_state ) {
+				return true;
+			}
+		}
 		if ( class_exists( 'EcomCine_Admin_Settings', false ) ) {
 			$mode = EcomCine_Admin_Settings::get_runtime_mode();
 			// Dokan-compat adapters only needed in Dokan modes.

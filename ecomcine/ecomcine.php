@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EcomCine
  * Description: Unified EcomCine app plugin consolidating cinematic media, account panel, and booking modal features.
- * Version: 0.1.79
+ * Version: 0.1.80
  * Author: EcomCine
  * Update URI: https://updates.ecomcine.com/update-server.php
  * Requires at least: 6.5
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ECOMCINE_VERSION', '0.1.79' );
+define( 'ECOMCINE_VERSION', '0.1.80' );
 define( 'ECOMCINE_FILE', __FILE__ );
 define( 'ECOMCINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ECOMCINE_URL', plugin_dir_url( __FILE__ ) );
@@ -77,6 +77,14 @@ if ( version_compare( PHP_VERSION, '8.1', '<' ) ) {
 $required_files = array(
 	'includes/core/class-plugin-capability.php',
 	'includes/core/class-plugin-updater.php',
+	'includes/core/class-wave1-authority.php',
+	'includes/core/class-listing-service.php',
+	'includes/core/class-route-service.php',
+	'includes/core/class-query-service.php',
+	'includes/core/class-listing-card-view-model.php',
+	'includes/core/cli/class-authority-cli-command.php',
+	'includes/core/cli/class-parity-check-command.php',
+	'includes/core/cli/class-shadow-log-cli-command.php',
 	'includes/core/contracts/interface-theme-adapter.php',
 	'includes/core/contracts/interface-commerce-adapter.php',
 	'includes/core/adapters/class-theme-adapter-dokan-astra.php',
@@ -119,6 +127,8 @@ EcomCine_Admin_Settings::init();
 EcomCine_Licensing::init();
 EcomCine_Plugin_Updater::init();
 EcomCine_Admin_Categories_Tab::init();
+EcomCine_Wave1_Authority::init();
+EcomCine_Route_Service::init();
 
 // Demo data (non-critical — load after core bootstrap).
 $_demo_errors = [];
@@ -146,6 +156,7 @@ function ecomcine_get_runtime_adapter_snapshot() {
 function ecomcine_get_settings_snapshot() {
 	$settings = EcomCine_Admin_Settings::get_settings();
 	$settings['plugin_capabilities'] = EcomCine_Plugin_Capability::snapshot();
+	$settings['wave1_authority'] = EcomCine_Wave1_Authority::snapshot();
 	return $settings;
 }
 

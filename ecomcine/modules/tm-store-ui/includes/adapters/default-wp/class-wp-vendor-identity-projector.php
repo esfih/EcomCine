@@ -98,6 +98,10 @@ class THO_WP_Vendor_Identity_Projector implements THO_Vendor_Identity_Projector 
 	// -------------------------------------------------------------------------
 
 	private function get_cpt_post_id( int $vendor_id ): int {
+		// Listing service is the canonical authority for listing-ID-to-user mapping.
+		if ( class_exists( 'EcomCine_Listing_Service', false ) ) {
+			return EcomCine_Listing_Service::get_listing_id_for_user( $vendor_id );
+		}
 		if ( class_exists( 'TMP_WP_Vendor_CPT' ) ) {
 			return (int) TMP_WP_Vendor_CPT::get_post_id_for_vendor( $vendor_id );
 		}

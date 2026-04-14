@@ -225,8 +225,12 @@ if ( ! has_action( 'wp_ajax_get_vendor_navigation_list', 'get_vendor_navigation_
 }
 
 if ( ! function_exists( 'tm_get_vendor_store_content_payload' ) ) :
-function tm_get_vendor_store_content_payload( $vendor_id ) {
+function tm_get_vendor_store_content_payload( $vendor_id, array $context = array() ) {
 	$vendor_id = absint( $vendor_id );
+	$context_mode = isset( $context['mode'] ) ? sanitize_key( (string) $context['mode'] ) : '';
+	if ( ! in_array( $context_mode, array( 'showcase', 'profile' ), true ) ) {
+		$context_mode = '';
+	}
 	if ( ! $vendor_id ) {
 		return new WP_Error( 'invalid_vendor', 'Invalid vendor', array( 'vendor_id' => $vendor_id ) );
 	}
@@ -238,6 +242,9 @@ function tm_get_vendor_store_content_payload( $vendor_id ) {
 		return new WP_Error( 'vendor_not_found', 'Vendor not found', array( 'vendor_id' => $vendor_id ) );
 	}
 	try {
+		if ( 'showcase' === $context_mode ) {
+			$GLOBALS['tm_showcase_page'] = true;
+		}
 		set_query_var( 'author', $vendor_id );
 		$vendor_context_id = $vendor_id;
 		// Resolve store-header template: plugin copy takes priority, then theme.
@@ -341,7 +348,8 @@ endif;
 if ( ! function_exists( 'get_vendor_store_content' ) ) :
 function get_vendor_store_content() {
 	$vendor_id = isset( $_POST['vendor_id'] ) ? absint( $_POST['vendor_id'] ) : 0;
-	$result    = tm_get_vendor_store_content_payload( $vendor_id );
+	$context_mode = isset( $_POST['context_mode'] ) ? sanitize_key( (string) wp_unslash( $_POST['context_mode'] ) ) : '';
+	$result    = tm_get_vendor_store_content_payload( $vendor_id, array( 'mode' => $context_mode ) );
 	if ( is_wp_error( $result ) ) {
 		wp_send_json_error( $result->get_error_data() ?: array( 'message' => $result->get_error_message() ) );
 		return;
@@ -353,7 +361,8 @@ endif;
 if ( ! function_exists( 'tm_rest_get_vendor_store_content' ) ) :
 function tm_rest_get_vendor_store_content( WP_REST_Request $request ) {
 	$vendor_id = absint( $request->get_param( 'vendor_id' ) );
-	$result    = tm_get_vendor_store_content_payload( $vendor_id );
+	$context_mode = sanitize_key( (string) $request->get_param( 'context_mode' ) );
+	$result    = tm_get_vendor_store_content_payload( $vendor_id, array( 'mode' => $context_mode ) );
 	if ( is_wp_error( $result ) ) {
 		return new WP_REST_Response( array( 'success' => false, 'data' => $result->get_error_data() ), 400 );
 	}

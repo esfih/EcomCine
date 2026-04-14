@@ -32,6 +32,15 @@ if ( ! function_exists( 'tm_store_ui_collect_person_ids_for_listing' ) ) {
 	}
 
 	function tm_store_ui_collect_person_ids_for_listing(): array {
+		// Query service delegation: when authority is core or shadow,
+		// EcomCine_Query_Service owns the collection query.
+		if ( class_exists( 'EcomCine_Query_Service', false )
+			&& class_exists( 'EcomCine_Wave1_Authority', false )
+			&& EcomCine_Wave1_Authority::STATE_LEGACY !== EcomCine_Wave1_Authority::get_query_state()
+		) {
+			return EcomCine_Query_Service::get_live_person_ids();
+		}
+
 		$ids = array();
 
 		if ( function_exists( 'tm_get_showcase_vendor_ids' ) ) {
@@ -588,6 +597,25 @@ if ( ! function_exists( 'tm_store_ui_get_filtered_person_ids_for_listing' ) ) {
 			return $cache;
 		}
 
+		// Query service delegation (Packet 5b): when authority is core or shadow,
+		// EcomCine_Query_Service owns both the collection and the filter application.
+		if ( class_exists( 'EcomCine_Query_Service', false )
+			&& class_exists( 'EcomCine_Wave1_Authority', false )
+			&& EcomCine_Wave1_Authority::STATE_LEGACY !== EcomCine_Wave1_Authority::get_query_state()
+		) {
+			$filters = function_exists( 'tm_store_ui_get_active_listing_filters' )
+				? tm_store_ui_get_active_listing_filters()
+				: array();
+
+			// Pass country filter from query string (handled inline in the shortcode renderer).
+			if ( isset( $_GET['country'] ) ) {
+				$filters['country'] = sanitize_text_field( wp_unslash( $_GET['country'] ) );
+			}
+
+			$cache = EcomCine_Query_Service::get_filtered_person_ids( $filters );
+			return $cache;
+		}
+
 		$filters = tm_store_ui_get_active_listing_filters();
 		$ids     = tm_store_ui_collect_person_ids_for_listing();
 
@@ -801,7 +829,11 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 		);
 
 		$all_ids = tm_store_ui_get_filtered_person_ids_for_listing();
-			// ── Country filter (from Locations map CTA: ?country=United+States) ────
+		// Country filter is applied via EcomCine_Query_Service when authority is not legacy,
+		// or inline here for legacy mode (query string: ?country=United+States).
+		if ( class_exists( 'EcomCine_Wave1_Authority', false )
+			&& EcomCine_Wave1_Authority::STATE_LEGACY === EcomCine_Wave1_Authority::get_query_state()
+		) {
 			$country_filter = isset( $_GET['country'] ) ? sanitize_text_field( wp_unslash( $_GET['country'] ) ) : '';
 			if ( '' !== $country_filter ) {
 				global $wpdb;
@@ -821,6 +853,7 @@ if ( ! function_exists( 'tm_store_ui_render_stores_shortcode' ) ) {
 					? array_values( array_intersect( $all_ids, $ids_in_country ) )
 					: array();
 			}
+		}
 		$total   = count( $all_ids );
 
 		if ( 0 === $total ) {

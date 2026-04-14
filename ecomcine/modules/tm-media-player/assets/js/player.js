@@ -824,6 +824,9 @@ jQuery(document).ready(function($) {
 	function shouldUseVendorContentRest() {
 		// window.tmVendorStoreRestUrl is a dedicated global set by wp_add_inline_script
 		// before player.js loads — it is never overwritten by vendor-store-js.
+		// NOTE: Showcase mode always uses AJAX (not REST) so vendor-swap requests carry
+		// browser cookies and are authenticated — required for server-side CTA rendering.
+		if (isShowcaseMode()) return false;
 		if (window.tmVendorStoreRestUrl) return true;
 		if (!window.vendorStoreData) return false;
 		if (vendorStoreData.canEdit || vendorStoreData.isOwner || vendorStoreData.isAdminEditing) {
@@ -839,7 +842,11 @@ jQuery(document).ready(function($) {
 		return {
 			url: ajaxUrl,
 			type: 'POST',
-			data: { action: 'get_vendor_store_content', vendor_id: vendorId }
+			data: {
+				action: 'get_vendor_store_content',
+				vendor_id: vendorId,
+				context_mode: isShowcaseMode() ? 'showcase' : 'profile'
+			}
 		};
 	}
 
@@ -850,7 +857,7 @@ jQuery(document).ready(function($) {
 				|| (window.vendorStoreData && vendorStoreData.vendorStoreRestUrl)
 				|| '';
 			return {
-				url: restBase + '?vendor_id=' + encodeURIComponent(vendorId),
+				url: restBase + '?vendor_id=' + encodeURIComponent(vendorId) + '&context_mode=' + encodeURIComponent(isShowcaseMode() ? 'showcase' : 'profile'),
 				type: 'GET'
 			};
 		}

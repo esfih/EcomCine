@@ -10,7 +10,7 @@ Scope: Transform CastingAgency-specific custom stack into productized EcomCine a
 - [x] Phase 1: Controlled consolidation on current stack (single app plugin) - Completed
 - [x] Phase 2: Abstraction layer (theme/plugin agnostic core + adapters) - Completed
 - [x] Phase 3: WP-Admin configuration and management layer - Completed
-- [~] Phase 4: Licensing, billing integration hardening, and release pipeline - In progress
+- [x] Phase 4: Licensing, billing integration hardening, and release pipeline - Completed
 
 ## North-Star Product Shape
 
@@ -148,7 +148,7 @@ High-level outcomes:
 - 2026-03-27 (Phase 3 Build): Updated abstraction resolver to honor `runtime_mode` so wp-admin can force baseline adapters.
 - 2026-03-27 (Phase 3 Validation): PASS on diagnostics + health checks; verified the legacy compatibility preset resolves to `dokan-astra`/`woo-dokan` and forced `baseline_wp` resolves to `wp-baseline`/`wp-baseline` (with settings restored).
 
-## Phase 4 - Licensing/Billing Hardening And Distribution (In Progress)
+## Phase 4 - Licensing/Billing Hardening And Distribution (Completed)
 
 Goal:
 - Finalize dual-plugin distribution model for paid productization.
@@ -171,6 +171,7 @@ High-level outcomes:
 - 2026-03-27 (Phase 4 Validation): PASS on diagnostics + health checks; licensing snapshot returns active/local-default/soft baseline.
 - 2026-03-27 (Phase 4 Validation): PASS on distribution packaging; generated `dist/ecomcine-0.1.0.tar.gz` and matching manifest with SHA-256 checksum (tar fallback used because `zip` binary is unavailable in host runtime).
 - 2026-04-03 (Architecture): Standalone plugin consolidation complete. Deleted root-level `tm-store-ui/`, `tm-media-player/`, `tm-account-panel/`, `tm-vendor-booking-modal/` folders. All module code now lives solely in `ecomcine/modules/`. `ecomcine_load_legacy_module()` and `ecomcine_is_plugin_slug_active()` replaced with `ecomcine_load_module()` + feature flags. No dual sources of truth. Docker-compose volume mounts and README-FIRST inventory updated to reflect single canonical location.
+- 2026-04-09 (Phase 4 Closure): All four high-level outcomes verified. (1) Control-plane plugin `ecomcine-control-plane.php` v0.1.2 complete with activation + entitlement REST routes. (2) Entitlement lifecycle: `sync_entitlement()` → `activate_remote()` → `entitlements/resolve` → freemium fallback chain confirmed healthy via `ecomcine_get_license_status_snapshot()`. (3) Release packaging pipeline: `dist/` has 20+ versioned zips with SHA-256 manifests, build script active. (4) Rollback: Wave 1 flags resettable via `wp ecomcine authority set`; licensing degrades gracefully to freemium fallback on any activation/sync failure; `EcomCine-Core-Wave-1-Rollback-Checklist.md` documents runtime rollback gates. Phase 4 closed.
 
 ## Working Rule
 
