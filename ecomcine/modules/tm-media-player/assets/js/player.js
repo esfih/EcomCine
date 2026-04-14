@@ -130,9 +130,11 @@ jQuery(document).ready(function($) {
 	var VENDOR_CONTENT_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
 	// YouTube IFrame API state
-	var ytPlayer     = null;   // YT.Player instance
-	var ytApiLoading = false;
-	var ytPendingId  = null;   // video ID waiting for API to become ready
+	var ytPlayer           = null;   // YT.Player instance
+	var ytApiLoading       = false;
+	var ytPendingId        = null;   // video ID waiting for API to become ready
+	var ytCurrentId        = null;   // the videoId most recently loaded
+	var ytProgressInterval = null;   // setInterval handle for progress-bar polling
 	// Chain onYouTubeIframeAPIReady so we don't clobber any earlier registration.
 	(function() {
 		var _prev = window.onYouTubeIframeAPIReady;
@@ -2130,6 +2132,8 @@ jQuery(document).ready(function($) {
 	function showYTPlayer(active) {
 		var $yt = $("#tm-yt-player");
 		$yt.css("display", active ? "block" : "none");
+		// Add/remove the is-youtube-mode class on hero-remote so the progress row shows/hides
+		$(".hero-remote").toggleClass("is-youtube-mode", !!active);
 		if (active) {
 			// Re-enforce iframe dimensions each time we show the player — the YT API
 			// may have initially created the iframe at 640×390 (default) if the
@@ -2163,7 +2167,14 @@ jQuery(document).ready(function($) {
 	function initYTPlayer(videoId) {
 		if (!videoId) return;
 		if (ytPlayer && typeof ytPlayer.loadVideoById === "function") {
-			try { ytPlayer.loadVideoById(videoId); } catch(e) {}
+			if (ytCurrentId === videoId) {
+				// Same video — resume from current position (don't restart)
+				try { ytPlayer.playVideo(); } catch(e) {}
+			} else {
+				// Different video — load fresh
+				ytCurrentId = videoId;
+				try { ytPlayer.loadVideoById(videoId); } catch(e) {}
+			}
 			return;
 		}
 		// YT.Player replaces the target element — recreate the div each time if needed.
@@ -2181,6 +2192,7 @@ jQuery(document).ready(function($) {
 		// The overlay intercepts all pointer interaction with YouTube's native UI
 		// (title bar, end-cards, logo) — playback is driven via the JS API only.
 		$container.html('<div id="tm-yt-player-inner"></div><div class="tm-yt-overlay" aria-hidden="true"></div>');
+		ytCurrentId = videoId;
 		ytPlayer = new YT.Player("tm-yt-player-inner", {
 			videoId: videoId,
 			width:  w,
@@ -2212,7 +2224,16 @@ jQuery(document).ready(function($) {
 				},
 				onStateChange: function(e) {
 					/* global YT */
-					if (typeof YT !== "undefined" && e.data === YT.PlayerState.ENDED) {
+					if (typeof YT === "undefined") return;
+					if (e.data === YT.PlayerState.PLAYING) {
+						// Sync play state and start progress polling
+						startYTProgressPolling();
+						syncRemotePlaying(true);
+					} else if (e.data === YT.PlayerState.PAUSED) {
+						// Stop polling — play state is managed by our own pauseCurrent()/playCurrent()
+						stopYTProgressPolling();
+					} else if (e.data === YT.PlayerState.ENDED) {
+						stopYTProgressPolling();
 						// Defer loadNext() via setTimeout to avoid calling stopMedia() /
 						// ytPlayer.pauseVideo() re-entrantly inside the YT API callback,
 						// which can corrupt the IFrame API state and stall playback.
@@ -2238,6 +2259,48 @@ jQuery(document).ready(function($) {
 		} else {
 			ytPendingId = videoId;
 			loadYouTubeAPI();
+		}
+	}
+
+	// ── YouTube progress bar helpers ──────────────────────────────────────────
+
+	function formatYTTime(seconds) {
+		if (!isFinite(seconds) || seconds < 0) return "0:00";
+		var s = Math.floor(seconds);
+		var h = Math.floor(s / 3600);
+		var m = Math.floor((s % 3600) / 60);
+		var sec = s % 60;
+		if (h > 0) {
+			return h + ":" + (m < 10 ? "0" : "") + m + ":" + (sec < 10 ? "0" : "") + sec;
+		}
+		return m + ":" + (sec < 10 ? "0" : "") + sec;
+	}
+
+	function updateYTProgressBar() {
+		if (!ytPlayer || typeof ytPlayer.getCurrentTime !== "function") return;
+		try {
+			var cur = ytPlayer.getCurrentTime() || 0;
+			var dur = ytPlayer.getDuration() || 0;
+			var $remote = $(".hero-remote");
+			if (!$remote.length) return;
+			var pct = dur > 0 ? (cur / dur) * 1000 : 0;
+			$remote.find(".hero-yt-seek").val(pct);
+			$remote.find(".hero-yt-progress-fill").css("width", (dur > 0 ? (cur / dur * 100) : 0) + "%");
+			$remote.find(".hero-yt-time-current").text(formatYTTime(cur));
+			$remote.find(".hero-yt-time-duration").text(formatYTTime(dur));
+		} catch(e) {}
+	}
+
+	function startYTProgressPolling() {
+		stopYTProgressPolling();
+		updateYTProgressBar();
+		ytProgressInterval = setInterval(updateYTProgressBar, 333);
+	}
+
+	function stopYTProgressPolling() {
+		if (ytProgressInterval) {
+			clearInterval(ytProgressInterval);
+			ytProgressInterval = null;
 		}
 	}
 
@@ -2567,6 +2630,7 @@ jQuery(document).ready(function($) {
 		if (heroVideoActive) { heroVideoActive.pause(); }
 		if ($heroAudio.length) { $heroAudio[0].pause(); }
 		if (ytPlayer && typeof ytPlayer.pauseVideo === "function") { try { ytPlayer.pauseVideo(); } catch(e) {} }
+		stopYTProgressPolling();
 		showYTPlayer(false);
 		showEq(false);
 	}
@@ -2817,7 +2881,14 @@ jQuery(document).ready(function($) {
 		}
 		else if (item.type === "youtube") {
 			var ytIdResume = item.youtube_id || extractYoutubeId(item.src);
-			if (ytIdResume) { playYoutubeId(ytIdResume); }
+			if (ytIdResume) {
+				if (ytPlayer && typeof ytPlayer.playVideo === "function" && ytCurrentId === ytIdResume) {
+					// Resume the same video from where we paused
+					try { ytPlayer.playVideo(); } catch(e) {}
+				} else {
+					playYoutubeId(ytIdResume);
+				}
+			}
 			syncRemotePlaying(true);
 			return;
 		}
@@ -2836,6 +2907,8 @@ jQuery(document).ready(function($) {
 		var $heroAudio = $(".hero-audio").first();
 		if (heroVideoActive) { heroVideoActive.pause(); }
 		if ($heroAudio.length) { $heroAudio[0].pause(); }
+		if (ytPlayer && typeof ytPlayer.pauseVideo === "function") { try { ytPlayer.pauseVideo(); } catch(e) {} }
+		stopYTProgressPolling();
 		clearTransitionTimers();
 		stopBlackout();
 		clearMediaTimer();
@@ -4883,6 +4956,21 @@ jQuery(document).ready(function($) {
 		} else {
 			playCurrent();
 		}
+	});
+
+	// YouTube seek bar — drag or click to jump to a position in the video.
+	// Using 'input' gives live scrubbing; 'change' fires on release for mouse.
+	$(document).on('input change', '.hero-yt-seek', function(e) {
+		e.stopPropagation();
+		if (!ytPlayer || typeof ytPlayer.seekTo !== "function") return;
+		try {
+			var dur = ytPlayer.getDuration() || 0;
+			if (dur <= 0) return;
+			var targetSec = (parseFloat($(this).val()) / 1000) * dur;
+			ytPlayer.seekTo(targetSec, true);
+			// Update time display immediately without waiting for next poll tick
+			updateYTProgressBar();
+		} catch(ex) {}
 	});
 	
 	// Store Name & Location Edit - Show/Hide Edit Form OR Open Modal

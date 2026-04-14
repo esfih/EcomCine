@@ -288,6 +288,15 @@ window.currentVendorId = <?php echo absint( $vendor_id ); ?>;
                             <span class="hero-btn-icon" title="Next media"><?php echo TM_Icons::svg( 'chevron-down' ); ?></span>
                         </button>
                     </div>
+                    <!-- Progress/seek row — only visible during YouTube playback (.is-youtube-mode) -->
+                    <div class="hero-progress-row" aria-label="Video progress">
+                        <span class="hero-yt-time hero-yt-time-current" aria-label="Current time">0:00</span>
+                        <div class="hero-yt-progress-track" role="presentation">
+                            <div class="hero-yt-progress-fill"></div>
+                            <input type="range" class="hero-yt-seek" min="0" max="1000" value="0" step="1" aria-label="Seek video">
+                        </div>
+                        <span class="hero-yt-time hero-yt-time-duration" aria-label="Total duration">0:00</span>
+                    </div>
                     <div class="hero-toggle-row">
                         <label class="hero-toggle"><input type="checkbox" class="hero-toggle-full" /><span class="toggle-text-full"> Play full duration</span><span class="toggle-text-short"> Play full</span></label>
                         <label class="hero-toggle"><input type="checkbox" class="hero-toggle-loop" /><span class="toggle-text-full"> Loop this media</span><span class="toggle-text-short"> Loop this</span></label>

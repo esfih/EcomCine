@@ -1215,7 +1215,7 @@ img.profile-img,
 	align-items: center !important;
 	gap: 6px !important;
 	min-width: 240px !important;
-	max-width: 420px !important;
+	max-width: 480px !important;
 	padding: 8px 14px !important;
 	background: rgba(255, 255, 255, 0.12) !important;
 	backdrop-filter: blur(12px) !important;
@@ -1236,6 +1236,78 @@ img.profile-img,
 	justify-content: center !important;
 	width: 100% !important;
 	flex-wrap: wrap !important;
+}
+
+/* ── YouTube progress / seek row ─────────────────────────────────────── */
+/* Hidden by default; shown only when .hero-remote has .is-youtube-mode  */
+.hero-progress-row {
+	display: none !important;
+	align-items: center !important;
+	gap: 6px !important;
+	width: 100% !important;
+	padding: 2px 0 !important;
+}
+
+.hero-remote.is-youtube-mode .hero-progress-row {
+	display: flex !important;
+}
+
+.hero-yt-time {
+	font-size: 10px !important;
+	font-variant-numeric: tabular-nums !important;
+	color: rgba(255, 255, 255, 0.85) !important;
+	white-space: nowrap !important;
+	min-width: 30px !important;
+	text-align: center !important;
+	flex-shrink: 0 !important;
+}
+
+.hero-yt-progress-track {
+	position: relative !important;
+	flex: 1 1 auto !important;
+	height: 4px !important;
+	background: rgba(255, 255, 255, 0.25) !important;
+	border-radius: 2px !important;
+	overflow: visible !important;
+}
+
+.hero-yt-progress-fill {
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	height: 100% !important;
+	width: 0% !important;
+	background: #eab150 !important;
+	border-radius: 2px !important;
+	pointer-events: none !important;
+	transition: width 0.15s linear !important;
+}
+
+/* Range input — transparent, sits above the fill track for click/drag */
+.hero-yt-seek {
+	position: absolute !important;
+	top: 50% !important;
+	left: 0 !important;
+	width: 100% !important;
+	height: 20px !important;
+	transform: translateY(-50%) !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	opacity: 0 !important;
+	cursor: pointer !important;
+	-webkit-appearance: none !important;
+	appearance: none !important;
+	z-index: 2 !important;
+}
+
+/* Make the track slightly taller on hover for easier targeting */
+.hero-yt-progress-track:hover {
+	height: 6px !important;
+	margin-top: -1px !important;
+}
+
+.hero-yt-progress-track:hover .hero-yt-progress-fill {
+	transition: none !important;
 }
 
 .hero-toggle {
