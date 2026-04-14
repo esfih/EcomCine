@@ -134,7 +134,9 @@ jQuery(document).ready(function($) {
 	var ytApiLoading       = false;
 	var ytPendingId        = null;   // video ID waiting for API to become ready
 	var ytCurrentId        = null;   // the videoId most recently loaded
-	var ytProgressInterval = null;   // setInterval handle for progress-bar polling
+	var ytProgressInterval  = null;   // setInterval handle for progress-bar polling
+	var ytSeeking           = false;  // true while user is dragging the seek slider
+	var ytSeekResumeTimeout = null;   // setTimeout to restart polling after a seek
 	// Chain onYouTubeIframeAPIReady so we don't clobber any earlier registration.
 	(function() {
 		var _prev = window.onYouTubeIframeAPIReady;
@@ -2277,6 +2279,7 @@ jQuery(document).ready(function($) {
 	}
 
 	function updateYTProgressBar() {
+		if (ytSeeking) return;   // don't override the bar while user is dragging
 		if (!ytPlayer || typeof ytPlayer.getCurrentTime !== "function") return;
 		try {
 			var cur = ytPlayer.getCurrentTime() || 0;
@@ -2301,6 +2304,10 @@ jQuery(document).ready(function($) {
 		if (ytProgressInterval) {
 			clearInterval(ytProgressInterval);
 			ytProgressInterval = null;
+		}
+		if (ytSeekResumeTimeout) {
+			clearTimeout(ytSeekResumeTimeout);
+			ytSeekResumeTimeout = null;
 		}
 	}
 
@@ -3336,10 +3343,14 @@ jQuery(document).ready(function($) {
 			if (!$heroRemote.length) return;
 			if ($heroRemote.hasClass("is-audio-mode")) return;
 			clearTimeout(remoteHideTimeout);
-			if (inCenterZone(evt)) {
+			// Keep visible if mouse is directly over the remote (e.g. on progress bar)
+			if (inCenterZone(evt) || $heroRemote.is(":hover")) {
 				toggleHeroRemote(true);
 			} else {
-				remoteHideTimeout = setTimeout(function() { toggleHeroRemote(false); }, 80);
+				remoteHideTimeout = setTimeout(function() {
+					if ($heroRemote.is(":hover")) return;
+					toggleHeroRemote(false);
+				}, 80);
 			}
 		});
 
@@ -3352,11 +3363,14 @@ jQuery(document).ready(function($) {
 			keepHeroRemoteVisible();
 		});
 
-		$heroBox.off("mouseleave.tmhero").on("mouseleave.tmhero", function() {
+			$heroBox.off("mouseleave.tmhero").on("mouseleave.tmhero", function() {
 			if (!$heroRemote.length) return;
 			if ($heroRemote.hasClass("is-audio-mode")) return;
-			// Auto-hide after 3 seconds of no hover (consistent with keepHeroRemoteVisible)
-			remoteHideTimeout = setTimeout(function() { toggleHeroRemote(false); }, 3000);
+			// Auto-hide after 3 seconds of no hover, but not if mouse is on the remote itself
+			remoteHideTimeout = setTimeout(function() {
+				if ($heroRemote.is(":hover")) return;
+				toggleHeroRemote(false);
+			}, 3000);
 		});
 	}
 
@@ -4958,18 +4972,44 @@ jQuery(document).ready(function($) {
 		}
 	});
 
-	// YouTube seek bar — drag or click to jump to a position in the video.
-	// Using 'input' gives live scrubbing; 'change' fires on release for mouse.
-	$(document).on('input change', '.hero-yt-seek', function(e) {
+	// YouTube seek bar — separate visual scrub (input) from actual seek (change/mouseup).
+	// Stopping the poll during drag prevents the interval from overwriting the slider position.
+	$(document).on('mousedown touchstart', '.hero-yt-seek', function(e) {
 		e.stopPropagation();
+		ytSeeking = true;
+		stopYTProgressPolling(); // pause polling so getCurrentTime() doesn't fight the drag
+	});
+
+	// Visual-only updates while dragging — move the fill bar and time label without seeking
+	$(document).on('input', '.hero-yt-seek', function(e) {
+		e.stopPropagation();
+		if (!ytPlayer) return;
+		try {
+			var durV = ytPlayer.getDuration() || 0;
+			if (durV <= 0) return;
+			var pct = parseFloat($(this).val()) / 1000;
+			$(".hero-yt-progress-fill").css("width", (pct * 100) + "%");
+			$(".hero-yt-time-current").text(formatYTTime(pct * durV));
+		} catch(exV) {}
+	});
+
+	// Actual seek fires on mouseup (change) — then resume polling after YouTube catches up
+	$(document).on('change', '.hero-yt-seek', function(e) {
+		e.stopPropagation();
+		ytSeeking = false;
 		if (!ytPlayer || typeof ytPlayer.seekTo !== "function") return;
 		try {
 			var dur = ytPlayer.getDuration() || 0;
 			if (dur <= 0) return;
 			var targetSec = (parseFloat($(this).val()) / 1000) * dur;
 			ytPlayer.seekTo(targetSec, true);
-			// Update time display immediately without waiting for next poll tick
-			updateYTProgressBar();
+			// Wait 500ms for YouTube's getCurrentTime() to reflect the new position
+			// before restarting the polling interval
+			ytSeekResumeTimeout = setTimeout(function() {
+				ytSeekResumeTimeout = null;
+				if (state.isPlaying) { startYTProgressPolling(); }
+				else { updateYTProgressBar(); }
+			}, 500);
 		} catch(ex) {}
 	});
 	
