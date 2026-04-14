@@ -137,6 +137,10 @@ jQuery(document).ready(function($) {
 	var ytProgressInterval  = null;   // setInterval handle for progress-bar polling
 	var ytSeeking           = false;  // true while user is dragging the seek slider
 	var ytSeekResumeTimeout = null;   // setTimeout to restart polling after a seek
+	// YouTube end-screens appear in the last ~20 seconds of a video and cannot be
+	// disabled via API params. For cinematic showcase mode we auto-advance when
+	// this many seconds remain, so end-screen recommendation cards never appear.
+	var YT_ENDSCREEN_SKIP_THRESHOLD = 20; // seconds
 	// Chain onYouTubeIframeAPIReady so we don't clobber any earlier registration.
 	(function() {
 		var _prev = window.onYouTubeIframeAPIReady;
@@ -2284,6 +2288,13 @@ jQuery(document).ready(function($) {
 		try {
 			var cur = ytPlayer.getCurrentTime() || 0;
 			var dur = ytPlayer.getDuration() || 0;
+			// Auto-advance before end-screens appear: YouTube shows recommendation
+			// cards in the last ~20 seconds. Seek to ENDED immediately so our
+			// onStateChange.ENDED handler fires and loadNext() is called.
+			if (dur > YT_ENDSCREEN_SKIP_THRESHOLD && (dur - cur) <= YT_ENDSCREEN_SKIP_THRESHOLD) {
+				ytPlayer.seekTo(dur, true);
+				return;
+			}
 			var $remote = $(".hero-remote");
 			if (!$remote.length) return;
 			var pct = dur > 0 ? (cur / dur) * 1000 : 0;
