@@ -2343,17 +2343,11 @@ jQuery(document).ready(function($) {
 
 	// OPTIMIZATION: Loading indicator for slow/unstable connections
 	function showLoadingIndicator(show, percent) {
-		if (!show) {
-			if (loadingIndicator) {
-				loadingIndicator.remove();
-				loadingIndicator = null;
-			}
-			return;
-		}
-		
-		if (!loadingIndicator) {
-			loadingIndicator = $('<div class="tm-loading-indicator"><div class="tm-loading-spinner"></div></div>');
-			$('.profile-banner-video').first().parent().append(loadingIndicator);
+		// Spinner disabled — caused false positives over already-playing video.
+		// All event bindings (canplay, playing, progress, error) are kept intact.
+		if (loadingIndicator) {
+			loadingIndicator.remove();
+			loadingIndicator = null;
 		}
 	}
 	
