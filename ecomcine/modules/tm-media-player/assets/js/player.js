@@ -2168,11 +2168,18 @@ jQuery(document).ready(function($) {
 				onStateChange: function(e) {
 					/* global YT */
 					if (typeof YT !== "undefined" && e.data === YT.PlayerState.ENDED) {
+						// Defer loadNext() via setTimeout to avoid calling stopMedia() /
+						// ytPlayer.pauseVideo() re-entrantly inside the YT API callback,
+						// which can corrupt the IFrame API state and stall playback.
 						if (state.loopMode) {
-							try { e.target.seekTo(0); e.target.playVideo(); } catch(ex) {}
+							setTimeout(function() {
+								try { e.target.seekTo(0); e.target.playVideo(); } catch(ex) {}
+							}, 0);
 						} else {
-							state.isPlaying = true;
-							loadNext();
+							setTimeout(function() {
+								state.isPlaying = true;
+								loadNext();
+							}, 0);
 						}
 					}
 				}
@@ -2661,7 +2668,10 @@ jQuery(document).ready(function($) {
 			syncRemotePlaying(state.isPlaying);
 		}
 		else if (state.type === "youtube") {
-			showVideo(false);
+			// Do NOT call showVideo(false) — rely solely on z-index to cover the video
+			// slot. Hiding heroVideoActive causes the A/B swap return path to show a
+			// black frame before the slot z-index is restored.
+			stopBlackout(); // clear any lingering transition blackout immediately
 			showImage(false);
 			showEq(false);
 			showYTPlayer(true);
@@ -2669,6 +2679,9 @@ jQuery(document).ready(function($) {
 			if (ytId) { playYoutubeId(ytId); }
 			updateMeta(item);
 			syncRemotePlaying(true);
+			// Preload next/prev non-YouTube items so the A/B buffer is warm when
+			// playback returns to a hosted video after this YouTube item.
+			scheduleBufferPreloads(targetIndex);
 		}
 		else { // audio
 			showVideo(false);
@@ -2754,6 +2767,12 @@ jQuery(document).ready(function($) {
 			if (!advanceTimer && !advanceItemSrc) {
 				armAdvanceTimer(item);
 			}
+			syncRemotePlaying(true);
+			return;
+		}
+		else if (item.type === "youtube") {
+			var ytIdResume = item.youtube_id || extractYoutubeId(item.src);
+			if (ytIdResume) { playYoutubeId(ytIdResume); }
 			syncRemotePlaying(true);
 			return;
 		}
