@@ -137,9 +137,11 @@ jQuery(document).ready(function($) {
 	var ytProgressInterval  = null;   // setInterval handle for progress-bar polling
 	var ytSeeking           = false;  // true while user is dragging the seek slider
 	var ytSeekResumeTimeout = null;   // setTimeout to restart polling after a seek
+	var ytEndFrozen         = false;  // true while overlay freeze-frame is active
 	// YouTube end-screens appear in the last ~20 seconds of a video and cannot be
-	// disabled via API params. For cinematic showcase mode we auto-advance when
-	// this many seconds remain, so end-screen recommendation cards never appear.
+	// disabled via API params. When within this threshold we freeze the visual by
+	// painting the video thumbnail over the iframe — audio keeps playing so the
+	// viewer hears the full content, then onStateChange.ENDED fires naturally.
 	var YT_ENDSCREEN_SKIP_THRESHOLD = 20; // seconds
 	// Chain onYouTubeIframeAPIReady so we don't clobber any earlier registration.
 	(function() {
@@ -2140,6 +2142,9 @@ jQuery(document).ready(function($) {
 		$yt.css("display", active ? "block" : "none");
 		// Add/remove the is-youtube-mode class on hero-remote so the progress row shows/hides
 		$(".hero-remote").toggleClass("is-youtube-mode", !!active);
+		if (!active) {
+			clearYTEndFreeze();
+		}
 		if (active) {
 			// Re-enforce iframe dimensions each time we show the player — the YT API
 			// may have initially created the iframe at 640×390 (default) if the
@@ -2179,6 +2184,8 @@ jQuery(document).ready(function($) {
 			} else {
 				// Different video — load fresh
 				ytCurrentId = videoId;
+				ytEndFrozen = false;
+				clearYTEndFreeze();
 				try { ytPlayer.loadVideoById(videoId); } catch(e) {}
 			}
 			return;
@@ -2199,6 +2206,7 @@ jQuery(document).ready(function($) {
 		// (title bar, end-cards, logo) — playback is driven via the JS API only.
 		$container.html('<div id="tm-yt-player-inner"></div><div class="tm-yt-overlay" aria-hidden="true"></div>');
 		ytCurrentId = videoId;
+		ytEndFrozen = false;
 		ytPlayer = new YT.Player("tm-yt-player-inner", {
 			videoId: videoId,
 			width:  w,
@@ -2288,12 +2296,15 @@ jQuery(document).ready(function($) {
 		try {
 			var cur = ytPlayer.getCurrentTime() || 0;
 			var dur = ytPlayer.getDuration() || 0;
-			// Auto-advance before end-screens appear: YouTube shows recommendation
-			// cards in the last ~20 seconds. Seek to ENDED immediately so our
-			// onStateChange.ENDED handler fires and loadNext() is called.
-			if (dur > YT_ENDSCREEN_SKIP_THRESHOLD && (dur - cur) <= YT_ENDSCREEN_SKIP_THRESHOLD) {
-				ytPlayer.seekTo(dur, true);
-				return;
+			// Freeze-frame end-screen guard: YouTube renders recommendation cards into
+			// the iframe for the last ~20 seconds. We can't suppress them via API.
+			// Solution: paint the video's own thumbnail over the overlay so the visual
+			// appears frozen on the last real frame. Audio keeps playing underneath so
+			// the viewer hears everything. onStateChange.ENDED fires naturally → loadNext().
+			if (dur > YT_ENDSCREEN_SKIP_THRESHOLD && (dur - cur) <= YT_ENDSCREEN_SKIP_THRESHOLD && !ytEndFrozen) {
+				ytEndFrozen = true;
+				var thumbUrl = "https://img.youtube.com/vi/" + ytCurrentId + "/maxresdefault.jpg";
+				$("#tm-yt-player .tm-yt-overlay").addClass("is-end-frozen").css("background-image", "url(" + thumbUrl + ")");
 			}
 			var $remote = $(".hero-remote");
 			if (!$remote.length) return;
@@ -2322,6 +2333,12 @@ jQuery(document).ready(function($) {
 			clearTimeout(ytSeekResumeTimeout);
 			ytSeekResumeTimeout = null;
 		}
+	}
+
+	function clearYTEndFreeze() {
+		if (!ytEndFrozen) return;
+		ytEndFrozen = false;
+		$("#tm-yt-player .tm-yt-overlay").removeClass("is-end-frozen").css("background-image", "");
 	}
 
 	// OPTIMIZATION: Loading indicator for slow/unstable connections

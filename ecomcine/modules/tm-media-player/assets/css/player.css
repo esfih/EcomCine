@@ -3485,6 +3485,20 @@ background: #000;
 	background: transparent;
 }
 
+/* Freeze-frame state: thumbnail covers the iframe to hide YouTube end-screen cards.
+ * Audio keeps playing underneath. Pseudo-elements are suppressed so gradients
+ * don't obscure the thumbnail image. Click is also disabled in this state. */
+.tm-yt-overlay.is-end-frozen {
+	background-size: cover !important;
+	background-position: center !important;
+	background-repeat: no-repeat !important;
+	cursor: default !important;
+}
+.tm-yt-overlay.is-end-frozen::before,
+.tm-yt-overlay.is-end-frozen::after {
+	display: none !important;
+}
+
 /* Top gradient — visually masks the YouTube video title that appears at the top */
 .tm-yt-overlay::before {
 	content: "";
