@@ -42,9 +42,13 @@ defined( 'ABSPATH' ) || exit;
 
 
 /**
- * Bright Data API key (set in wp-config.php or environment)
+ * Social Scraper API key (set in wp-config.php or environment)
+ * Checks new constant first; falls back to legacy Bright Data constants for zero-downtime migration.
  */
 function tm_get_brightdata_api_key() {
+	if ( defined( 'TM_SOCIAL_SCRAPER_API_KEY' ) && TM_SOCIAL_SCRAPER_API_KEY ) {
+		return TM_SOCIAL_SCRAPER_API_KEY;
+	}
 	if ( defined( 'TM_BRIGHTDATA_API_KEY' ) && TM_BRIGHTDATA_API_KEY ) {
 		return TM_BRIGHTDATA_API_KEY;
 	}
@@ -803,29 +807,23 @@ function tm_fetch_instagram_metrics( $vendor_id, $instagram_url ) {
 	};
 	if ( ! $api_key || ! $instagram_url ) {
 		$save_debug( array_merge( $debug_base, [
-			'error' => ! $api_key ? 'Missing Bright Data API key.' : 'Missing Instagram URL.',
+			'error' => ! $api_key ? 'Missing Social Scraper API key.' : 'Missing Instagram URL.',
 		] ) );
 		return;
 	}
 
-	$dataset_id = 'gd_l1vikfch901nx3by4'; // Instagram posts dataset
-	$endpoint = add_query_arg( [
-		'dataset_id'     => $dataset_id,
-		'notify'         => 'false',
-		'include_errors' => 'true',
-	], 'https://api.brightdata.com/datasets/v3/scrape' );
+	$endpoint = 'https://socialstats.axiombilling.com/scrape';
 
 	$response = wp_remote_post( $endpoint, [
-		'timeout' => 60,
+		'timeout' => 120,
 		'connect_timeout' => 20,
 		'headers' => [
-			'Authorization' => 'Bearer ' . $api_key,
-			'Content-Type'  => 'application/json',
+			'X-API-Key'    => $api_key,
+			'Content-Type' => 'application/json',
 		],
 		'body' => wp_json_encode( [
-			'input' => [
-				[ 'url' => $instagram_url ],
-			],
+			'platform' => 'instagram',
+			'url'      => $instagram_url,
 		] ),
 	] );
 
@@ -1061,29 +1059,23 @@ function tm_fetch_youtube_metrics( $vendor_id, $youtube_url ) {
 	};
 	if ( ! $api_key || ! $youtube_url ) {
 		$save_debug( array_merge( $debug_base, [
-			'error' => ! $api_key ? 'Missing Bright Data API key.' : 'Missing YouTube URL.',
+			'error' => ! $api_key ? 'Missing Social Scraper API key.' : 'Missing YouTube URL.',
 		] ) );
 		return;
 	}
 
-	$dataset_id = 'gd_lk538t2k2p1k3oos71'; // YouTube channel dataset
-	$endpoint = add_query_arg( [
-		'dataset_id'     => $dataset_id,
-		'notify'         => 'false',
-		'include_errors' => 'true',
-	], 'https://api.brightdata.com/datasets/v3/scrape' );
+	$endpoint = 'https://socialstats.axiombilling.com/scrape';
 
 	$response = wp_remote_post( $endpoint, [
-		'timeout' => 60,
+		'timeout' => 120,
 		'connect_timeout' => 20,
 		'headers' => [
-			'Authorization' => 'Bearer ' . $api_key,
-			'Content-Type'  => 'application/json',
+			'X-API-Key'    => $api_key,
+			'Content-Type' => 'application/json',
 		],
 		'body' => wp_json_encode( [
-			'input' => [
-				[ 'url' => $youtube_url ],
-			],
+			'platform' => 'youtube',
+			'url'      => $youtube_url,
 		] ),
 	] );
 
@@ -1231,30 +1223,24 @@ function tm_fetch_linkedin_metrics( $vendor_id, $linkedin_url ) {
 	};
 	if ( ! $api_key || ! $linkedin_url ) {
 		$save_debug( array_merge( $debug_base, [
-			'error' => ! $api_key ? 'Missing Bright Data API key.' : 'Missing LinkedIn URL.',
+			'error' => ! $api_key ? 'Missing Social Scraper API key.' : 'Missing LinkedIn URL.',
 		] ) );
 		return;
 	}
 
-	$dataset_id = 'gd_l1viktl72bvl7bjuj0';
-	$endpoint = add_query_arg( [
-		'dataset_id'     => $dataset_id,
-		'notify'         => 'false',
-		'include_errors' => 'true',
-	], 'https://api.brightdata.com/datasets/v3/scrape' );
+	$endpoint = 'https://socialstats.axiombilling.com/scrape';
 
 	$response = wp_remote_post( $endpoint, [
-		'timeout' => 60,
+		'timeout' => 120,
 		'connect_timeout' => 20,
 		'redirection' => 3,
 		'headers' => [
-			'Authorization' => 'Bearer ' . $api_key,
-			'Content-Type'  => 'application/json',
+			'X-API-Key'    => $api_key,
+			'Content-Type' => 'application/json',
 		],
 		'body' => wp_json_encode( [
-			'input' => [
-				[ 'url' => $linkedin_url ],
-			],
+			'platform' => 'linkedin',
+			'url'      => $linkedin_url,
 		] ),
 	] );
 
@@ -1555,33 +1541,25 @@ function tm_fetch_facebook_metrics( $vendor_id, $facebook_url ) {
 	};
 	if ( ! $api_key || ! $facebook_url ) {
 		$save_debug( array_merge( $debug_base, [
-			'error' => ! $api_key ? 'Missing Bright Data API key.' : 'Missing Facebook URL.',
+			'error' => ! $api_key ? 'Missing Social Scraper API key.' : 'Missing Facebook URL.',
 		] ) );
 		return;
 	}
 
-	$dataset_id = 'gd_lkaxegm826bjpoo9m5'; // Facebook Posts dataset with follower counts
-	$endpoint = add_query_arg( [
-		'dataset_id'     => $dataset_id,
-		'notify'         => 'false',
-		'include_errors' => 'true',
-	], 'https://api.brightdata.com/datasets/v3/scrape' );
+	$endpoint = 'https://socialstats.axiombilling.com/scrape';
 
 	$response = wp_remote_post( $endpoint, [
-		'timeout' => 120, // Extended timeout for slow Facebook dataset creation
+		'timeout' => 120,
 		'connect_timeout' => 20,
 		'redirection' => 3,
 		'headers' => [
-			'Authorization' => 'Bearer ' . $api_key,
-			'Content-Type'  => 'application/json',
+			'X-API-Key'    => $api_key,
+			'Content-Type' => 'application/json',
 		],
 		'body' => wp_json_encode( [
-			'input' => [
-				[
-					'url'          => $facebook_url,
-					'num_of_posts' => 10, // Get last 10 posts for engagement averages
-				],
-			],
+			'platform'     => 'facebook',
+			'url'          => $facebook_url,
+			'num_of_posts' => 10,
 		] ),
 	] );
 
