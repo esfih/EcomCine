@@ -1677,6 +1677,10 @@ class EcomCine_Admin_Settings {
 			$sanitized['mapbox_token'] = $mapbox_raw;
 		}
 
+		if ( array_key_exists( 'social_scraper_api_key', $input ) ) {
+			$sanitized['social_scraper_api_key'] = sanitize_text_field( (string) $input['social_scraper_api_key'] );
+		}
+
 		return $sanitized;
 	}
 
@@ -2240,6 +2244,23 @@ class EcomCine_Admin_Settings {
 											class="regular-text"
 											placeholder="pk.…" />
 										<p class="description">Mapbox public token (pk.…) for geocoding and map embeds. Leave blank to disable.</p>
+									</td>
+								</tr>
+							</table>
+						</div>
+
+						<div class="ecomcine-settings-card">
+							<h2>Social Stats API</h2>
+							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row"><label for="ecomcine-social-scraper-key">API Key</label></th>
+									<td>
+										<input id="ecomcine-social-scraper-key" type="text"
+											name="<?php echo esc_attr( self::OPTION_KEY ); ?>[social_scraper_api_key]"
+											value="<?php echo esc_attr( $settings['social_scraper_api_key'] ?? '' ); ?>"
+											class="regular-text"
+											placeholder="EXsEUh…" />
+										<p class="description">API key for socialstats.axiombilling.com. Used to fetch Instagram, YouTube, LinkedIn and Facebook metrics.</p>
 									</td>
 								</tr>
 							</table>

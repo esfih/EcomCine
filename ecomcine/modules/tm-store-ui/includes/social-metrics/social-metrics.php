@@ -46,6 +46,10 @@ defined( 'ABSPATH' ) || exit;
  * Checks new constant first; falls back to legacy Bright Data constants for zero-downtime migration.
  */
 function tm_get_brightdata_api_key() {
+	$settings = get_option( 'ecomcine_settings', [] );
+	if ( ! empty( $settings['social_scraper_api_key'] ) ) {
+		return $settings['social_scraper_api_key'];
+	}
 	if ( defined( 'TM_SOCIAL_SCRAPER_API_KEY' ) && TM_SOCIAL_SCRAPER_API_KEY ) {
 		return TM_SOCIAL_SCRAPER_API_KEY;
 	}
@@ -55,8 +59,7 @@ function tm_get_brightdata_api_key() {
 	if ( defined( 'BRIGHTDATA_API_KEY' ) && BRIGHTDATA_API_KEY ) {
 		return BRIGHTDATA_API_KEY;
 	}
-	$option_key = get_option( 'tm_brightdata_api_key' );
-	return $option_key ? $option_key : '';
+	return '';
 }
 
 /**
@@ -849,199 +852,12 @@ function tm_fetch_instagram_metrics( $vendor_id, $instagram_url ) {
 	$raw_body = $body;
 	$data = json_decode( $body, true );
 
-	// Snapshot flow: the dataset may respond with a snapshot_id instead of immediate records
-	if ( is_array( $data ) && isset( $data['snapshot_id'] ) ) {
-		update_user_meta( $vendor_id, 'tm_social_metrics_instagram_snapshot_id', $data['snapshot_id'] );
-		$save_debug( array_merge( $debug_base, $data, [
-			'note' => 'Snapshot created; awaiting download.',
-		] ) );
-		tm_queue_instagram_snapshot_fetch( $vendor_id, $data['snapshot_id'], $instagram_url );
-		return;
-	}
 
 	// Immediate data path
 	tm_process_instagram_payload( $vendor_id, $data, $raw_body, $debug_base, $save_debug, $instagram_url );
 }
 
-/**
- * Queue Instagram snapshot fetch
- */
-function tm_queue_instagram_snapshot_fetch( $vendor_id, $snapshot_id, $instagram_url ) {
-	if ( ! $vendor_id || ! $snapshot_id ) {
-		return;
-	}
-	$next = wp_next_scheduled( 'tm_fetch_instagram_snapshot_event', [ $vendor_id, $snapshot_id, $instagram_url ] );
-	if ( ! $next ) {
-		wp_schedule_single_event( time() + 30, 'tm_fetch_instagram_snapshot_event', [ $vendor_id, $snapshot_id, $instagram_url ] );
-	}
-}
 
-/**
- * Fetch Instagram snapshot data from Bright Data
- */
-function tm_fetch_instagram_snapshot( $vendor_id, $snapshot_id, $instagram_url = '' ) {
-	$api_key = tm_get_brightdata_api_key();
-	if ( ! $api_key || ! $snapshot_id ) {
-		return;
-	}
-
-	$debug_base = [
-		'snapshot_id'   => $snapshot_id,
-		'requested_url' => $instagram_url,
-		'timestamp'     => current_time( 'mysql' ),
-	];
-	$save_debug = function( $payload ) use ( $vendor_id ) {
-		if ( $vendor_id ) {
-			update_user_meta( $vendor_id, 'tm_social_metrics_instagram_raw', $payload );
-		}
-	};
-
-	$endpoint = 'https://api.brightdata.com/datasets/v3/snapshot/' . rawurlencode( $snapshot_id ) . '?format=json';
-	$response = wp_remote_get( $endpoint, [
-		'timeout' => 120,
-		'connect_timeout' => 20,
-		'redirection' => 3,
-		'headers' => [
-			'Authorization' => 'Bearer ' . $api_key,
-		],
-	] );
-
-	if ( is_wp_error( $response ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'   => 'WP HTTP error',
-			'message' => $response->get_error_message(),
-		] ) );
-		return;
-	}
-
-	$code = wp_remote_retrieve_response_code( $response );
-	$body = wp_remote_retrieve_body( $response );
-	if ( 404 === (int) $code ) {
-		$attempts = (int) get_user_meta( $vendor_id, 'tm_social_metrics_instagram_snapshot_attempts', true );
-		$attempts++;
-		update_user_meta( $vendor_id, 'tm_social_metrics_instagram_snapshot_attempts', $attempts );
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Snapshot not ready',
-			'http_code' => $code,
-			'attempts'  => $attempts,
-		] ) );
-		if ( $attempts < 8 ) {
-			tm_queue_instagram_snapshot_fetch( $vendor_id, $snapshot_id, $instagram_url );
-		}
-		return;
-	}
-	if ( $code < 200 || $code >= 300 || ! $body ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Non-200 response',
-			'http_code' => $code,
-			'raw_body'  => $body,
-		] ) );
-		return;
-	}
-
-	$data = json_decode( $body, true );
-	if ( ! is_array( $data ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Invalid JSON response',
-			'http_code' => $code,
-			'raw_body'  => $body,
-		] ) );
-		return;
-	}
-
-	if ( ! empty( $data['error'] ) || ! empty( $data['error_code'] ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'      => ! empty( $data['error'] ) ? $data['error'] : 'Bright Data error',
-			'error_code' => ! empty( $data['error_code'] ) ? $data['error_code'] : '',
-			'raw'        => $data,
-		] ) );
-		return;
-	}
-
-	if ( isset( $data['status'] ) && strtolower( (string) $data['status'] ) === 'running' ) {
-		$save_debug( array_merge( $debug_base, [
-			'error' => 'Snapshot not ready',
-			'raw'   => $data,
-		] ) );
-		tm_queue_facebook_metrics_refresh( $vendor_id, $facebook_url );
-		return;
-	}
-
-	if ( isset( $data['message'] ) && is_string( $data['message'] )
-		&& stripos( $data['message'], 'snapshot is not ready' ) !== false
-	) {
-		$save_debug( array_merge( $debug_base, [
-			'error' => 'Snapshot not ready',
-			'raw'   => $data,
-		] ) );
-		tm_queue_facebook_metrics_refresh( $vendor_id, $facebook_url );
-		return;
-	}
-
-	if ( isset( $data['status'] ) && strtolower( (string) $data['status'] ) === 'running' ) {
-		$attempts = (int) get_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts', true );
-		$attempts++;
-		update_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts', $attempts );
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Snapshot not ready',
-			'http_code' => $code,
-			'attempts'  => $attempts,
-			'raw'       => $data,
-		] ) );
-		if ( $attempts < 8 ) {
-			tm_queue_facebook_snapshot_fetch( $vendor_id, $snapshot_id, $facebook_url );
-		}
-		return;
-	}
-
-	if ( isset( $data['message'] ) && is_string( $data['message'] )
-		&& stripos( $data['message'], 'snapshot is not ready' ) !== false
-	) {
-		$attempts = (int) get_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts', true );
-		$attempts++;
-		update_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts', $attempts );
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Snapshot not ready',
-			'http_code' => $code,
-			'attempts'  => $attempts,
-			'raw'       => $data,
-		] ) );
-		if ( $attempts < 8 ) {
-			tm_queue_facebook_snapshot_fetch( $vendor_id, $snapshot_id, $facebook_url );
-		}
-		return;
-	}
-
-	if ( ! empty( $data['error'] ) || ! empty( $data['error_code'] ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'      => ! empty( $data['error'] ) ? $data['error'] : 'Bright Data error',
-			'error_code' => ! empty( $data['error_code'] ) ? $data['error_code'] : '',
-			'raw'        => $data,
-		] ) );
-		return;
-	}
-
-	if ( ! empty( $data['error'] ) || ! empty( $data['error_code'] ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'      => ! empty( $data['error'] ) ? $data['error'] : 'Bright Data error',
-			'error_code' => ! empty( $data['error_code'] ) ? $data['error_code'] : '',
-			'raw'        => $data,
-		] ) );
-		return;
-	}
-
-	if ( isset( $data['data'] ) && is_array( $data['data'] ) ) {
-		$data = $data['data'];
-	} elseif ( isset( $data['results'] ) && is_array( $data['results'] ) ) {
-		$data = $data['results'];
-	}
-
-	$processed = tm_process_instagram_payload( $vendor_id, $data, $body, $debug_base, $save_debug, $instagram_url );
-	if ( $processed ) {
-		delete_user_meta( $vendor_id, 'tm_social_metrics_instagram_snapshot_id' );
-		delete_user_meta( $vendor_id, 'tm_social_metrics_instagram_snapshot_attempts' );
-	}
-}
 
 /**
  * Fetch YouTube channel metrics from Bright Data
@@ -1101,111 +917,11 @@ function tm_fetch_youtube_metrics( $vendor_id, $youtube_url ) {
 	$raw_body = $body;
 	$data = json_decode( $body, true );
 
-	// Snapshot flow
-	if ( is_array( $data ) && isset( $data['snapshot_id'] ) ) {
-		update_user_meta( $vendor_id, 'tm_social_metrics_youtube_snapshot_id', $data['snapshot_id'] );
-		$save_debug( array_merge( $debug_base, $data, [
-			'note' => 'Snapshot created; awaiting download.',
-		] ) );
-		tm_queue_youtube_snapshot_fetch( $vendor_id, $data['snapshot_id'], $youtube_url );
-		return;
-	}
 
 	tm_process_youtube_payload( $vendor_id, $data, $raw_body, $debug_base, $save_debug, $youtube_url );
 }
 
-/**
- * Queue YouTube snapshot fetch
- */
-function tm_queue_youtube_snapshot_fetch( $vendor_id, $snapshot_id, $youtube_url ) {
-	if ( ! $vendor_id || ! $snapshot_id ) {
-		return;
-	}
-	$next = wp_next_scheduled( 'tm_fetch_youtube_snapshot_event', [ $vendor_id, $snapshot_id, $youtube_url ] );
-	if ( ! $next ) {
-		wp_schedule_single_event( time() + 30, 'tm_fetch_youtube_snapshot_event', [ $vendor_id, $snapshot_id, $youtube_url ] );
-	}
-}
 
-/**
- * Fetch YouTube snapshot data from Bright Data
- */
-function tm_fetch_youtube_snapshot( $vendor_id, $snapshot_id, $youtube_url = '' ) {
-	$api_key = tm_get_brightdata_api_key();
-	if ( ! $api_key || ! $snapshot_id ) {
-		return;
-	}
-
-	$debug_base = [
-		'snapshot_id'   => $snapshot_id,
-		'requested_url' => $youtube_url,
-		'timestamp'     => current_time( 'mysql' ),
-	];
-	$save_debug = function( $payload ) use ( $vendor_id ) {
-		if ( $vendor_id ) {
-			update_user_meta( $vendor_id, 'tm_social_metrics_youtube_raw', $payload );
-		}
-	};
-
-	$endpoint = 'https://api.brightdata.com/datasets/v3/snapshot/' . rawurlencode( $snapshot_id ) . '?format=json';
-	$response = wp_remote_get( $endpoint, [
-		'timeout' => 120,
-		'connect_timeout' => 20,
-		'redirection' => 3,
-		'headers' => [
-			'Authorization' => 'Bearer ' . $api_key,
-		],
-	] );
-
-	if ( is_wp_error( $response ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'   => 'WP HTTP error',
-			'message' => $response->get_error_message(),
-		] ) );
-		return;
-	}
-
-	$code = wp_remote_retrieve_response_code( $response );
-	$body = wp_remote_retrieve_body( $response );
-	if ( 404 === (int) $code ) {
-		$attempts = (int) get_user_meta( $vendor_id, 'tm_social_metrics_youtube_snapshot_attempts', true );
-		$attempts++;
-		update_user_meta( $vendor_id, 'tm_social_metrics_youtube_snapshot_attempts', $attempts );
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Snapshot not ready',
-			'http_code' => $code,
-			'attempts'  => $attempts,
-		] ) );
-		if ( $attempts < 8 ) {
-			tm_queue_youtube_snapshot_fetch( $vendor_id, $snapshot_id, $youtube_url );
-		}
-		return;
-	}
-	if ( $code < 200 || $code >= 300 || ! $body ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Non-200 response',
-			'http_code' => $code,
-			'raw_body'  => $body,
-		] ) );
-		return;
-	}
-
-	$data = json_decode( $body, true );
-	if ( ! is_array( $data ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Invalid JSON response',
-			'http_code' => $code,
-			'raw_body'  => $body,
-		] ) );
-		return;
-	}
-
-	$processed = tm_process_youtube_payload( $vendor_id, $data, $body, $debug_base, $save_debug, $youtube_url );
-	if ( $processed ) {
-		delete_user_meta( $vendor_id, 'tm_social_metrics_youtube_snapshot_id' );
-		delete_user_meta( $vendor_id, 'tm_social_metrics_youtube_snapshot_attempts' );
-	}
-}
 
 /**
  * Fetch LinkedIn profile metrics from Bright Data
@@ -1273,14 +989,6 @@ function tm_fetch_linkedin_metrics( $vendor_id, $linkedin_url ) {
 		return;
 	}
 
-	if ( isset( $data['snapshot_id'] ) ) {
-		update_user_meta( $vendor_id, 'tm_social_metrics_linkedin_snapshot_id', $data['snapshot_id'] );
-		$save_debug( array_merge( $debug_base, $data, [
-			'note' => 'Snapshot created; awaiting download.',
-		] ) );
-		tm_queue_linkedin_snapshot_fetch( $vendor_id, $data['snapshot_id'], $linkedin_url );
-		return;
-	}
 
 	$profile = [];
 	if ( is_array( $data ) && ( isset( $data['followers'] ) || isset( $data['connections'] ) || isset( $data['name'] ) ) ) {
@@ -1346,7 +1054,6 @@ function tm_queue_instagram_metrics_refresh( $vendor_id, $instagram_url ) {
 }
 
 add_action( 'tm_fetch_instagram_metrics_event', 'tm_fetch_instagram_metrics', 10, 2 );
-add_action( 'tm_fetch_instagram_snapshot_event', 'tm_fetch_instagram_snapshot', 10, 3 );
 
 /**
  * Queue YouTube metrics refresh (background)
@@ -1362,151 +1069,8 @@ function tm_queue_youtube_metrics_refresh( $vendor_id, $youtube_url ) {
 }
 
 add_action( 'tm_fetch_youtube_metrics_event', 'tm_fetch_youtube_metrics', 10, 2 );
-add_action( 'tm_fetch_youtube_snapshot_event', 'tm_fetch_youtube_snapshot', 10, 3 );
 
-/**
- * Queue LinkedIn snapshot fetch
- */
-function tm_queue_linkedin_snapshot_fetch( $vendor_id, $snapshot_id, $linkedin_url ) {
-	if ( ! $vendor_id || ! $snapshot_id ) {
-		return;
-	}
-	$next = wp_next_scheduled( 'tm_fetch_linkedin_snapshot_event', [ $vendor_id, $snapshot_id, $linkedin_url ] );
-	if ( ! $next ) {
-		wp_schedule_single_event( time() + 30, 'tm_fetch_linkedin_snapshot_event', [ $vendor_id, $snapshot_id, $linkedin_url ] );
-	}
-}
 
-/**
- * Fetch LinkedIn snapshot data from Bright Data
- */
-function tm_fetch_linkedin_snapshot( $vendor_id, $snapshot_id, $linkedin_url = '' ) {
-	$api_key = tm_get_brightdata_api_key();
-	if ( ! $api_key || ! $snapshot_id ) {
-		return;
-	}
-
-	$debug_base = [
-		'snapshot_id'   => $snapshot_id,
-		'requested_url' => $linkedin_url,
-		'timestamp'     => current_time( 'mysql' ),
-	];
-	$save_debug = function( $payload ) use ( $vendor_id ) {
-		if ( $vendor_id ) {
-			update_user_meta( $vendor_id, 'tm_social_metrics_linkedin_raw', $payload );
-		}
-	};
-
-	$endpoint = 'https://api.brightdata.com/datasets/v3/snapshot/' . rawurlencode( $snapshot_id ) . '?format=json';
-	$response = wp_remote_get( $endpoint, [
-		'timeout' => 60,
-		'connect_timeout' => 20,
-		'redirection' => 3,
-		'headers' => [
-			'Authorization' => 'Bearer ' . $api_key,
-		],
-	] );
-
-	if ( is_wp_error( $response ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'   => 'WP HTTP error',
-			'message' => $response->get_error_message(),
-		] ) );
-		return;
-	}
-
-	$code = wp_remote_retrieve_response_code( $response );
-	$body = wp_remote_retrieve_body( $response );
-	if ( 404 === (int) $code ) {
-		$attempts = (int) get_user_meta( $vendor_id, 'tm_social_metrics_linkedin_snapshot_attempts', true );
-		$attempts++;
-		update_user_meta( $vendor_id, 'tm_social_metrics_linkedin_snapshot_attempts', $attempts );
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Snapshot not ready',
-			'http_code' => $code,
-			'attempts'  => $attempts,
-		] ) );
-		if ( $attempts < 8 ) {
-			tm_queue_linkedin_snapshot_fetch( $vendor_id, $snapshot_id, $linkedin_url );
-		}
-		return;
-	}
-	if ( $code < 200 || $code >= 300 || ! $body ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Non-200 response',
-			'http_code' => $code,
-			'raw_body'  => $body,
-		] ) );
-		return;
-	}
-
-	$data = json_decode( $body, true );
-	if ( ! is_array( $data ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Invalid JSON response',
-			'http_code' => $code,
-			'raw_body'  => $body,
-		] ) );
-		return;
-	}
-
-	if ( isset( $data['data'] ) && is_array( $data['data'] ) ) {
-		$data = $data['data'];
-	} elseif ( isset( $data['results'] ) && is_array( $data['results'] ) ) {
-		$data = $data['results'];
-	}
-
-	$profile = [];
-	if ( is_array( $data ) && ( isset( $data['followers'] ) || isset( $data['connections'] ) || isset( $data['name'] ) ) ) {
-		$profile = $data;
-	} elseif ( isset( $data[0] ) && is_array( $data[0] ) ) {
-		$profile = $data[0];
-	}
-	if ( empty( $profile ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error' => 'Empty snapshot payload',
-			'raw'   => $data,
-		] ) );
-		return;
-	}
-
-	// Derive engagement from activity list when available
-	$avg_reactions = null;
-	if ( isset( $profile['activity'] ) && is_array( $profile['activity'] ) ) {
-		$total_interactions = 0;
-		$post_count = 0;
-		foreach ( $profile['activity'] as $item ) {
-			if ( isset( $item['interaction'] ) ) {
-				$total_interactions += tm_linkedin_interaction_count( $item['interaction'] );
-				$post_count++;
-			}
-		}
-		if ( $post_count > 0 ) {
-			$avg_reactions = round( $total_interactions / $post_count );
-		}
-	}
-
-	$metrics = [
-		'followers'      => isset( $profile['followers'] ) ? (int) $profile['followers'] : null,
-		'connections'    => isset( $profile['connections'] ) ? (int) $profile['connections'] : null,
-		'avg_reactions'  => $avg_reactions,
-		'avg_views'      => null, // LinkedIn dataset does not expose view/impression counts
-		'name'           => isset( $profile['name'] ) ? $profile['name'] : null,
-		'avatar'         => isset( $profile['avatar'] ) ? $profile['avatar'] : null,
-		'url'            => isset( $profile['url'] ) ? $profile['url'] : $linkedin_url,
-		'updated_at'     => current_time( 'mysql' ),
-	];
-
-	update_user_meta( $vendor_id, 'tm_social_metrics_linkedin', $metrics );
-	update_user_meta( $vendor_id, 'tm_social_metrics_linkedin_raw', $data );
-	if ( $linkedin_url ) {
-		update_user_meta( $vendor_id, 'tm_social_linkedin_url', $linkedin_url );
-	}
-	delete_user_meta( $vendor_id, 'tm_social_metrics_linkedin_snapshot_id' );
-	delete_user_meta( $vendor_id, 'tm_social_metrics_linkedin_snapshot_attempts' );
-
-	tm_after_social_metrics_update( $vendor_id );
-}
 
 /**
  * Queue LinkedIn metrics refresh
@@ -1523,7 +1087,6 @@ function tm_queue_linkedin_metrics_refresh( $vendor_id, $linkedin_url ) {
 }
 
 add_action( 'tm_fetch_linkedin_metrics_event', 'tm_fetch_linkedin_metrics', 10, 2 );
-add_action( 'tm_fetch_linkedin_snapshot_event', 'tm_fetch_linkedin_snapshot', 10, 3 );
 
 /**
  * Fetch Facebook profile metrics from Bright Data (Posts dataset with follower counts)
@@ -1592,14 +1155,6 @@ function tm_fetch_facebook_metrics( $vendor_id, $facebook_url ) {
 		return;
 	}
 
-	if ( isset( $data['snapshot_id'] ) ) {
-		update_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_id', $data['snapshot_id'] );
-		$save_debug( array_merge( $debug_base, $data, [
-			'note' => 'Snapshot created; awaiting download.',
-		] ) );
-		tm_queue_facebook_snapshot_fetch( $vendor_id, $data['snapshot_id'], $facebook_url );
-		return;
-	}
 
 	// Process posts array to calculate averages
 	if ( empty( $data ) || array_keys( $data ) !== range( 0, count( $data ) - 1 ) ) {
@@ -1742,270 +1297,7 @@ function tm_fetch_facebook_metrics( $vendor_id, $facebook_url ) {
 	error_log( '✅ Facebook metrics saved successfully for user ' . $vendor_id );
 }
 
-/**
- * Queue Facebook snapshot fetch
- */
-function tm_queue_facebook_snapshot_fetch( $vendor_id, $snapshot_id, $facebook_url ) {
-	if ( ! $vendor_id || ! $snapshot_id ) {
-		return;
-	}
-	$next = wp_next_scheduled( 'tm_fetch_facebook_snapshot_event', [ $vendor_id, $snapshot_id, $facebook_url ] );
-	if ( ! $next ) {
-		wp_schedule_single_event( time() + 30, 'tm_fetch_facebook_snapshot_event', [ $vendor_id, $snapshot_id, $facebook_url ] );
-	}
-}
 
-/**
- * Fetch Facebook snapshot data from Bright Data
- */
-function tm_fetch_facebook_snapshot( $vendor_id, $snapshot_id, $facebook_url = '' ) {
-	$api_key = tm_get_brightdata_api_key();
-	if ( ! $api_key || ! $snapshot_id ) {
-		return;
-	}
-
-	$debug_base = [
-		'snapshot_id'   => $snapshot_id,
-		'requested_url' => $facebook_url,
-		'timestamp'     => current_time( 'mysql' ),
-	];
-	$save_debug = function( $payload ) use ( $vendor_id ) {
-		if ( $vendor_id ) {
-			update_user_meta( $vendor_id, 'tm_social_metrics_facebook_raw', $payload );
-		}
-	};
-
-	$endpoint = 'https://api.brightdata.com/datasets/v3/snapshot/' . rawurlencode( $snapshot_id ) . '?format=json';
-	$response = wp_remote_get( $endpoint, [
-		'timeout' => 120, // Extended timeout for Facebook snapshot download
-		'connect_timeout' => 20,
-		'redirection' => 3,
-		'headers' => [
-			'Authorization' => 'Bearer ' . $api_key,
-		],
-	] );
-
-	if ( is_wp_error( $response ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'   => 'WP HTTP error',
-			'message' => $response->get_error_message(),
-		] ) );
-		return;
-	}
-
-	$code = wp_remote_retrieve_response_code( $response );
-	$body = wp_remote_retrieve_body( $response );
-	if ( 404 === (int) $code ) {
-		$attempts = (int) get_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts', true );
-		$attempts++;
-		update_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts', $attempts );
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Snapshot not ready',
-			'http_code' => $code,
-			'attempts'  => $attempts,
-		] ) );
-		if ( $attempts < 8 ) {
-			tm_queue_facebook_snapshot_fetch( $vendor_id, $snapshot_id, $facebook_url );
-		}
-		return;
-	}
-	if ( $code < 200 || $code >= 300 || ! $body ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Non-200 response',
-			'http_code' => $code,
-			'raw_body'  => $body,
-		] ) );
-		return;
-	}
-
-	$data = json_decode( $body, true );
-	if ( ! is_array( $data ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Invalid JSON response',
-			'http_code' => $code,
-			'raw_body'  => $body,
-		] ) );
-		return;
-	}
-	if ( isset( $data['status'] ) && strtolower( (string) $data['status'] ) === 'running' ) {
-		$attempts = (int) get_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts', true );
-		$attempts++;
-		update_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts', $attempts );
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Snapshot not ready',
-			'http_code' => $code,
-			'attempts'  => $attempts,
-			'raw'       => $data,
-		] ) );
-		if ( $attempts < 8 ) {
-			tm_queue_facebook_snapshot_fetch( $vendor_id, $snapshot_id, $facebook_url );
-		}
-		return;
-	}
-	if ( isset( $data['message'] ) && is_string( $data['message'] )
-		&& stripos( $data['message'], 'snapshot is not ready' ) !== false
-	) {
-		$attempts = (int) get_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts', true );
-		$attempts++;
-		update_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts', $attempts );
-		$save_debug( array_merge( $debug_base, [
-			'error'     => 'Snapshot not ready',
-			'http_code' => $code,
-			'attempts'  => $attempts,
-			'raw'       => $data,
-		] ) );
-		if ( $attempts < 8 ) {
-			tm_queue_facebook_snapshot_fetch( $vendor_id, $snapshot_id, $facebook_url );
-		}
-		return;
-	}
-	if ( ! empty( $data['error'] ) || ! empty( $data['error_code'] ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error'      => ! empty( $data['error'] ) ? $data['error'] : 'Bright Data error',
-			'error_code' => ! empty( $data['error_code'] ) ? $data['error_code'] : '',
-			'raw'        => $data,
-		] ) );
-		return;
-	}
-
-	// Process posts array to calculate averages
-	if ( empty( $data ) || array_keys( $data ) !== range( 0, count( $data ) - 1 ) ) {
-		$save_debug( array_merge( $debug_base, [
-			'error' => 'Empty snapshot payload',
-			'raw'   => $data,
-			'data_keys' => is_array( $data ) ? array_keys( $data ) : 'not_array',
-			'data_structure' => json_encode( $data, JSON_PRETTY_PRINT ),
-		] ) );
-		return;
-	}
-
-	// Extract metrics from posts
-	$page_name = '';
-	$page_followers = null;
-	$page_logo = '';
-	$total_likes = 0;
-	$total_reactions = 0;
-	$total_comments = 0;
-	$total_shares = 0;
-	$total_views = 0;
-	$view_samples = 0;
-	$post_count = count( $data );
-	$extract_like_count = function( $post ) {
-		if ( isset( $post['likes'] ) ) {
-			return tm_parse_social_number( $post['likes'] );
-		}
-		if ( isset( $post['num_likes_type']['num'] ) ) {
-			return tm_parse_social_number( $post['num_likes_type']['num'] );
-		}
-		if ( isset( $post['num_likes'] ) ) {
-			return tm_parse_social_number( $post['num_likes'] );
-		}
-		return null;
-	};
-	$extract_reaction_count = function( $post ) use ( $extract_like_count ) {
-		if ( ! empty( $post['count_reactions_type'] ) && is_array( $post['count_reactions_type'] ) ) {
-			$sum = 0;
-			$has = false;
-			foreach ( $post['count_reactions_type'] as $reaction ) {
-				if ( isset( $reaction['reaction_count'] ) ) {
-					$sum += tm_parse_social_number( $reaction['reaction_count'] );
-					$has = true;
-				}
-			}
-			if ( $has ) {
-				return $sum;
-			}
-		}
-		return $extract_like_count( $post );
-	};
-	$extract_view_count = function( $post ) {
-		$keys = [ 'video_view_count', 'play_count', 'views', 'video_views' ];
-		foreach ( $keys as $key ) {
-			if ( isset( $post[ $key ] ) ) {
-				$views = tm_parse_social_number( $post[ $key ] );
-				return $views > 0 ? $views : null;
-			}
-		}
-		return null;
-	};
-
-	foreach ( $data as $post ) {
-		if ( empty( $page_name ) && ! empty( $post['page_name'] ) ) {
-			$page_name = $post['page_name'];
-		}
-		if ( empty( $page_name ) && ! empty( $post['user_username_raw'] ) ) {
-			$page_name = $post['user_username_raw'];
-		}
-		if ( $page_followers === null && ! empty( $post['page_followers'] ) ) {
-			$page_followers = tm_parse_social_number( $post['page_followers'] );
-		} elseif ( $page_followers === null && ! empty( $post['page_likes'] ) ) {
-			$page_followers = tm_parse_social_number( $post['page_likes'] );
-		} elseif ( $page_followers === null && ! empty( $post['followers'] ) ) {
-			$page_followers = tm_parse_social_number( $post['followers'] );
-		}
-		if ( empty( $page_logo ) && ! empty( $post['page_logo'] ) ) {
-			$page_logo = $post['page_logo'];
-		} elseif ( empty( $page_logo ) && ! empty( $post['avatar_image_url'] ) ) {
-			$page_logo = $post['avatar_image_url'];
-		}
-		
-		// Sum engagement metrics
-		$like_count = $extract_like_count( $post );
-		if ( $like_count !== null ) {
-			$total_likes += $like_count;
-		}
-		$reaction_count = $extract_reaction_count( $post );
-		if ( $reaction_count !== null ) {
-			$total_reactions += $reaction_count;
-		}
-		if ( isset( $post['num_comments'] ) ) {
-			$total_comments += tm_parse_social_number( $post['num_comments'] );
-		} elseif ( isset( $post['comments'] ) ) {
-			$total_comments += tm_parse_social_number( $post['comments'] );
-		}
-		if ( isset( $post['num_shares'] ) ) {
-			$total_shares += tm_parse_social_number( $post['num_shares'] );
-		} elseif ( isset( $post['shares'] ) ) {
-			$total_shares += tm_parse_social_number( $post['shares'] );
-		}
-		$views = $extract_view_count( $post );
-		if ( $views !== null ) {
-			$total_views += $views;
-			$view_samples++;
-		}
-	}
-
-	// Calculate averages
-	$avg_likes = $post_count > 0 ? round( $total_likes / $post_count ) : 0;
-	$avg_comments = $post_count > 0 ? round( $total_comments / $post_count ) : 0;
-	$avg_shares = $post_count > 0 ? round( $total_shares / $post_count ) : 0;
-	$avg_reactions = $total_reactions > 0 ? round( $total_reactions / $post_count ) : $avg_likes;
-	$avg_views = $view_samples > 0 ? round( $total_views / $view_samples ) : 0;
-
-	$metrics = [
-		'page_name'      => $page_name,
-		'page_followers' => $page_followers,
-		'page_logo'      => $page_logo,
-		'avg_likes'      => $avg_likes,
-		'avg_comments'   => $avg_comments,
-		'avg_shares'     => $avg_shares,
-		'avg_reactions'  => $avg_reactions,
-		'avg_views'      => $avg_views,
-		'post_count'     => $post_count,
-		'url'            => $facebook_url,
-		'updated_at'     => current_time( 'mysql' ),
-	];
-
-	update_user_meta( $vendor_id, 'tm_social_metrics_facebook', $metrics );
-	update_user_meta( $vendor_id, 'tm_social_metrics_facebook_raw', $data );
-	if ( $facebook_url ) {
-		update_user_meta( $vendor_id, 'tm_social_facebook_url', $facebook_url );
-	}
-	delete_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_id' );
-	delete_user_meta( $vendor_id, 'tm_social_metrics_facebook_snapshot_attempts' );
-
-	tm_after_social_metrics_update( $vendor_id );
-}
 
 /**
  * Queue Facebook metrics refresh
@@ -2022,7 +1314,6 @@ function tm_queue_facebook_metrics_refresh( $vendor_id, $facebook_url ) {
 }
 
 add_action( 'tm_fetch_facebook_metrics_event', 'tm_fetch_facebook_metrics', 10, 2 );
-add_action( 'tm_fetch_facebook_snapshot_event', 'tm_fetch_facebook_snapshot', 10, 3 );
 
 /**
  * Detect social URL changes and refresh LinkedIn metrics
